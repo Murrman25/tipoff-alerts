@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Check, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const plans = [
   {
@@ -54,6 +55,9 @@ const plans = [
 ];
 
 export const Pricing = () => {
+  const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation();
+  const { ref: gridRef, isVisible: gridVisible } = useScrollAnimation();
+
   return (
     <section className="py-24 relative" id="pricing">
       {/* Background accent */}
@@ -61,7 +65,13 @@ export const Pricing = () => {
       
       <div className="container px-4 md:px-6 relative z-10">
         {/* Section header */}
-        <div className="text-center mb-16">
+        <div 
+          ref={headerRef}
+          className={cn(
+            "text-center mb-16 animate-on-scroll",
+            headerVisible && "is-visible"
+          )}
+        >
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Simple pricing,{" "}
             <span className="text-gradient-amber">powerful features</span>
@@ -72,15 +82,17 @@ export const Pricing = () => {
         </div>
 
         {/* Pricing cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {plans.map((plan, index) => (
             <div
               key={index}
               className={cn(
-                "relative p-8 rounded-xl border transition-all duration-300",
+                "relative p-8 rounded-xl border transition-all duration-300 animate-on-scroll",
                 plan.highlighted
                   ? "bg-card border-primary/50 shadow-[0_0_30px_rgba(245,158,11,0.15)] scale-105"
-                  : "bg-card border-border hover:border-primary/30"
+                  : "bg-card border-border hover:border-primary/30",
+                gridVisible && "is-visible",
+                `stagger-${index + 1}`
               )}
             >
               {/* Badge */}
