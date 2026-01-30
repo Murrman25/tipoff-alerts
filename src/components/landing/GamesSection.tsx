@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { LineChart, Trophy } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { cn } from "@/lib/utils";
 
 // Team logos
 import BullsLogo from "@/assets/teams/bulls.png";
@@ -179,11 +181,20 @@ const gamesFeatures = [
 ];
 
 export const GamesSection = () => {
+  const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation();
+  const { ref: gridRef, isVisible: gridVisible } = useScrollAnimation();
+
   return (
     <section id="games" className="py-24 relative scroll-mt-20">
       <div className="container px-4 md:px-6">
         {/* Section header */}
-        <div className="text-center mb-16">
+        <div 
+          ref={headerRef}
+          className={cn(
+            "text-center mb-16 animate-on-scroll",
+            headerVisible && "is-visible"
+          )}
+        >
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Track every game,{" "}
             <span className="text-gradient-amber">every sport</span>
@@ -194,11 +205,17 @@ export const GamesSection = () => {
         </div>
 
         {/* Bento grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {gamesFeatures.map((feature, index) => (
             <div
               key={index}
-              className={`${feature.colSpan} ${feature.rowSpan} p-6 rounded-xl bg-card border border-border card-hover`}
+              className={cn(
+                feature.colSpan,
+                feature.rowSpan,
+                "p-6 rounded-xl bg-card border border-border card-hover animate-on-scroll",
+                gridVisible && "is-visible",
+                `stagger-${index + 1}`
+              )}
             >
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
