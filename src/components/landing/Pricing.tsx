@@ -132,11 +132,12 @@ export const Pricing = () => {
 
               {/* CTA */}
               <Button
+                variant={plan.highlighted ? "default" : "outline"}
                 className={cn(
                   "w-full",
                   plan.highlighted
                     ? "bg-amber-gradient text-primary-foreground hover:opacity-90"
-                    : "bg-secondary hover:bg-secondary/80"
+                    : "border-primary/50 text-primary hover:bg-primary/10 hover:border-primary"
                 )}
               >
                 {plan.cta}
