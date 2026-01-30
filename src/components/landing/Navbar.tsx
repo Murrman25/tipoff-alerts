@@ -36,7 +36,7 @@ export const Navbar = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Sections
+                  Info
                   <ChevronDown className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
