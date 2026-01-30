@@ -1,4 +1,5 @@
-import { Bell, Zap, Clock, Target, ChevronDown, Plus, ArrowUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, Zap, Clock, Target, ChevronDown, Plus, ArrowUp, ArrowDown } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { cn } from "@/lib/utils";
 
@@ -68,86 +69,149 @@ const QuickAlertPreview = () => (
 );
 
 // Real-Time Updates Preview Component
-const RealTimePreview = () => (
-  <div className="mt-4 space-y-3">
-    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border">
-      <div className="flex items-center gap-2">
-        <img src={RangersLogo} alt="Rangers" className="w-6 h-6 object-contain" />
-        <span className="text-lg font-bold">3</span>
-      </div>
-      <div className="flex flex-col items-center">
-        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          LIVE
-        </span>
-        <span className="text-xs text-muted-foreground mt-1">Bot 7th</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-lg font-bold">4</span>
-        <img src={GiantsLogo} alt="Giants" className="w-6 h-6 object-contain" />
-      </div>
-    </div>
+const RealTimePreview = () => {
+  const [oddsIndex, setOddsIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
 
-    <div className="p-2 rounded bg-secondary/30 border border-border text-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground">Rangers ML:</span>
-        <div className="flex items-center gap-1">
-          <span className="text-muted-foreground line-through">+145</span>
-          <span className="text-primary">→</span>
-          <span className="text-primary font-mono font-semibold">+125</span>
-          <ArrowUp className="w-3 h-3 text-green-400" />
+  const oddsHistory = [
+    { old: 145, new: 125, direction: "up" as const },
+    { old: 125, new: 118, direction: "up" as const },
+    { old: 118, new: 110, direction: "up" as const },
+    { old: 110, new: 125, direction: "down" as const },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => setIsAnimating(false), 500);
+      setOddsIndex((prev) => (prev + 1) % oddsHistory.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentOdds = oddsHistory[oddsIndex];
+  const formatOddsValue = (val: number) => `+${val}`;
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border">
+        <div className="flex items-center gap-2">
+          <img src={RangersLogo} alt="Rangers" className="w-6 h-6 object-contain" />
+          <span className="text-lg font-bold">3</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            LIVE
+          </span>
+          <span className="text-xs text-muted-foreground mt-1">Bot 7th</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold">4</span>
+          <img src={GiantsLogo} alt="Giants" className="w-6 h-6 object-contain" />
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mt-1">Line moved 3 min ago</p>
-    </div>
 
-    <div className="flex items-center gap-3 text-xs">
-      {["Live", "Odds", "Scores"].map((label) => (
-        <div key={label} className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-          <span className="text-muted-foreground">{label}</span>
+      <div className="p-2 rounded bg-secondary/30 border border-border text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Rangers ML:</span>
+          <div className="flex items-center gap-1">
+            <span className="text-muted-foreground line-through">{formatOddsValue(currentOdds.old)}</span>
+            <span className="text-primary">→</span>
+            <span
+              className={cn(
+                "text-primary font-mono font-semibold px-1 rounded",
+                isAnimating && "animate-odds-flash"
+              )}
+            >
+              {formatOddsValue(currentOdds.new)}
+            </span>
+            {currentOdds.direction === "up" ? (
+              <ArrowUp className={cn("w-3 h-3 text-green-400", isAnimating && "animate-arrow-bounce")} />
+            ) : (
+              <ArrowDown className={cn("w-3 h-3 text-red-400", isAnimating && "animate-arrow-bounce")} />
+            )}
+          </div>
         </div>
-      ))}
+        <p className="text-xs text-muted-foreground mt-1">Line moved just now</p>
+      </div>
+
+      <div className="flex items-center gap-3 text-xs">
+        {["Live", "Odds", "Scores"].map((label) => (
+          <div key={label} className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            <span className="text-muted-foreground">{label}</span>
+          </div>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Notifications Preview Component
 const NotificationsPreview = () => {
-  const notifications = [
-    { team: "Warriors", event: "ML hit -110", time: "Just now", isNew: true },
-    { team: "Bulls", event: "spread moved to -4.5", time: "2 min ago", isNew: false },
-    { team: "Rangers", event: "total dropped to 8.0", time: "5 min ago", isNew: false },
+  const allNotifications = [
+    { team: "Warriors", event: "ML hit -110" },
+    { team: "Bulls", event: "spread moved to -4.5" },
+    { team: "Rangers", event: "total dropped to 8.0" },
+    { team: "Celtics", event: "ML reached +100" },
+    { team: "Vikings", event: "spread moved to -3" },
+    { team: "Nuggets", event: "total climbed to 220.5" },
   ];
 
+  const [visibleIndices, setVisibleIndices] = useState([0, 1, 2]);
+  const [animatingNew, setAnimatingNew] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAnimatingNew(true);
+      setVisibleIndices((prev) => {
+        const nextIdx = (prev[0] + 1) % allNotifications.length;
+        return [nextIdx, prev[0], prev[1]];
+      });
+      setTimeout(() => setAnimatingNew(false), 400);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getTimeLabel = (index: number) => {
+    if (index === 0) return "Just now";
+    if (index === 1) return "3s ago";
+    return "6s ago";
+  };
+
   return (
-    <div className="mt-4 relative h-32">
-      {notifications.map((notif, idx) => (
-        <div
-          key={idx}
-          className="absolute w-full p-3 rounded-lg border transition-all duration-300"
-          style={{
-            top: `${idx * 12}px`,
-            left: `${idx * 8}px`,
-            zIndex: 3 - idx,
-            backgroundColor: idx === 0 ? "hsl(var(--primary) / 0.1)" : "hsl(var(--secondary) / 0.5)",
-            borderColor: idx === 0 ? "hsl(var(--primary) / 0.3)" : "hsl(var(--border))",
-            opacity: 1 - idx * 0.15,
-          }}
-        >
-          <div className="flex items-center gap-2 text-sm">
-            {idx === 0 && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary text-primary-foreground">
-                NEW
-              </span>
+    <div className="mt-4 space-y-2 overflow-hidden">
+      {visibleIndices.map((notifIdx, displayIdx) => {
+        const notif = allNotifications[notifIdx];
+        const isNew = displayIdx === 0;
+        
+        return (
+          <div
+            key={`${notifIdx}-${displayIdx}`}
+            className={cn(
+              "p-3 rounded-lg border transition-all duration-300",
+              isNew 
+                ? "bg-primary/10 border-primary/30" 
+                : "bg-secondary/50 border-border",
+              isNew && animatingNew && "animate-notification-slide-in",
+              displayIdx === 2 && "opacity-60"
             )}
-            <Bell className={`w-3.5 h-3.5 ${idx === 0 ? "text-primary" : "text-muted-foreground"}`} />
-            <span className="font-medium">{notif.team}</span>
-            <span className="text-muted-foreground">{notif.event}</span>
+          >
+            <div className="flex items-center gap-2 text-sm">
+              {isNew && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary text-primary-foreground">
+                  NEW
+                </span>
+              )}
+              <Bell className={cn("w-3.5 h-3.5", isNew ? "text-primary" : "text-muted-foreground")} />
+              <span className="font-medium">{notif.team}</span>
+              <span className="text-muted-foreground truncate">{notif.event}</span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 ml-5">{getTimeLabel(displayIdx)}</div>
           </div>
-          <div className="text-xs text-muted-foreground mt-1 ml-5">{notif.time}</div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
