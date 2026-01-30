@@ -160,10 +160,13 @@ export const Pricing = () => {
               <div className="mb-6">
                 <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
                 <div className="flex items-baseline gap-1">
-                  <span className={cn(
-                    "text-4xl font-bold",
-                    plan.highlighted && "text-gradient-amber"
-                  )}>
+                  <span 
+                    key={isYearly ? "yearly" : "monthly"}
+                    className={cn(
+                      "text-4xl font-bold animate-fade-in",
+                      plan.highlighted && "text-gradient-amber"
+                    )}
+                  >
                     {formatPrice(plan)}
                   </span>
                   <span className="text-muted-foreground">{getPeriod(plan)}</span>
