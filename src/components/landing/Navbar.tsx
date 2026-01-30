@@ -19,14 +19,14 @@ export const Navbar = () => {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Features
+            <a href="#games" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Games
+            </a>
+            <a href="#alerts" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Alerts
             </a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Pricing
-            </a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Docs
             </a>
           </div>
 
@@ -53,14 +53,14 @@ export const Navbar = () => {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-4">
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Features
+              <a href="#games" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Games
+              </a>
+              <a href="#alerts" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Alerts
               </a>
               <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Pricing
-              </a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Docs
               </a>
               <div className="flex gap-4 pt-4 border-t border-border">
                 <Button variant="ghost" size="sm" className="flex-1">
