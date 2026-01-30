@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -6,8 +7,8 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 const plans = [
   {
     name: "Rookie",
-    price: "Free",
-    period: "forever",
+    monthlyPrice: 0,
+    yearlyPrice: 0,
     description: "Perfect for getting started with basic alerts",
     features: [
       "1 active alert per day",
@@ -20,8 +21,8 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "$20",
-    period: "/month",
+    monthlyPrice: 20,
+    yearlyPrice: 192, // $16/mo billed yearly (20% off)
     description: "For serious bettors who need more power",
     features: [
       "15 alerts per day",
@@ -37,8 +38,8 @@ const plans = [
   },
   {
     name: "Legend",
-    price: "$40",
-    period: "/month",
+    monthlyPrice: 40,
+    yearlyPrice: 384, // $32/mo billed yearly (20% off)
     description: "Unlimited power for professional use",
     features: [
       "Unlimited alerts",
@@ -57,6 +58,21 @@ const plans = [
 export const Pricing = () => {
   const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation();
   const { ref: gridRef, isVisible: gridVisible } = useScrollAnimation();
+  const [isYearly, setIsYearly] = useState(false);
+
+  const formatPrice = (plan: typeof plans[0]) => {
+    if (plan.monthlyPrice === 0) return "Free";
+    if (isYearly) {
+      const monthlyEquivalent = Math.round(plan.yearlyPrice / 12);
+      return `$${monthlyEquivalent}`;
+    }
+    return `$${plan.monthlyPrice}`;
+  };
+
+  const getPeriod = (plan: typeof plans[0]) => {
+    if (plan.monthlyPrice === 0) return "forever";
+    return "/month";
+  };
 
   return (
     <section className="py-24 relative" id="pricing">
@@ -76,9 +92,42 @@ export const Pricing = () => {
             Simple pricing,{" "}
             <span className="text-gradient-amber">powerful features</span>
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-8">
             Start free and upgrade as you grow. No hidden fees.
           </p>
+
+          {/* Billing toggle */}
+          <div className="flex items-center justify-center gap-3">
+            <span className={cn(
+              "text-sm font-medium transition-colors",
+              !isYearly ? "text-foreground" : "text-muted-foreground"
+            )}>
+              Monthly
+            </span>
+            <button
+              onClick={() => setIsYearly(!isYearly)}
+              className={cn(
+                "relative w-14 h-7 rounded-full transition-colors",
+                isYearly ? "bg-primary" : "bg-secondary border border-border"
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-1 w-5 h-5 rounded-full bg-foreground transition-transform",
+                  isYearly ? "translate-x-8" : "translate-x-1"
+                )}
+              />
+            </button>
+            <span className={cn(
+              "text-sm font-medium transition-colors",
+              isYearly ? "text-foreground" : "text-muted-foreground"
+            )}>
+              Yearly
+            </span>
+            <span className="ml-2 px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-semibold border border-green-500/30">
+              Save 20%
+            </span>
+          </div>
         </div>
 
         {/* Pricing cards */}
@@ -87,7 +136,7 @@ export const Pricing = () => {
             <div
               key={index}
               className={cn(
-                "relative p-8 rounded-xl border transition-all duration-300 animate-on-scroll",
+                "relative p-8 rounded-xl border transition-all duration-300 animate-on-scroll flex flex-col",
                 plan.highlighted
                   ? "bg-card border-primary/50 shadow-[0_0_30px_rgba(245,158,11,0.15)] scale-105"
                   : "bg-card border-border hover:border-primary/30",
@@ -113,15 +162,20 @@ export const Pricing = () => {
                     "text-4xl font-bold",
                     plan.highlighted && "text-gradient-amber"
                   )}>
-                    {plan.price}
+                    {formatPrice(plan)}
                   </span>
-                  <span className="text-muted-foreground">{plan.period}</span>
+                  <span className="text-muted-foreground">{getPeriod(plan)}</span>
                 </div>
+                {isYearly && plan.monthlyPrice > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Billed ${plan.yearlyPrice}/year
+                  </p>
+                )}
                 <p className="text-muted-foreground text-sm mt-2">{plan.description}</p>
               </div>
 
               {/* Features */}
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-3 mb-8 flex-1">
                 {plan.features.map((feature, featureIndex) => (
                   <li key={featureIndex} className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -134,7 +188,7 @@ export const Pricing = () => {
               <Button
                 variant={plan.highlighted ? "default" : "outline"}
                 className={cn(
-                  "w-full",
+                  "w-full mt-auto",
                   plan.highlighted
                     ? "bg-amber-gradient text-primary-foreground hover:opacity-90"
                     : "border-primary/50 text-primary hover:bg-primary/10 hover:border-primary"
