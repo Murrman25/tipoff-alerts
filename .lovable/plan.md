@@ -1,225 +1,166 @@
 
 
-# Enhanced Bento Grid - Final Implementation Plan
+# Enhanced Landing Page Sections Plan
 
 ## Overview
-Transform the landing page bento boxes into rich, interactive previews using real team logos with correct sport-to-team matchups.
+Reorganize the bento grid into two distinct feature sections with descriptive content and implement smooth scroll animations for seamless navigation between sections.
 
 ---
 
-## Team Logo Assets (8 Total)
+## New Section Structure
 
-All logos will be copied to `src/assets/teams/`:
+### Section 1: "Live Games & Coverage"
+**Bento Boxes:**
+- Games Dashboard (large, 2x2)
+- All Major Sports
 
-| Sport | Team 1 | Team 2 | File Names |
-|-------|--------|--------|------------|
-| NBA | Chicago Bulls | Golden State Warriors | bulls.png, warriors.png |
-| NBA | Denver Nuggets | Boston Celtics | nuggets.png, celtics.png |
-| NFL | Minnesota Vikings | Washington Commanders | vikings.png, commanders.png |
-| MLB | Texas Rangers | San Francisco Giants | rangers.png, giants.png |
+**Section Header:**
+- Title: "Track every game, every sport"
+- Description: "Get real-time access to live odds, scores, and game states across NFL, NBA, NHL, MLB, and college sports. Our dashboard delivers the data you need to make informed decisions."
+
+### Section 2: "Smart Alerts System"
+**Bento Boxes:**
+- Alert Builder (large box)
+- Quick +100 Alert
+- Real-Time Updates
+- Notifications
+
+**Section Header:**
+- Title: "Your alerts, your rules"
+- Description: "Build sophisticated alert conditions with our intuitive builder. From simple even-money triggers to complex multi-condition logic, get notified instantly when your criteria are met."
 
 ---
 
-## Bento Box Enhancements
+## Smooth Scroll Implementation
 
-### 1. Games Dashboard (Large Box - 2x2)
-The main showcase box with multi-sport game previews:
-
-```text
-+--------------------------------------------------+
-| [NBA] [NFL] [MLB]  (sport tabs - amber active)   |
-+--------------------------------------------------+
-| [Bulls Logo] Bulls    vs    Warriors [Logo]      |
-|               -145            +125               |
-| [LIVE Q3 7:42] ● Updated 2s ago                  |
-+--------------------------------------------------+
-| [Nuggets Logo] Nuggets  vs   Celtics [Logo]      |
-|                 +110          -130               |
-| [PREGAME] Today 7:30 PM ET                       |
-+--------------------------------------------------+
+### CSS Changes (`src/index.css`)
+Add smooth scroll behavior to HTML element:
+```css
+html {
+  scroll-behavior: smooth;
+}
 ```
 
-**Features:**
-- Tabbed sport selector (NBA/NFL/MLB)
-- Real team logos (40x40px)
-- Live odds with proper formatting
-- Pulsing LIVE badge with green dot
-- PREGAME badge for upcoming games
-- "Updated Xs ago" timestamp
+Add scroll-triggered fade-in animation utility class for sections as they come into view.
 
-### 2. Alert Builder Box
-Enhanced condition builder preview:
-
-```text
-+----------------------------------+
-| IF  [Bulls ▾] ML reaches [+100]  |
-+----------------------------------+
-| AND [Game is ▾] LIVE             |
-+----------------------------------+
-| → "Alert me when Bulls ML is     |
-|    even money during live play"  |
-+----------------------------------+
-| [Create Alert]                   |
-+----------------------------------+
-```
-
-**Features:**
-- Real team name in dropdown
-- Visual dropdown indicators
-- Human-readable summary
-- Amber "Create Alert" button
-
-### 3. Notifications Box
-Stacked notification cards with depth:
-
-```text
-+------------------------------------+
-| ● NEW | Warriors ML hit -110       |
-|       Just now                     |
-+------------------------------------+
-   +------------------------------------+
-   | Bulls spread moved to -4.5         |
-   | 2 min ago                          |
-   +------------------------------------+
-      +------------------------------------+
-      | Rangers total dropped to 8.0       |
-      | 5 min ago                          |
-      +------------------------------------+
-```
-
-**Features:**
-- 3 stacked cards with offset (depth effect)
-- "NEW" badge on top notification
-- Real team names from our matchups
-- Relative timestamps
-- Subtle shadow gradients
-
-### 4. Quick +100 Alert Box
-Mini game card with instant alert buttons:
-
-```text
-+------------------------------------------+
-| [Vikings Logo] Vikings      [+] +110     |
-| [Commanders Logo] Commanders [+] -130    |
-+------------------------------------------+
-| Click + to create instant even money     |
-| alert for that team                      |
-+------------------------------------------+
-```
-
-**Features:**
-- Vikings vs Commanders matchup (NFL)
-- Real team logos
-- Current ML odds
-- Hoverable + buttons with amber glow
-- Explanatory text
-
-### 5. All Major Sports Box
-Interactive sport selector with game counts:
-
-```text
-+------------------------------------------+
-| [NFL ●12] [NBA ●8] [NHL ●6]              |
-| [MLB ●15] [NCAAB ●24] [NCAAF ●0]         |
-+------------------------------------------+
-| 65 games available today                  |
-+------------------------------------------+
-```
-
-**Features:**
-- Sport pills with game counts
-- Hover states with amber border
-- Total games counter
-- Active sport highlighting
-
-### 6. Real-Time Updates Box
-Live game with odds movement:
-
-```text
-+------------------------------------------+
-| [Rangers Logo] 3  LIVE  4 [Giants Logo]  |
-|              Bot 7th                      |
-+------------------------------------------+
-| Rangers ML: +145 → +125  ↑               |
-| Line moved 3 min ago                      |
-+------------------------------------------+
-| ● Live  ● Odds  ● Scores                 |
-+------------------------------------------+
-```
-
-**Features:**
-- Rangers vs Giants matchup (MLB)
-- Live score display
-- Odds movement with arrow indicator
-- Multiple status indicators (green dots)
-- Inning/period display
+### Navbar Updates (`src/components/landing/Navbar.tsx`)
+- Update "Features" link to navigate to `#games` section
+- Add new "Alerts" link pointing to `#alerts` section
+- Both desktop and mobile navigation will be updated
 
 ---
 
 ## File Changes
 
-### 1. Copy Team Logos
-Copy 8 logo files to `src/assets/teams/`:
-- `bulls.png` (from chicago-bulls-logo.png)
-- `warriors.png` (from golden-state-warriors-logo-transparent.png)
-- `nuggets.png` (from denver-nuggets-global-logo.png)
-- `celtics.png` (from boston-celtics-logo-transparent.png)
-- `vikings.png` (from minnesota-vikings-logo-transparent.png)
-- `commanders.png` (from washington-commanders-logo-png-transparent.png)
-- `rangers.png` (from texas-rangers-logo-transparent.png)
-- `giants.png` (from san-francisco-giants-logo-transparent.png)
+### 1. `src/index.css`
+- Add `scroll-behavior: smooth` to html element
+- Add new animation utilities for scroll-triggered effects
 
-### 2. Update BentoGrid.tsx
-- Import all team logos as ES6 modules
-- Restructure each feature preview with rich content
-- Add proper TypeScript types for team data
-- Implement depth effects with CSS transforms
-- Add hover interactions with amber accents
+### 2. `src/components/landing/BentoGrid.tsx`
+Split into two new components:
+- `GamesSection` - Games Dashboard + All Major Sports
+- `AlertsSection` - Alert Builder, Quick +100 Alert, Real-Time Updates, Notifications
 
-### 3. Update CSS (if needed)
-- Add stacked card animation classes
-- Add sport-specific color accents for badges
-- Enhance hover states for interactive elements
+Each section will have:
+- Unique section ID for smooth scroll navigation (`id="games"`, `id="alerts"`)
+- Descriptive header with title and paragraph
+- Reorganized bento grid layout
+
+### 3. `src/components/landing/Navbar.tsx`
+Update navigation links:
+- Features -> `#games`
+- Add new Alerts -> `#alerts`
+- Pricing -> `#pricing` (already exists)
+
+### 4. `src/components/landing/index.ts`
+Update exports to include new section components.
+
+### 5. `src/pages/Index.tsx`
+Replace single `BentoGrid` with separate `GamesSection` and `AlertsSection` components.
 
 ---
 
-## Technical Details
+## Detailed Component Structure
 
-### Logo Imports
-```typescript
-import BullsLogo from "@/assets/teams/bulls.png";
-import WarriorsLogo from "@/assets/teams/warriors.png";
-import NuggetsLogo from "@/assets/teams/nuggets.png";
-import CelticsLogo from "@/assets/teams/celtics.png";
-import VikingsLogo from "@/assets/teams/vikings.png";
-import CommandersLogo from "@/assets/teams/commanders.png";
-import RangersLogo from "@/assets/teams/rangers.png";
-import GiantsLogo from "@/assets/teams/giants.png";
+### GamesSection Component
+```text
++------------------------------------------+
+|  Track every game, every sport           |
+|  [descriptive paragraph]                 |
++------------------------------------------+
+|                                          |
+|  +------------------+  +---------------+ |
+|  | Games Dashboard  |  | All Major     | |
+|  | (2x2 large box)  |  | Sports        | |
+|  |                  |  |               | |
+|  |                  |  |               | |
+|  +------------------+  +---------------+ |
+|                                          |
++------------------------------------------+
 ```
 
-### Matchup Data Structure
-```typescript
-const matchups = {
-  nba: [
-    { home: { name: "Bulls", logo: BullsLogo, ml: -145 }, 
-      away: { name: "Warriors", logo: WarriorsLogo, ml: 125 },
-      status: "live", period: "Q3 7:42" },
-    { home: { name: "Nuggets", logo: NuggetsLogo, ml: 110 },
-      away: { name: "Celtics", logo: CelticsLogo, ml: -130 },
-      status: "pregame", time: "7:30 PM ET" }
-  ],
-  nfl: [
-    { home: { name: "Vikings", logo: VikingsLogo, ml: 110 },
-      away: { name: "Commanders", logo: CommandersLogo, ml: -130 },
-      status: "pregame", time: "1:00 PM ET" }
-  ],
-  mlb: [
-    { home: { name: "Rangers", logo: RangersLogo, ml: 125, score: 3 },
-      away: { name: "Giants", logo: GiantsLogo, ml: -145, score: 4 },
-      status: "live", period: "Bot 7th" }
-  ]
-};
+### AlertsSection Component
+```text
++------------------------------------------+
+|  Your alerts, your rules                 |
+|  [descriptive paragraph]                 |
++------------------------------------------+
+|                                          |
+|  +-----------------+  +----------------+ |
+|  | Alert Builder   |  | Quick +100     | |
+|  | (larger box)    |  | Alert          | |
+|  |                 |  +----------------+ |
+|  |                 |  | Real-Time      | |
+|  |                 |  | Updates        | |
+|  +-----------------+  +----------------+ |
+|  +------------------------------------+  |
+|  | Notifications (full width)         |  |
+|  +------------------------------------+  |
+|                                          |
++------------------------------------------+
 ```
+
+---
+
+## Section Content Details
+
+### Games Section Header
+**Title:** "Track every game, every sport"
+**Description:** "Get real-time access to live odds, scores, and game states across NFL, NBA, NHL, MLB, and college sports. Our dashboard delivers the data you need to make informed decisions."
+
+### Alerts Section Header
+**Title:** "Your alerts, your rules"  
+**Description:** "Build sophisticated alert conditions with our intuitive builder. From simple even-money triggers to complex multi-condition logic, get notified instantly when your criteria are met."
+
+---
+
+## Navigation Structure
+
+| Nav Item | Target | Section |
+|----------|--------|---------|
+| Games | `#games` | Live Games & Coverage section |
+| Alerts | `#alerts` | Smart Alerts System section |
+| Pricing | `#pricing` | Pricing section (existing) |
+
+---
+
+## Technical Implementation
+
+### Smooth Scroll CSS
+```css
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem; /* Account for fixed navbar */
+}
+```
+
+### Section IDs
+- Games section: `id="games"`
+- Alerts section: `id="alerts"`
+- Pricing section: `id="pricing"` (already exists)
+
+### Animation on Scroll
+Each section will use the existing `animate-slide-up` and `animate-fade-in` classes that are already defined in the tailwind config.
 
 ---
 
@@ -227,11 +168,9 @@ const matchups = {
 
 | Item | Description |
 |------|-------------|
-| 8 team logos | Copied to src/assets/teams/ with clean naming |
-| Games Dashboard | Multi-sport tabbed preview with 2 NBA, 1 NFL, 1 MLB games |
-| Alert Builder | Real team reference (Bulls) with condition preview |
-| Notifications | 3 stacked cards with real team names |
-| Quick +100 Alert | Vikings vs Commanders with instant add buttons |
-| All Major Sports | Interactive pills with game counts |
-| Real-Time Updates | Rangers vs Giants live MLB game with odds movement |
+| Smooth scroll | Native CSS smooth scrolling with navbar offset |
+| Games Section | Dashboard + All Major Sports with descriptive header |
+| Alerts Section | Alert Builder, Quick +100, Real-Time, Notifications with header |
+| Updated Navbar | Games, Alerts, Pricing navigation links |
+| Section descriptions | Clear, compelling copy for each feature area |
 
