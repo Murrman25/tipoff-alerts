@@ -1,127 +1,235 @@
 
 
-# Scroll-Triggered Fade-In Animations Plan
+# Animated Bento Boxes Plan
 
 ## Overview
-Add smooth scroll-triggered animations to all landing page sections so they elegantly fade and slide into view as the user scrolls down the page.
+Add dynamic animations to the bento boxes to bring them to life:
+1. **Line movement animations** in the Real-Time Updates box
+2. **Redesigned Notifications box** with animated incoming notifications
 
 ---
 
-## Implementation Approach
+## Current Issues
 
-### Custom React Hook: `useScrollAnimation`
-Create a reusable hook that uses the **Intersection Observer API** to detect when elements enter the viewport:
+### Notifications Box (Lines 116-153 in AlertsSection.tsx)
+- Uses absolute positioning with stacked cards that overlap poorly
+- Static display - no animation to simulate real-time notifications
+- Cards stack with `top` and `left` offsets causing visual overlap issues
+- Fixed height of `h-32` is too constrained
+
+### Real-Time Updates Box (Lines 71-113)
+- Line movement (`+145 → +125`) is static
+- Arrow indicator doesn't animate
+- No visual indication that this is "live" updating
+
+---
+
+## Solution
+
+### 1. Animated Line Movements (Real-Time Updates Box)
+
+Add a cycling animation that simulates odds changing in real-time:
+
+**Approach:**
+- Use `useState` and `useEffect` with `setInterval` to cycle through different odds values
+- Animate the odds number with a flash/pulse effect when it changes
+- Show direction arrows that animate (bounce up for favorable, bounce down for unfavorable)
+
+**Animation Details:**
+- Odds cycle every 4 seconds between different values
+- Number flash: brief background highlight + scale pulse
+- Arrow bounce animation on each change
+
+```text
+Rangers ML: +145 → +125 ↑ (animates)
+          3 seconds later...
+Rangers ML: +125 → +118 ↑ (animates again)
+```
+
+### 2. Animated Notifications Box (Complete Redesign)
+
+Replace the stacked cards with a proper notification feed that animates new items in:
+
+**New Layout:**
+- Vertical list layout (no overlapping)
+- Fixed visible area with 3 notifications
+- New notifications slide in from the top with fade effect
+- Older notifications slide down and fade out at bottom
+
+**Animation Cycle:**
+- Every 3 seconds, a new notification "arrives"
+- Top notification slides in from above with fade-in
+- All notifications shift down smoothly
+- Bottom notification fades out as it exits
+
+**Notification Queue:**
+```text
+[NEW] Warriors ML hit -110      ← Slides in from top
+      Bulls spread moved -4.5   ← Shifts down
+      Rangers total: 8.0        ← Shifts down, fades out
+```
+
+---
+
+## Technical Implementation
+
+### New CSS Keyframes (tailwind.config.ts)
+
+Add animations for:
+- `notification-enter`: Slide in from top with fade
+- `notification-exit`: Fade out while shifting down
+- `odds-flash`: Brief highlight pulse when odds change
+- `arrow-bounce`: Subtle bounce for direction arrows
+
+### Real-Time Updates Component Changes
 
 ```typescript
-const useScrollAnimation = () => {
-  const ref = useRef(null);
-  const [isVisible, setIsVisible] = useState(false);
+const RealTimePreview = () => {
+  const [oddsIndex, setOddsIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  
+  const oddsHistory = [
+    { old: 145, new: 125 },
+    { old: 125, new: 118 },
+    { old: 118, new: 110 },
+    { old: 110, new: 125 },  // cycles back
+  ];
   
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(entry.target); // Only animate once
-        }
-      },
-      { threshold: 0.1 } // Trigger at 10% visibility
-    );
-    // ...observe logic
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => setIsAnimating(false), 500);
+      setOddsIndex(prev => (prev + 1) % oddsHistory.length);
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
   
-  return { ref, isVisible };
+  // Render with animation classes
+};
+```
+
+### Notifications Component Changes
+
+```typescript
+const NotificationsPreview = () => {
+  const [visibleNotifications, setVisibleNotifications] = useState([0, 1, 2]);
+  const [animatingIndex, setAnimatingIndex] = useState<number | null>(null);
+  
+  const allNotifications = [
+    { team: "Warriors", event: "ML hit -110" },
+    { team: "Bulls", event: "spread moved to -4.5" },
+    { team: "Rangers", event: "total dropped to 8.0" },
+    { team: "Celtics", event: "ML reached +100" },
+    { team: "Vikings", event: "spread moved to -3" },
+    // ... more notifications to cycle through
+  ];
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Cycle in new notification, push others down
+      setAnimatingIndex(0); // Mark top as animating in
+      setVisibleNotifications(prev => {
+        const nextIdx = (prev[0] + allNotifications.length - 1) % allNotifications.length;
+        return [nextIdx, prev[0], prev[1]];
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Render with proper list layout and animation classes
 };
 ```
 
 ---
 
-## Animation Effects
-
-### Section Headers
-- Fade in + slide up from below
-- Duration: 500ms with ease-out
-
-### Bento Grid Cards
-- **Staggered animation**: Each card animates with a slight delay (100ms) after the previous one
-- Creates a cascading "reveal" effect
-- Cards fade in + slide up
-
-### Pricing Cards
-- Same staggered animation as bento cards
-- Center (Pro) card animates first, then side cards
-
----
-
 ## File Changes
 
-### 1. Create `src/hooks/useScrollAnimation.tsx`
-New custom hook for scroll-triggered visibility detection:
-- Uses Intersection Observer API
-- Returns `ref` to attach to element and `isVisible` boolean
-- Configurable threshold and root margin
-- Only triggers once (no re-animation on scroll back up)
+### 1. tailwind.config.ts
+Add new keyframes and animations:
+- `notification-slide-in`: translateY(-100%) + opacity 0 → translateY(0) + opacity 1
+- `odds-flash`: background pulse from transparent to amber/10 and back
+- `arrow-bounce`: subtle Y-axis bounce
 
-### 2. Update `src/index.css`
-Add new utility classes for scroll animations:
+### 2. src/components/landing/AlertsSection.tsx
+
+**RealTimePreview component:**
+- Add state for cycling odds values
+- Add useEffect with setInterval (4 second cycle)
+- Apply flash animation class when odds change
+- Add bounce animation to arrow icon
+
+**NotificationsPreview component (complete rewrite):**
+- Remove absolute positioning and stacked card approach
+- Use flexbox column layout with gap
+- Add state for notification queue management
+- Add useEffect with setInterval (3 second cycle)
+- Apply enter/exit animations based on position
+- Show relative timestamps that feel dynamic
+
+---
+
+## Animation Specifications
+
+### Odds Flash Animation
 ```css
-.animate-on-scroll {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-
-.animate-on-scroll.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Stagger delays for grid children */
-.stagger-1 { transition-delay: 0.1s; }
-.stagger-2 { transition-delay: 0.2s; }
-.stagger-3 { transition-delay: 0.3s; }
-.stagger-4 { transition-delay: 0.4s; }
-```
-
-### 3. Update `src/components/landing/GamesSection.tsx`
-- Import and use `useScrollAnimation` hook
-- Apply animation classes to section header
-- Add staggered animations to bento grid cards
-
-### 4. Update `src/components/landing/AlertsSection.tsx`
-- Same pattern as GamesSection
-- Staggered animations for the 4 alert feature cards
-
-### 5. Update `src/components/landing/Pricing.tsx`
-- Apply scroll animation to section header
-- Staggered animations for pricing cards
-
----
-
-## Animation Timing
-
-| Element | Delay | Duration |
-|---------|-------|----------|
-| Section Header | 0ms | 600ms |
-| Card 1 | 100ms | 600ms |
-| Card 2 | 200ms | 600ms |
-| Card 3 | 300ms | 600ms |
-| Card 4 | 400ms | 600ms |
-
----
-
-## Technical Details
-
-### Intersection Observer Config
-```typescript
-{
-  threshold: 0.1,      // Trigger when 10% visible
-  rootMargin: '0px 0px -50px 0px' // Start animation slightly before fully in view
+@keyframes odds-flash {
+  0% { background-color: transparent; transform: scale(1); }
+  50% { background-color: hsl(var(--primary) / 0.2); transform: scale(1.05); }
+  100% { background-color: transparent; transform: scale(1); }
 }
 ```
 
-### CSS Approach vs JavaScript
-Using CSS transitions with JavaScript-toggled classes is more performant than animating via JavaScript. The Intersection Observer only toggles a class, and CSS handles the smooth transition.
+### Notification Slide-In Animation
+```css
+@keyframes notification-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+```
+
+### Arrow Bounce Animation
+```css
+@keyframes arrow-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+```
+
+---
+
+## Visual Result
+
+### Real-Time Updates Box
+```text
++------------------------------------------+
+| [Rangers] 3   LIVE   4 [Giants]          |
+|            Bot 7th                        |
++------------------------------------------+
+| Rangers ML: +125 → +118  ↑               |
+|             ↑ flashes    ↑ bounces       |
+| Line moved just now                       |
++------------------------------------------+
+```
+
+### Notifications Box (New Design)
+```text
++--------------------------------------------------+
+| [NEW] ● Celtics ML reached +100                  | ← slides in
+|       Just now                                    |
++--------------------------------------------------+
+| ● Warriors ML hit -110                            | ← shifts down
+|   2s ago                                          |
++--------------------------------------------------+
+| ● Bulls spread moved to -4.5                      | ← shifts down
+|   5s ago                                          |
++--------------------------------------------------+
+```
 
 ---
 
@@ -129,9 +237,8 @@ Using CSS transitions with JavaScript-toggled classes is more performant than an
 
 | Item | Description |
 |------|-------------|
-| useScrollAnimation hook | Reusable hook for scroll-triggered visibility |
-| CSS utilities | Animation classes with stagger delays |
-| GamesSection updates | Animated header + staggered cards |
-| AlertsSection updates | Animated header + staggered cards |
-| Pricing updates | Animated header + staggered pricing cards |
+| Tailwind keyframes | 3 new animations (odds-flash, notification-slide-in, arrow-bounce) |
+| RealTimePreview | Cycling odds with flash animation and bouncing arrows |
+| NotificationsPreview | Complete redesign with sliding notification feed |
+| Removed overlapping | No more stacked card layout causing visual issues |
 
