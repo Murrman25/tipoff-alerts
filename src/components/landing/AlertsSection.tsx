@@ -9,6 +9,9 @@ import VikingsLogo from "@/assets/teams/vikings.png";
 import CommandersLogo from "@/assets/teams/commanders.png";
 import RangersLogo from "@/assets/teams/rangers.png";
 import GiantsLogo from "@/assets/teams/giants.png";
+import WarriorsLogo from "@/assets/teams/warriors.png";
+import CelticsLogo from "@/assets/teams/celtics.png";
+import NuggetsLogo from "@/assets/teams/nuggets.png";
 
 const formatOdds = (odds: number) => (odds > 0 ? `+${odds}` : `${odds}`);
 
@@ -151,12 +154,14 @@ const RealTimePreview = () => {
 // Notifications Preview Component
 const NotificationsPreview = () => {
   const allNotifications = [
-    { team: "Warriors", event: "ML hit -110" },
-    { team: "Bulls", event: "spread moved to -4.5" },
-    { team: "Rangers", event: "total dropped to 8.0" },
-    { team: "Celtics", event: "ML reached +100" },
-    { team: "Vikings", event: "spread moved to -3" },
-    { team: "Nuggets", event: "total climbed to 220.5" },
+    { team: "Warriors", logo: WarriorsLogo, event: "ML hit -110" },
+    { team: "Bulls", logo: BullsLogo, event: "spread moved to -4.5" },
+    { team: "Rangers", logo: RangersLogo, event: "total dropped to 8.0" },
+    { team: "Celtics", logo: CelticsLogo, event: "ML reached +100" },
+    { team: "Vikings", logo: VikingsLogo, event: "spread moved to -3" },
+    { team: "Nuggets", logo: NuggetsLogo, event: "total climbed to 220.5" },
+    { team: "Giants", logo: GiantsLogo, event: "ML shifted to -125" },
+    { team: "Commanders", logo: CommandersLogo, event: "spread hit +2.5" },
   ];
 
   const [visibleIndices, setVisibleIndices] = useState([0, 1, 2]);
@@ -204,6 +209,7 @@ const NotificationsPreview = () => {
                   NEW
                 </span>
               )}
+              <img src={notif.logo} alt={notif.team} className="w-4 h-4 object-contain" />
               <Bell className={cn("w-3.5 h-3.5", isNew ? "text-primary" : "text-muted-foreground")} />
               <span className="font-medium">{notif.team}</span>
               <span className="text-muted-foreground truncate">{notif.event}</span>
