@@ -1,166 +1,127 @@
 
 
-# Enhanced Landing Page Sections Plan
+# Scroll-Triggered Fade-In Animations Plan
 
 ## Overview
-Reorganize the bento grid into two distinct feature sections with descriptive content and implement smooth scroll animations for seamless navigation between sections.
+Add smooth scroll-triggered animations to all landing page sections so they elegantly fade and slide into view as the user scrolls down the page.
 
 ---
 
-## New Section Structure
+## Implementation Approach
 
-### Section 1: "Live Games & Coverage"
-**Bento Boxes:**
-- Games Dashboard (large, 2x2)
-- All Major Sports
+### Custom React Hook: `useScrollAnimation`
+Create a reusable hook that uses the **Intersection Observer API** to detect when elements enter the viewport:
 
-**Section Header:**
-- Title: "Track every game, every sport"
-- Description: "Get real-time access to live odds, scores, and game states across NFL, NBA, NHL, MLB, and college sports. Our dashboard delivers the data you need to make informed decisions."
-
-### Section 2: "Smart Alerts System"
-**Bento Boxes:**
-- Alert Builder (large box)
-- Quick +100 Alert
-- Real-Time Updates
-- Notifications
-
-**Section Header:**
-- Title: "Your alerts, your rules"
-- Description: "Build sophisticated alert conditions with our intuitive builder. From simple even-money triggers to complex multi-condition logic, get notified instantly when your criteria are met."
-
----
-
-## Smooth Scroll Implementation
-
-### CSS Changes (`src/index.css`)
-Add smooth scroll behavior to HTML element:
-```css
-html {
-  scroll-behavior: smooth;
-}
+```typescript
+const useScrollAnimation = () => {
+  const ref = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target); // Only animate once
+        }
+      },
+      { threshold: 0.1 } // Trigger at 10% visibility
+    );
+    // ...observe logic
+  }, []);
+  
+  return { ref, isVisible };
+};
 ```
 
-Add scroll-triggered fade-in animation utility class for sections as they come into view.
+---
 
-### Navbar Updates (`src/components/landing/Navbar.tsx`)
-- Update "Features" link to navigate to `#games` section
-- Add new "Alerts" link pointing to `#alerts` section
-- Both desktop and mobile navigation will be updated
+## Animation Effects
+
+### Section Headers
+- Fade in + slide up from below
+- Duration: 500ms with ease-out
+
+### Bento Grid Cards
+- **Staggered animation**: Each card animates with a slight delay (100ms) after the previous one
+- Creates a cascading "reveal" effect
+- Cards fade in + slide up
+
+### Pricing Cards
+- Same staggered animation as bento cards
+- Center (Pro) card animates first, then side cards
 
 ---
 
 ## File Changes
 
-### 1. `src/index.css`
-- Add `scroll-behavior: smooth` to html element
-- Add new animation utilities for scroll-triggered effects
+### 1. Create `src/hooks/useScrollAnimation.tsx`
+New custom hook for scroll-triggered visibility detection:
+- Uses Intersection Observer API
+- Returns `ref` to attach to element and `isVisible` boolean
+- Configurable threshold and root margin
+- Only triggers once (no re-animation on scroll back up)
 
-### 2. `src/components/landing/BentoGrid.tsx`
-Split into two new components:
-- `GamesSection` - Games Dashboard + All Major Sports
-- `AlertsSection` - Alert Builder, Quick +100 Alert, Real-Time Updates, Notifications
-
-Each section will have:
-- Unique section ID for smooth scroll navigation (`id="games"`, `id="alerts"`)
-- Descriptive header with title and paragraph
-- Reorganized bento grid layout
-
-### 3. `src/components/landing/Navbar.tsx`
-Update navigation links:
-- Features -> `#games`
-- Add new Alerts -> `#alerts`
-- Pricing -> `#pricing` (already exists)
-
-### 4. `src/components/landing/index.ts`
-Update exports to include new section components.
-
-### 5. `src/pages/Index.tsx`
-Replace single `BentoGrid` with separate `GamesSection` and `AlertsSection` components.
-
----
-
-## Detailed Component Structure
-
-### GamesSection Component
-```text
-+------------------------------------------+
-|  Track every game, every sport           |
-|  [descriptive paragraph]                 |
-+------------------------------------------+
-|                                          |
-|  +------------------+  +---------------+ |
-|  | Games Dashboard  |  | All Major     | |
-|  | (2x2 large box)  |  | Sports        | |
-|  |                  |  |               | |
-|  |                  |  |               | |
-|  +------------------+  +---------------+ |
-|                                          |
-+------------------------------------------+
-```
-
-### AlertsSection Component
-```text
-+------------------------------------------+
-|  Your alerts, your rules                 |
-|  [descriptive paragraph]                 |
-+------------------------------------------+
-|                                          |
-|  +-----------------+  +----------------+ |
-|  | Alert Builder   |  | Quick +100     | |
-|  | (larger box)    |  | Alert          | |
-|  |                 |  +----------------+ |
-|  |                 |  | Real-Time      | |
-|  |                 |  | Updates        | |
-|  +-----------------+  +----------------+ |
-|  +------------------------------------+  |
-|  | Notifications (full width)         |  |
-|  +------------------------------------+  |
-|                                          |
-+------------------------------------------+
-```
-
----
-
-## Section Content Details
-
-### Games Section Header
-**Title:** "Track every game, every sport"
-**Description:** "Get real-time access to live odds, scores, and game states across NFL, NBA, NHL, MLB, and college sports. Our dashboard delivers the data you need to make informed decisions."
-
-### Alerts Section Header
-**Title:** "Your alerts, your rules"  
-**Description:** "Build sophisticated alert conditions with our intuitive builder. From simple even-money triggers to complex multi-condition logic, get notified instantly when your criteria are met."
-
----
-
-## Navigation Structure
-
-| Nav Item | Target | Section |
-|----------|--------|---------|
-| Games | `#games` | Live Games & Coverage section |
-| Alerts | `#alerts` | Smart Alerts System section |
-| Pricing | `#pricing` | Pricing section (existing) |
-
----
-
-## Technical Implementation
-
-### Smooth Scroll CSS
+### 2. Update `src/index.css`
+Add new utility classes for scroll animations:
 ```css
-html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 5rem; /* Account for fixed navbar */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.animate-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger delays for grid children */
+.stagger-1 { transition-delay: 0.1s; }
+.stagger-2 { transition-delay: 0.2s; }
+.stagger-3 { transition-delay: 0.3s; }
+.stagger-4 { transition-delay: 0.4s; }
+```
+
+### 3. Update `src/components/landing/GamesSection.tsx`
+- Import and use `useScrollAnimation` hook
+- Apply animation classes to section header
+- Add staggered animations to bento grid cards
+
+### 4. Update `src/components/landing/AlertsSection.tsx`
+- Same pattern as GamesSection
+- Staggered animations for the 4 alert feature cards
+
+### 5. Update `src/components/landing/Pricing.tsx`
+- Apply scroll animation to section header
+- Staggered animations for pricing cards
+
+---
+
+## Animation Timing
+
+| Element | Delay | Duration |
+|---------|-------|----------|
+| Section Header | 0ms | 600ms |
+| Card 1 | 100ms | 600ms |
+| Card 2 | 200ms | 600ms |
+| Card 3 | 300ms | 600ms |
+| Card 4 | 400ms | 600ms |
+
+---
+
+## Technical Details
+
+### Intersection Observer Config
+```typescript
+{
+  threshold: 0.1,      // Trigger when 10% visible
+  rootMargin: '0px 0px -50px 0px' // Start animation slightly before fully in view
 }
 ```
 
-### Section IDs
-- Games section: `id="games"`
-- Alerts section: `id="alerts"`
-- Pricing section: `id="pricing"` (already exists)
-
-### Animation on Scroll
-Each section will use the existing `animate-slide-up` and `animate-fade-in` classes that are already defined in the tailwind config.
+### CSS Approach vs JavaScript
+Using CSS transitions with JavaScript-toggled classes is more performant than animating via JavaScript. The Intersection Observer only toggles a class, and CSS handles the smooth transition.
 
 ---
 
@@ -168,9 +129,9 @@ Each section will use the existing `animate-slide-up` and `animate-fade-in` clas
 
 | Item | Description |
 |------|-------------|
-| Smooth scroll | Native CSS smooth scrolling with navbar offset |
-| Games Section | Dashboard + All Major Sports with descriptive header |
-| Alerts Section | Alert Builder, Quick +100, Real-Time, Notifications with header |
-| Updated Navbar | Games, Alerts, Pricing navigation links |
-| Section descriptions | Clear, compelling copy for each feature area |
+| useScrollAnimation hook | Reusable hook for scroll-triggered visibility |
+| CSS utilities | Animation classes with stagger delays |
+| GamesSection updates | Animated header + staggered cards |
+| AlertsSection updates | Animated header + staggered cards |
+| Pricing updates | Animated header + staggered pricing cards |
 
