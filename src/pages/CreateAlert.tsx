@@ -187,6 +187,33 @@ const CreateAlert = () => {
 
       if (channelError) throw channelError;
 
+      // Send confirmation email if email channel is selected
+      if (notificationChannels.includes("email") && user.email) {
+        const eventName = selectedGame 
+          ? `${selectedGame.teams.away.name || selectedGame.teams.away.abbreviation} @ ${selectedGame.teams.home.name || selectedGame.teams.home.abbreviation}`
+          : "Unknown Event";
+
+        try {
+          await supabase.functions.invoke("send-alert-confirmation", {
+            body: {
+              email: user.email,
+              alertDetails: {
+                eventName,
+                teamSide: condition.teamSide,
+                marketType: condition.marketType,
+                threshold: condition.threshold,
+                direction: condition.direction,
+                ruleType: condition.ruleType,
+              },
+            },
+          });
+          console.log("Confirmation email sent successfully");
+        } catch (emailError) {
+          console.error("Failed to send confirmation email:", emailError);
+          // Don't fail the alert creation if email fails
+        }
+      }
+
       toast.success("Alert created successfully!");
       navigate("/alerts");
     } catch (error: any) {
