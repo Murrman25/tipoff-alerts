@@ -1,221 +1,57 @@
 
-# Fix Stepper Navigation & Game Change Reset
+# Soften Dropdown Selection Colors
 
-## Overview
+## Problem
 
-Enable free navigation between all three steps at any time, and properly reset the condition fields (but not notifications) when the selected game changes.
-
----
-
-## Current Issues
-
-| Problem | Location | Root Cause |
-|---------|----------|------------|
-| Can't expand Step 2 freely | Line 275 in CreateAlert.tsx | `onToggle` has guard: `isStep1Complete && setCurrentStep(2)` |
-| Can't expand Step 3 freely | Line 367 in CreateAlert.tsx | `onToggle` has guard: `isStep2Complete && setCurrentStep(3)` |
-| Changing game doesn't clear conditions | Lines 72-74 in CreateAlert.tsx | Only resets `teamSide`, not other condition fields |
-| "Continue" button blocks navigation | Lines 347-356 | Only visible when Step 2 complete |
-
----
+The dropdown selection highlight uses `--accent` color which is set to `32 95% 44%` (a highly saturated amber at 95% saturation). This creates a very strong, intense orange highlight when hovering over options in the select dropdowns.
 
 ## Solution
 
-### 1. Remove Navigation Guards
+Modify the `SelectItem` component to use a softer, more subtle highlight color. Instead of the full `accent` color, use a semi-transparent version or switch to the `secondary` color which is already defined as a muted dark tone.
 
-Update all three `AlertStep` components to allow free toggling:
+---
 
-**Before:**
-```tsx
-<AlertStep
-  stepNumber={2}
-  onToggle={() => isStep1Complete && setCurrentStep(2)}
-  ...
->
+## Approach
 
-<AlertStep
-  stepNumber={3}
-  onToggle={() => isStep2Complete && setCurrentStep(3)}
-  ...
->
-```
+There are two good options:
 
-**After:**
-```tsx
-<AlertStep
-  stepNumber={2}
-  onToggle={() => setCurrentStep(currentStep === 2 ? 1 : 2)}
-  ...
->
+### Option A: Use secondary color (Recommended)
+Change from `focus:bg-accent` to `focus:bg-secondary` which uses `--secondary: 0 0% 12%` - a subtle dark gray that provides clear visual feedback without the intense orange.
 
-<AlertStep
-  stepNumber={3}
-  onToggle={() => setCurrentStep(currentStep === 3 ? 2 : 3)}
-  ...
->
-```
+### Option B: Use semi-transparent accent
+Keep the amber theme but reduce intensity: `focus:bg-accent/20` (20% opacity amber)
 
-This makes each step header toggle between open/closed states, or allows clicking to jump to any step.
-
-### 2. Simplify Toggle Logic
-
-Create a simple toggle function that:
-- If clicking the currently open step, close it (go to previous step or stay)
-- If clicking a different step, open that step
-
-```tsx
-const handleStepToggle = (step: 1 | 2 | 3) => {
-  // If clicking the current step, toggle it closed (go to previous)
-  // If clicking a different step, open it
-  setCurrentStep(step);
-};
-```
-
-Actually, simpler: just set the clicked step as current. The Collapsible handles the open/close state via `isOpen={currentStep === X}`.
-
-### 3. Reset Condition Fields on Game Change
-
-When `eventID` changes, reset all condition-related fields but preserve notification preferences:
-
-**Before (line 72-74):**
-```tsx
-if (key === "eventID") {
-  updated.teamSide = null;
-}
-```
-
-**After:**
-```tsx
-if (key === "eventID") {
-  // Reset all condition fields when game changes
-  updated.teamSide = null;
-  updated.threshold = null;
-  updated.marketType = "sp"; // Reset to default
-  updated.direction = updated.ruleType === "threshold_cross" ? "crosses_above" : "at_or_above";
-}
-```
-
-### 4. Remove "Continue" Button Condition
-
-Make the "Continue to Notifications" button always visible to encourage navigation:
-
-**Before:**
-```tsx
-{isStep2Complete && (
-  <Button onClick={() => setCurrentStep(3)}>
-    Continue to Notifications
-  </Button>
-)}
-```
-
-**After:**
-```tsx
-<Button 
-  variant="outline"
-  size="sm"
-  onClick={() => setCurrentStep(3)}
-  className="w-full"
->
-  Continue to Notifications
-</Button>
-```
+I recommend **Option A** because it provides clear visual feedback while keeping the design clean. The amber color can still appear for selected/checked items.
 
 ---
 
 ## File Changes
 
-### `src/pages/CreateAlert.tsx`
+### `src/components/ui/select.tsx`
 
-| Line(s) | Change |
-|---------|--------|
-| 72-74 | Expand reset logic to clear all condition fields when game changes |
-| 257 | Update Step 1 onToggle to simple: `() => setCurrentStep(1)` |
-| 275 | Remove guard, change to: `() => setCurrentStep(2)` |
-| 347 | Remove conditional wrapper around Continue button |
-| 367 | Remove guard, change to: `() => setCurrentStep(3)` |
+**Line 108** - Update SelectItem focus styles:
 
-**Updated updateCondition function:**
-```tsx
-const updateCondition = <K extends keyof AlertCondition>(
-  key: K,
-  value: AlertCondition[K]
-) => {
-  setCondition((prev) => {
-    const updated = { ...prev, [key]: value };
-    
-    // When game changes, reset all condition fields (but not ruleType)
-    if (key === "eventID") {
-      updated.teamSide = null;
-      updated.threshold = null;
-      updated.marketType = "sp";
-      updated.direction = prev.ruleType === "threshold_cross" ? "crosses_above" : "at_or_above";
-    }
-    
-    if (key === "ruleType") {
-      if (value === "threshold_cross") {
-        updated.direction = "crosses_above";
-      } else if (value === "threshold_at") {
-        updated.direction = "at_or_above";
-      }
-    }
-    
-    return updated;
-  });
-};
-```
+| Before | After |
+|--------|-------|
+| `focus:bg-accent focus:text-accent-foreground` | `focus:bg-secondary focus:text-foreground` |
 
-**Updated Step handlers:**
-```tsx
-{/* Step 1: Select Game */}
-<AlertStep
-  stepNumber={1}
-  title="Select Game"
-  isOpen={currentStep === 1}
-  isComplete={isStep1Complete}
-  summary={getStep1Summary()}
-  onToggle={() => setCurrentStep(1)}
->
-
-{/* Step 2: Set Condition */}
-<AlertStep
-  stepNumber={2}
-  title="Set Condition"
-  isOpen={currentStep === 2}
-  isComplete={isStep2Complete}
-  summary={getStep2Summary()}
-  onToggle={() => setCurrentStep(2)}
->
-
-{/* Step 3: Notify Me */}
-<AlertStep
-  stepNumber={3}
-  title="Notify Me"
-  isOpen={currentStep === 3}
-  isComplete={notificationChannels.length > 0}
-  summary={notificationChannels.length > 0 ? notificationChannels.join(", ") : undefined}
-  onToggle={() => setCurrentStep(3)}
->
-```
+This changes the hover/focus state from intense amber to a subtle gray highlight, while keeping text readable.
 
 ---
 
-## Navigation Behavior After Changes
+## Visual Comparison
 
-| Action | Result |
-|--------|--------|
-| Click Step 1 header | Opens Step 1, closes others |
-| Click Step 2 header | Opens Step 2, closes others (even if Step 1 incomplete) |
-| Click Step 3 header | Opens Step 3, closes others (even if Step 2 incomplete) |
-| Select a game | Auto-advances to Step 2 (existing behavior preserved) |
-| Change the game | Clears team, threshold, market, direction - keeps notifications |
-| Click "Continue to Notifications" | Always visible, opens Step 3 |
+**Before:**
+- Hover state: Bright amber/orange background (95% saturation)
+- Very high contrast, can feel overwhelming
+
+**After:**
+- Hover state: Subtle dark gray background
+- Clean, modern feel that doesn't compete with actual selections
+- Selected items can still use amber checkmark for emphasis
 
 ---
 
 ## Summary
 
-This is a focused change to `src/pages/CreateAlert.tsx` only:
-- Remove conditional guards from step toggle handlers
-- Expand the game-change reset logic to clear all condition fields
-- Remove the conditional wrapper around the Continue button
-
-The stepper component itself (`CreateAlertStepper.tsx`) doesn't need changes - it already correctly handles the open/close animation via the `isOpen` prop.
+Single file change to `src/components/ui/select.tsx` - update the focus classes on `SelectItem` from `focus:bg-accent focus:text-accent-foreground` to `focus:bg-secondary focus:text-foreground` for a softer, less intense selection highlight.
