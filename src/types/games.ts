@@ -1,8 +1,16 @@
 // Types matching the SportsGameOdds API structure
 
+export interface TeamNames {
+  long: string;
+  medium: string;
+  short: string;
+  location?: string;
+}
+
 export interface Team {
   teamID: string;
-  name: string;
+  names?: TeamNames;
+  name?: string;
   abbreviation?: string;
   logo?: string;
 }
@@ -12,6 +20,8 @@ export interface EventStatus {
   started: boolean;
   ended: boolean;
   finalized: boolean;
+  cancelled?: boolean;
+  live?: boolean;
   period?: string;
   clock?: string;
 }

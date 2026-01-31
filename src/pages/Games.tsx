@@ -30,8 +30,10 @@ const Games = () => {
     
     const query = filters.searchQuery.toLowerCase();
     return games.filter((game) => {
-      const matchesHome = game.teams.home.name.toLowerCase().includes(query);
-      const matchesAway = game.teams.away.name.toLowerCase().includes(query);
+      const homeName = game.teams.home.name || game.teams.home.teamID || '';
+      const awayName = game.teams.away.name || game.teams.away.teamID || '';
+      const matchesHome = homeName.toLowerCase().includes(query);
+      const matchesAway = awayName.toLowerCase().includes(query);
       return matchesHome || matchesAway;
     });
   }, [games, filters.searchQuery]);
