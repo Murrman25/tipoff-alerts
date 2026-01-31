@@ -1,1 +1,4 @@
 project_id = "wxcezmqaknhftwnpkanu"
+
+[functions.sports-events]
+verify_jwt = false
