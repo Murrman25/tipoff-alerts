@@ -2,3 +2,9 @@ project_id = "wxcezmqaknhftwnpkanu"
 
 [functions.sports-events]
 verify_jwt = false
+
+[functions.send-alert-confirmation]
+verify_jwt = false
+
+[functions.send-alert-notification]
+verify_jwt = false
