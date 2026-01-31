@@ -256,16 +256,13 @@ const CreateAlert = () => {
                 summary={getStep1Summary()}
                 onToggle={() => setCurrentStep(1)}
               >
-                <div className="flex items-center gap-2">
-                  <AlertEventSelector
-                    value={condition.eventID}
-                    onChange={(v) => {
-                      updateCondition("eventID", v);
-                      if (v) setCurrentStep(2);
-                    }}
-                  />
-                  <AlertFieldHelp fieldKey="teamSide" showHelp={showHelp} />
-                </div>
+                <AlertEventSelector
+                  value={condition.eventID}
+                  onChange={(v) => {
+                    updateCondition("eventID", v);
+                    if (v) setCurrentStep(2);
+                  }}
+                />
               </AlertStep>
 
               {/* Step 2: Set Condition */}
