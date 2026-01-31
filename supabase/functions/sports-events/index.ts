@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const leagueID = url.searchParams.get('leagueID');
     const oddsAvailable = url.searchParams.get('oddsAvailable');
-    const limit = url.searchParams.get('limit') || '50';
+    const limit = url.searchParams.get('limit') || '5';
 
     // Build the SportsGameOdds API URL
     const apiUrl = new URL('https://api.sportsgameodds.com/v2/events');
@@ -40,6 +40,12 @@ Deno.serve(async (req) => {
     if (oddsAvailable === 'true') {
       apiUrl.searchParams.set('oddsAvailable', 'true');
     }
+    
+    // Only fetch upcoming/current games (from today onwards)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    apiUrl.searchParams.set('startsAtFrom', today.toISOString());
+    
     apiUrl.searchParams.set('limit', limit);
 
     // Request key odds markets for Moneyline, Spread, and Over/Under
