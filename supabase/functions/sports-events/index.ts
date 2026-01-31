@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
 
     // Parse query parameters from the request URL
     const url = new URL(req.url);
+    const eventID = url.searchParams.get('eventID');
     const leagueID = url.searchParams.get('leagueID');
     const oddsAvailable = url.searchParams.get('oddsAvailable');
     const limit = url.searchParams.get('limit') || '5';
@@ -30,23 +31,29 @@ Deno.serve(async (req) => {
     const apiUrl = new URL('https://api.sportsgameodds.com/v2/events');
     apiUrl.searchParams.set('apiKey', apiKey);
 
-    // Forward filter parameters - API requires leagueID on free tier, default to major leagues
-    if (leagueID) {
-      apiUrl.searchParams.set('leagueID', leagueID);
+    // If specific eventID requested, fetch just that event
+    if (eventID) {
+      apiUrl.searchParams.set('eventID', eventID);
+      console.log(`Fetching specific event: ${eventID}`);
     } else {
-      // Default to major US leagues when no filter specified
-      apiUrl.searchParams.set('leagueID', 'NBA,NFL,MLB,NHL,NCAAB,NCAAF');
+      // Forward filter parameters - API requires leagueID on free tier, default to major leagues
+      if (leagueID) {
+        apiUrl.searchParams.set('leagueID', leagueID);
+      } else {
+        // Default to major US leagues when no filter specified
+        apiUrl.searchParams.set('leagueID', 'NBA,NFL,MLB,NHL,NCAAB,NCAAF');
+      }
+      if (oddsAvailable === 'true') {
+        apiUrl.searchParams.set('oddsAvailable', 'true');
+      }
+      
+      // Only fetch upcoming/current games (from today onwards)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      apiUrl.searchParams.set('startsAtFrom', today.toISOString());
+      
+      apiUrl.searchParams.set('limit', limit);
     }
-    if (oddsAvailable === 'true') {
-      apiUrl.searchParams.set('oddsAvailable', 'true');
-    }
-    
-    // Only fetch upcoming/current games (from today onwards)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    apiUrl.searchParams.set('startsAtFrom', today.toISOString());
-    
-    apiUrl.searchParams.set('limit', limit);
 
     // Request key odds markets for Moneyline, Spread, and Over/Under
     apiUrl.searchParams.set('oddID', [
