@@ -13,17 +13,6 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 export const Hero = () => {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
-  // Auto-close modal after 15 seconds
-  useEffect(() => {
-    if (isVideoModalOpen) {
-      const timer = setTimeout(() => {
-        setIsVideoModalOpen(false);
-      }, 15000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isVideoModalOpen]);
-
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
       {/* Background gradient effects */}
@@ -94,6 +83,7 @@ export const Hero = () => {
                 autoPlay
                 muted
                 playsInline
+                onEnded={() => setIsVideoModalOpen(false)}
                 className="w-full h-full object-contain"
               />
             </AspectRatio>
