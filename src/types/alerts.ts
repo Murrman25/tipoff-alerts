@@ -88,3 +88,99 @@ export const DIRECTION_OPTIONS = [
   { id: 'crosses_above' as DirectionType, name: 'Crosses above' },
   { id: 'crosses_below' as DirectionType, name: 'Crosses below' },
 ];
+
+// Quick Alert Templates
+export type QuickAlertTemplateId = 'line_move' | 'odds_drop' | 'best_price' | 'going_live';
+
+export interface QuickAlertTemplate {
+  id: QuickAlertTemplateId;
+  name: string;
+  description: string;
+  icon: string;
+  defaults: Partial<AlertCondition>;
+  requiredFields: (keyof AlertCondition)[];
+}
+
+export const QUICK_ALERT_TEMPLATES: QuickAlertTemplate[] = [
+  {
+    id: 'line_move',
+    name: 'Line Move',
+    description: 'Alert on any spread movement',
+    icon: 'TrendingUp',
+    defaults: {
+      ruleType: 'value_change',
+      marketType: 'sp',
+      timeWindow: 'both',
+    },
+    requiredFields: ['eventID', 'teamSide'],
+  },
+  {
+    id: 'odds_drop',
+    name: 'Odds Drop',
+    description: 'Moneyline drops below target',
+    icon: 'TrendingDown',
+    defaults: {
+      ruleType: 'threshold_cross',
+      marketType: 'ml',
+      direction: 'crosses_below',
+      timeWindow: 'pregame',
+    },
+    requiredFields: ['eventID', 'teamSide', 'threshold'],
+  },
+  {
+    id: 'best_price',
+    name: 'Best Price',
+    description: 'Best odds across all books',
+    icon: 'Trophy',
+    defaults: {
+      ruleType: 'best_available',
+      timeWindow: 'both',
+    },
+    requiredFields: ['eventID', 'teamSide', 'marketType'],
+  },
+  {
+    id: 'going_live',
+    name: 'Going Live',
+    description: 'Game starts live betting',
+    icon: 'Radio',
+    defaults: {
+      ruleType: 'value_change',
+      marketType: 'ml',
+      timeWindow: 'live',
+    },
+    requiredFields: ['eventID'],
+  },
+];
+
+// Help content for fields
+export const FIELD_HELP_CONTENT: Record<string, { title: string; description: string; example?: string }> = {
+  ruleType: {
+    title: 'Alert Trigger',
+    description: 'Choose when to trigger your alert. "Threshold At" fires when a line reaches a value. "Value Change" fires on any movement.',
+    example: 'Use Threshold At to alert when spread hits +3.5',
+  },
+  marketType: {
+    title: 'Market Type',
+    description: 'Moneyline = who wins. Spread = margin of victory. Over/Under = total points scored.',
+    example: 'Spread of -7 means team must win by 7+',
+  },
+  direction: {
+    title: 'Direction',
+    description: 'Above/below determines which direction triggers the alert relative to your threshold.',
+    example: '"At or above +3" alerts when line is +3, +3.5, +4...',
+  },
+  timeWindow: {
+    title: 'Time Window',
+    description: 'Pregame = before game starts. Live = during the game. Both = either phase.',
+    example: 'Live-only alerts ignore pregame line movements',
+  },
+  threshold: {
+    title: 'Threshold Value',
+    description: 'The specific line or odds value that triggers your alert.',
+    example: 'Enter -110 for odds or +3.5 for spread',
+  },
+  teamSide: {
+    title: 'Team Selection',
+    description: 'Select which team\'s line you want to track.',
+  },
+};
