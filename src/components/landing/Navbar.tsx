@@ -1,16 +1,22 @@
 import { Button } from "@/components/ui/button";
-import { Zap, Menu, ChevronDown } from "lucide-react";
+import { Zap, Menu, ChevronDown, User, LogOut, Bell, Settings } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, signOut, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   const sectionLinks = [
     { href: "#games", label: "Games" },
@@ -18,9 +24,20 @@ export const Navbar = () => {
     { href: "#pricing", label: "Pricing" },
   ];
 
-  const actionLinks = [
-    { to: "/alerts/create", label: "Create Alert" },
-  ];
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Signed out successfully");
+      navigate("/");
+    } catch (error) {
+      toast.error("Failed to sign out");
+    }
+  };
+
+  const getUserInitials = () => {
+    if (!user?.email) return "U";
+    return user.email.charAt(0).toUpperCase();
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
@@ -79,14 +96,60 @@ export const Navbar = () => {
             </Link>
           </div>
 
-          {/* Auth buttons */}
+          {/* Auth buttons / User menu */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" size="sm">
-              Log in
-            </Button>
-            <Button size="sm" className="bg-amber-gradient text-primary-foreground hover:opacity-90">
-              Sign up
-            </Button>
+            {isLoading ? (
+              <div className="w-8 h-8 rounded-full bg-secondary animate-pulse" />
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user.user_metadata?.avatar_url} />
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-card border-border">
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium truncate">{user.email}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/alerts" className="cursor-pointer">
+                      <Bell className="w-4 h-4 mr-2" />
+                      My Alerts
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/alerts/create" className="cursor-pointer">
+                      <Zap className="w-4 h-4 mr-2" />
+                      Create Alert
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost" size="sm">
+                    Log in
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button size="sm" className="bg-amber-gradient text-primary-foreground hover:opacity-90">
+                    Sign up
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -139,12 +202,33 @@ export const Navbar = () => {
                 </Link>
               </div>
               <div className="flex gap-4 pt-4 border-t border-border">
-                <Button variant="ghost" size="sm" className="flex-1">
-                  Log in
-                </Button>
-                <Button size="sm" className="flex-1 bg-amber-gradient text-primary-foreground hover:opacity-90">
-                  Sign up
-                </Button>
+                {user ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      handleSignOut();
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign out
+                  </Button>
+                ) : (
+                  <>
+                    <Link to="/auth" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="ghost" size="sm" className="w-full">
+                        Log in
+                      </Button>
+                    </Link>
+                    <Link to="/auth" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                      <Button size="sm" className="w-full bg-amber-gradient text-primary-foreground hover:opacity-90">
+                        Sign up
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>
