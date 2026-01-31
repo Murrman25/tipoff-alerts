@@ -1,113 +1,101 @@
 
 
-# Fill Sparse Bento Boxes on Landing Page
+# Add Video Modal to Hero Section
 
 ## Overview
 
-The "All Major Sports" and "Alert Builder" bento boxes are set to span 2 rows but have minimal content, leaving them half-filled and visually unbalanced. This plan adds meaningful content to fill these boxes properly.
+Update the "See how it works" button in the Hero section to open a video modal. The button will be renamed to "Watch now" and the modal will automatically close 15 seconds after opening.
 
 ---
 
-## Current State
+## Video File Location
 
-| Box | Grid Size | Issue |
-|-----|-----------|-------|
-| All Major Sports | 1 col x 2 rows | Only has sport chips and "X games available" - lots of empty space |
-| Alert Builder | 1 col x 2 rows | Only has 2 condition rows, a summary, and a button - feels sparse |
+Please upload your video file to:
 
----
-
-## Proposed Enhancements
-
-### 1. All Major Sports (GamesSection.tsx)
-
-**Add these elements to fill the space:**
-
-- **Season status indicators** - Show which sports are in season (active) vs off-season
-- **Coverage stats** - Display data points like "500+ events weekly", "15+ sportsbooks tracked"
-- **Market type chips** - Show covered markets: Moneyline, Spread, Totals, Props
-- **Visual separator** with additional context
-
-**Updated preview structure:**
-```text
-+--------------------------------+
-| All Major Sports               |
-| NFL, NBA, NHL, MLB, NCAAB...   |
-+--------------------------------+
-| [NFL ●12] [NBA ●8] [NHL ●6]    |
-| [MLB ●15] [NCAAB ●24] [NCAAF]  |
-|                                |
-| 65 games available today       |
-|--------------------------------|
-| Markets Covered:               |
-| [Moneyline] [Spread] [Totals]  |
-| [Player Props] [Futures]       |
-|--------------------------------|
-| 500+ events weekly             |
-| 15+ sportsbooks tracked        |
-| <1s data refresh               |
-+--------------------------------+
+```
+public/videos/demo.mp4
 ```
 
-### 2. Alert Builder (AlertsSection.tsx)
+Create the `videos` folder inside `public` and place your video there. The file will be accessible at `/videos/demo.mp4` in the app.
 
-**Add these elements to fill the space:**
+**Supported formats**: MP4 is recommended for best browser compatibility. WebM is also supported.
 
-- **More condition rows** - Add a third "THEN" action row showing notification output
-- **Additional logic operators** - Show OR conditions available
-- **Preset templates** - Display 2-3 popular alert template chips users can start from
-- **Time-based condition example** - Show that alerts can include time windows
+---
 
-**Updated preview structure:**
+## Implementation Details
+
+### 1. Update Hero Component
+
+**File**: `src/components/landing/Hero.tsx`
+
+**Changes**:
+- Import `Dialog` components and `Play` icon
+- Add state for modal open/close (`useState`)
+- Add `useEffect` for auto-close timer (15 seconds)
+- Rename button text from "See how it works" to "Watch now"
+- Add the video modal with native HTML5 `<video>` element
+
+### Modal Design
+
 ```text
-+--------------------------------+
-| Alert Builder                  |
-| Create complex conditions...   |
-+--------------------------------+
-| [IF] Bulls ML reaches +100     |
-| [AND] Game is LIVE             |
-| [THEN] Push + Email            |
-|                                |
-| → "Alert me when Bulls ML..."  |
-| [Create Alert]                 |
-|--------------------------------|
-| Popular Templates:             |
-| [+100 Alert] [Line Movement]   |
-| [Pregame Only] [Total Moves]   |
-+--------------------------------+
++--------------------------------------------------+
+|                                           [X]     |
+|                                                   |
+|   +------------------------------------------+   |
+|   |                                          |   |
+|   |              VIDEO PLAYER                |   |
+|   |           (autoplay, controls)           |   |
+|   |                                          |   |
+|   +------------------------------------------+   |
+|                                                   |
+|   See how TipOff helps you catch every move      |
+|                                                   |
++--------------------------------------------------+
 ```
 
----
-
-## Technical Implementation
-
-### File: `src/components/landing/GamesSection.tsx`
-
-**AllSportsPreview component updates:**
-
-1. Add a "Markets Covered" section with market type chips
-2. Add statistics row with key metrics (events per week, sportsbooks, refresh speed)
-3. Use a subtle divider between sections
-4. Consider making active sports more visually prominent
-
-### File: `src/components/landing/AlertsSection.tsx`
-
-**AlertBuilderPreview component updates:**
-
-1. Add a "THEN" notification output row showing delivery methods
-2. Add "Popular Templates" section with clickable template chips
-3. Increase vertical spacing slightly if needed
-4. Keep the same styling patterns (bg-secondary/50, borders, etc.)
+**Modal Features**:
+- 16:9 aspect ratio container for the video
+- Native HTML5 video controls (play, pause, volume, fullscreen)
+- Autoplay when modal opens
+- Dark overlay background (matches existing Dialog style)
+- Close button in top-right corner
+- Auto-closes after 15 seconds via `setTimeout`
 
 ---
 
-## Design Consistency
+## Technical Approach
 
-Both enhanced previews will:
-- Use existing design tokens (`bg-secondary/50`, `border-border`, `text-primary`, etc.)
-- Follow the established chip/badge pattern already in use
-- Maintain hover states consistent with other interactive elements
-- Use subtle dividers (`border-t border-border/50`) to separate sections
+### Auto-Close Timer Logic
+
+```typescript
+const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+useEffect(() => {
+  if (isVideoModalOpen) {
+    const timer = setTimeout(() => {
+      setIsVideoModalOpen(false);
+    }, 15000); // 15 seconds
+    
+    return () => clearTimeout(timer);
+  }
+}, [isVideoModalOpen]);
+```
+
+The timer:
+- Starts when modal opens
+- Clears if modal is manually closed before 15 seconds
+- Uses cleanup function to prevent memory leaks
+
+### Video Element
+
+```html
+<video 
+  src="/videos/demo.mp4" 
+  controls 
+  autoPlay 
+  className="w-full h-full object-contain"
+/>
+```
 
 ---
 
@@ -115,6 +103,30 @@ Both enhanced previews will:
 
 | File | Changes |
 |------|---------|
-| `src/components/landing/GamesSection.tsx` | Enhance `AllSportsPreview` with markets and stats |
-| `src/components/landing/AlertsSection.tsx` | Enhance `AlertBuilderPreview` with THEN row and templates |
+| `src/components/landing/Hero.tsx` | Add video modal, rename button, implement auto-close |
+
+## Files to Create (by user)
+
+| Path | Description |
+|------|-------------|
+| `public/videos/demo.mp4` | Your demo video file |
+
+---
+
+## Button Change
+
+**Before**:
+```tsx
+<Button variant="outline">
+  See how it works
+</Button>
+```
+
+**After**:
+```tsx
+<Button variant="outline" onClick={() => setIsVideoModalOpen(true)}>
+  <Play className="w-4 h-4 mr-2" />
+  Watch now
+</Button>
+```
 
