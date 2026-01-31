@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,9 +26,12 @@ import { toast } from "sonner";
 
 const CreateAlert = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preSelectedEventID = searchParams.get("eventID");
+
   const [condition, setCondition] = useState<AlertCondition>({
     ruleType: "threshold_at",
-    eventID: null,
+    eventID: preSelectedEventID || null,
     marketType: "sp",
     teamSide: null,
     threshold: null,
