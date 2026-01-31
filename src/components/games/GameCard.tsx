@@ -31,6 +31,11 @@ const getTeamLogo = (teamID: string): string => {
   return teamLogos[normalized] || "/placeholder.svg";
 };
 
+// Helper to safely get team name with fallbacks
+const getTeamName = (team: any): string => {
+  return team?.name || team?.names?.long || team?.names?.medium || team?.teamID || 'Unknown Team';
+};
+
 const formatOdds = (odds: string) => {
   const num = parseInt(odds);
   return num > 0 ? `+${num}` : `${num}`;
@@ -102,10 +107,10 @@ export const GameCard = ({
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <img
               src={getTeamLogo(game.teams.away.teamID)}
-              alt={game.teams.away.name}
+              alt={getTeamName(game.teams.away)}
               className="w-8 h-8 object-contain"
             />
-            <span className="font-medium truncate">{game.teams.away.name}</span>
+            <span className="font-medium truncate">{getTeamName(game.teams.away)}</span>
             {isLive && game.score && (
               <span className="text-lg font-bold ml-auto mr-4">
                 {game.score.away}
@@ -147,10 +152,10 @@ export const GameCard = ({
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <img
               src={getTeamLogo(game.teams.home.teamID)}
-              alt={game.teams.home.name}
+              alt={getTeamName(game.teams.home)}
               className="w-8 h-8 object-contain"
             />
-            <span className="font-medium truncate">{game.teams.home.name}</span>
+            <span className="font-medium truncate">{getTeamName(game.teams.home)}</span>
             {isLive && game.score && (
               <span className="text-lg font-bold ml-auto mr-4">
                 {game.score.home}
