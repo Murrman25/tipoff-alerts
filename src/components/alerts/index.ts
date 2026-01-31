@@ -6,3 +6,5 @@ export { AlertThresholdInput } from "./AlertThresholdInput";
 export { AlertDirectionSelector } from "./AlertDirectionSelector";
 export { AlertTimeWindow } from "./AlertTimeWindow";
 export { AlertSummary } from "./AlertSummary";
+export { AlertNotificationChannels } from "./AlertNotificationChannels";
+export type { NotificationChannel } from "./AlertNotificationChannels";

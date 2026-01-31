@@ -14,7 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alert_notification_channels: {
+        Row: {
+          alert_id: string
+          channel_type: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+        }
+        Insert: {
+          alert_id: string
+          channel_type: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+        }
+        Update: {
+          alert_id?: string
+          channel_type?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_notification_channels_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alerts: {
+        Row: {
+          created_at: string
+          direction: string
+          event_id: string | null
+          id: string
+          is_active: boolean
+          market_type: string
+          rule_type: string
+          team_side: string | null
+          threshold: number | null
+          time_window: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          event_id?: string | null
+          id?: string
+          is_active?: boolean
+          market_type: string
+          rule_type: string
+          team_side?: string | null
+          threshold?: number | null
+          time_window?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          event_id?: string | null
+          id?: string
+          is_active?: boolean
+          market_type?: string
+          rule_type?: string
+          team_side?: string | null
+          threshold?: number | null
+          time_window?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_notification_settings: {
+        Row: {
+          created_at: string
+          email_address: string | null
+          email_enabled: boolean
+          id: string
+          phone_number: string | null
+          push_enabled: boolean
+          sms_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_address?: string | null
+          email_enabled?: boolean
+          id?: string
+          phone_number?: string | null
+          push_enabled?: boolean
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_address?: string | null
+          email_enabled?: boolean
+          id?: string
+          phone_number?: string | null
+          push_enabled?: boolean
+          sms_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
