@@ -1,228 +1,227 @@
 
-# Fix Games Page Data Display Issues
+# Fix: Auto-Select Game When Navigating from Games Page
 
-## Overview
+## Problem Summary
 
-The Games page isn't displaying properly because the API response structure differs from our type definitions. Team names are in a nested `names` object, and we need to limit results to 5 games.
+When clicking "Create Alert" on a game card, the user is navigated to `/alerts/create?eventID=xxx`, but:
+1. The game dropdown shows "Select a game" instead of the pre-selected game
+2. The Team Selector is disabled showing "Select event first"
+3. The user cannot proceed to set conditions
+
+## Root Cause
+
+The `CreateAlert` page correctly reads the `eventID` from the URL and sets it in `condition.eventID`, but:
+- `selectedGame` state is initialized as `null` and never populated
+- `AlertEventSelector` fetches only 5 games that may not include the pre-selected game
+- Without `selectedGame`, the `AlertTeamSelector` remains disabled
+
+## Solution Architecture
+
+```text
+                     ┌─────────────────────────────────┐
+                     │    Navigate with ?eventID=xxx   │
+                     └───────────────┬─────────────────┘
+                                     │
+                     ┌───────────────▼─────────────────┐
+                     │     CreateAlert detects         │
+                     │     preSelectedEventID          │
+                     └───────────────┬─────────────────┘
+                                     │
+          ┌──────────────────────────▼──────────────────────────┐
+          │         AlertEventSelector receives eventID         │
+          │         and fetches that specific game              │
+          └──────────────────────────┬──────────────────────────┘
+                                     │
+          ┌──────────────────────────▼──────────────────────────┐
+          │      On data load, find game and call onChange()    │
+          │      to populate selectedGame in parent             │
+          └──────────────────────────┬──────────────────────────┘
+                                     │
+          ┌──────────────────────────▼──────────────────────────┐
+          │        AlertTeamSelector receives game prop         │
+          │        and enables team selection                   │
+          └─────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Root Cause Analysis
+## Implementation Steps
 
-### Issue 1: Missing Team Names
+### Step 1: Update Edge Function to Support eventID Lookup
 
-**API Response Structure:**
-```json
-"teams": {
-  "home": {
-    "teamID": "CHARLOTTE_HORNETS_NBA",
-    "names": {
-      "long": "Charlotte Hornets",
-      "medium": "Hornets", 
-      "short": "CHA"
-    }
+**File:** `supabase/functions/sports-events/index.ts`
+
+Add support for fetching a specific event by ID:
+
+**Changes:**
+- Accept `eventID` query parameter
+- When provided, pass it to the API to fetch that specific event
+- This allows fetching a single game regardless of other filters
+
+```typescript
+const eventID = url.searchParams.get('eventID');
+
+// If specific eventID requested, fetch just that event
+if (eventID) {
+  apiUrl.searchParams.set('eventID', eventID);
+} else {
+  // Existing logic for list queries...
+}
+```
+
+### Step 2: Create useGameById Hook
+
+**File:** `src/hooks/useGameById.ts` (new file)
+
+A focused hook to fetch a single game by ID:
+
+```typescript
+export function useGameById(eventID: string | null) {
+  return useQuery({
+    queryKey: ['game', eventID],
+    queryFn: async (): Promise<GameEvent | null> => {
+      if (!eventID) return null;
+      
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/sports-events?eventID=${eventID}`
+      );
+      
+      const result = await response.json();
+      
+      // Transform and return the single game
+      const game = result.data?.[0];
+      if (!game) return null;
+      
+      return {
+        ...game,
+        teams: {
+          home: {
+            ...game.teams.home,
+            name: game.teams.home.names?.long || game.teams.home.teamID,
+            abbreviation: game.teams.home.names?.short
+          },
+          away: {
+            ...game.teams.away,
+            name: game.teams.away.names?.long || game.teams.away.teamID,
+            abbreviation: game.teams.away.names?.short
+          }
+        }
+      };
+    },
+    enabled: !!eventID,
+  });
+}
+```
+
+### Step 3: Update AlertEventSelector Component
+
+**File:** `src/components/alerts/AlertEventSelector.tsx`
+
+Add logic to:
+1. Accept the pre-selected eventID
+2. Fetch that specific game using `useGameById`
+3. Auto-select and notify parent when data loads
+4. Include pre-selected game in dropdown even if not in filtered list
+
+**New Props:**
+```typescript
+interface AlertEventSelectorProps {
+  value: string | null;
+  onChange: (value: string | null, game: GameEvent | null) => void;
+  preSelectedEventID?: string | null;  // New prop
+}
+```
+
+**Key Logic:**
+```typescript
+// Fetch specific game if pre-selected
+const { data: preSelectedGame } = useGameById(preSelectedEventID);
+
+// Effect to auto-select when pre-selected game loads
+useEffect(() => {
+  if (preSelectedEventID && preSelectedGame && !hasAutoSelected) {
+    onChange(preSelectedEventID, preSelectedGame);
+    setHasAutoSelected(true);
   }
-}
+}, [preSelectedGame, preSelectedEventID]);
+
+// Combine pre-selected game with list (if not already present)
+const allGames = useMemo(() => {
+  const gameList = [...(games || [])];
+  if (preSelectedGame && !gameList.find(g => g.eventID === preSelectedGame.eventID)) {
+    gameList.unshift(preSelectedGame);
+  }
+  return gameList;
+}, [games, preSelectedGame]);
 ```
 
-**Current Code Expects:**
-```typescript
-game.teams.home.name  // This is undefined!
-```
+### Step 4: Update CreateAlert Page
 
-**Solution:** Update the `Team` interface and transform data in the hook to flatten names.
+**File:** `src/pages/CreateAlert.tsx`
 
-### Issue 2: Some Cards Missing Odds
-
-**Cause:** Many events (especially cancelled/postponed games) have empty `byBookmaker: {}` objects. The API also returns historical events with no current odds.
-
-**Solution:** The UI already handles this with conditional rendering, but we should also filter to only show events that haven't ended.
-
-### Issue 3: Too Many Games Loading
-
-**Current:** Loading 50 games
-**Requested:** Load only 5 games
-
-**Solution:** Change limit parameter in `useGames` hook.
-
----
-
-## Implementation Plan
-
-### Step 1: Update Types
-
-**File:** `src/types/games.ts`
-
-Update the `Team` interface to match actual API structure:
+Pass the pre-selected event ID to the selector:
 
 ```typescript
-export interface TeamNames {
-  long: string;
-  medium: string;
-  short: string;
-  location?: string;
-}
-
-export interface Team {
-  teamID: string;
-  names: TeamNames;  // API returns names object
-  name?: string;     // Keep for backwards compat, will be populated by transform
-  abbreviation?: string;
-  logo?: string;
-}
-```
-
-### Step 2: Transform Data in Hook
-
-**File:** `src/hooks/useGames.ts`
-
-Add data transformation to flatten team names and filter out ended events:
-
-```typescript
-// Transform API response to match our expected structure
-const transformedData = result.data
-  // Filter out ended/cancelled events
-  .filter(event => !event.status.ended && !event.status.cancelled)
-  // Transform team names
-  .map(event => ({
-    ...event,
-    teams: {
-      home: {
-        ...event.teams.home,
-        name: event.teams.home.names?.long || event.teams.home.teamID,
-        abbreviation: event.teams.home.names?.short
-      },
-      away: {
-        ...event.teams.away,
-        name: event.teams.away.names?.long || event.teams.away.teamID,
-        abbreviation: event.teams.away.names?.short
-      }
-    }
-  }));
-```
-
-Also change limit from 50 to 5.
-
-### Step 3: Update GameCard for Robustness
-
-**File:** `src/components/games/GameCard.tsx`
-
-Add fallbacks for team name display:
-
-```typescript
-// Safe team name accessor
-const getTeamName = (team: Team) => {
-  return team.name || team.names?.long || team.names?.medium || team.teamID;
-};
+<AlertEventSelector
+  value={condition.eventID}
+  onChange={handleGameSelect}
+  preSelectedEventID={preSelectedEventID}  // Add this prop
+/>
 ```
 
 ---
 
 ## File Changes Summary
 
-| File | Changes |
-|------|---------|
-| `src/types/games.ts` | Add `TeamNames` interface, update `Team` interface |
-| `src/hooks/useGames.ts` | Add data transformation, filter ended events, change limit to 5 |
-| `src/components/games/GameCard.tsx` | Add safe team name accessor with fallbacks |
+| File | Action | Changes |
+|------|--------|---------|
+| `supabase/functions/sports-events/index.ts` | Update | Add `eventID` parameter support for single-event lookup |
+| `src/hooks/useGameById.ts` | Create | New hook to fetch a single game by ID |
+| `src/components/alerts/AlertEventSelector.tsx` | Update | Add pre-selection logic with useEffect auto-select |
+| `src/pages/CreateAlert.tsx` | Update | Pass `preSelectedEventID` prop to AlertEventSelector |
 
 ---
 
-## Detailed Changes
+## Technical Details
 
-### src/types/games.ts
-
-Add new interface and update Team:
+### Edge Function Changes
 
 ```typescript
-export interface TeamNames {
-  long: string;
-  medium: string;
-  short: string;
-  location?: string;
-}
+// In sports-events/index.ts
+const eventID = url.searchParams.get('eventID');
 
-export interface Team {
-  teamID: string;
-  names?: TeamNames;
-  name?: string;
-  abbreviation?: string;
-  logo?: string;
-}
-
-export interface EventStatus {
-  startsAt: string;
-  started: boolean;
-  ended: boolean;
-  finalized: boolean;
-  cancelled?: boolean;  // Add cancelled field
-  live?: boolean;       // Add live field
-  period?: string;
-  clock?: string;
+if (eventID) {
+  // Fetch specific event - no league restriction needed
+  apiUrl.searchParams.set('eventID', eventID);
+} else {
+  // Existing list query logic
+  if (leagueID) {
+    apiUrl.searchParams.set('leagueID', leagueID);
+  } else {
+    apiUrl.searchParams.set('leagueID', 'NBA,NFL,MLB,NHL,NCAAB,NCAAF');
+  }
+  apiUrl.searchParams.set('startsAtFrom', today.toISOString());
+  apiUrl.searchParams.set('limit', limit);
 }
 ```
 
-### src/hooks/useGames.ts
+### AlertEventSelector Auto-Select Flow
 
-Transform data and limit to 5:
-
-```typescript
-params.set('limit', '5');  // Changed from 50
-
-// After fetching, transform:
-const result: SportsEventsResponse = await response.json();
-
-// Filter and transform the data
-const transformedData = (result.data || [])
-  .filter(event => {
-    // Only show upcoming/live events, not ended/cancelled
-    return !event.status?.ended && !event.status?.cancelled;
-  })
-  .map(event => ({
-    ...event,
-    teams: {
-      home: {
-        ...event.teams.home,
-        name: event.teams.home.names?.long || 
-              event.teams.home.names?.medium || 
-              event.teams.home.teamID,
-        abbreviation: event.teams.home.names?.short
-      },
-      away: {
-        ...event.teams.away,
-        name: event.teams.away.names?.long || 
-              event.teams.away.names?.medium || 
-              event.teams.away.teamID,
-        abbreviation: event.teams.away.names?.short
-      }
-    }
-  }));
-
-return transformedData;
-```
-
-### src/components/games/GameCard.tsx
-
-Add safe accessor:
-
-```typescript
-// Helper to safely get team name with fallbacks
-const getTeamName = (team: any) => {
-  return team?.name || team?.names?.long || team?.names?.medium || team?.teamID || 'Unknown Team';
-};
-
-// Then use:
-<span className="font-medium truncate">{getTeamName(game.teams.away)}</span>
-<span className="font-medium truncate">{getTeamName(game.teams.home)}</span>
-```
+1. Component receives `preSelectedEventID` prop
+2. `useGameById` hook fetches the specific game
+3. `useEffect` detects when game data is loaded
+4. Calls `onChange(eventID, game)` to update parent state
+5. Parent's `handleGameSelect` sets both `condition.eventID` and `selectedGame`
+6. `AlertTeamSelector` now receives valid `game` prop and enables selection
 
 ---
 
 ## Testing Checklist
 
 After implementation:
-- Verify team names display correctly for all games
-- Confirm only 5 games load initially  
-- Check that odds display when available
-- Verify no ended/cancelled games appear
-- Test the refresh button still works
+1. Click "Create Alert" on a game card from Games page
+2. Verify the game auto-selects in the dropdown
+3. Verify Team Selector shows Home/Away options with correct team names
+4. Verify user can complete the full alert creation flow
+5. Test changing the game after auto-selection works
+6. Test direct URL navigation to `/alerts/create?eventID=xxx`
