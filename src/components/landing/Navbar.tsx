@@ -18,6 +18,10 @@ export const Navbar = () => {
     { href: "#pricing", label: "Pricing" },
   ];
 
+  const actionLinks = [
+    { to: "/alerts/create", label: "Create Alert" },
+  ];
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container px-4 md:px-6">
@@ -54,12 +58,18 @@ export const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Games page link */}
+            {/* Action links */}
             <Link
               to="/games"
-              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Browse Games
+            </Link>
+            <Link
+              to="/alerts/create"
+              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              Create Alert
             </Link>
           </div>
 
