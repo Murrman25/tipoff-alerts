@@ -60,7 +60,23 @@ const CreateAlert = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<QuickAlertTemplateId | null>(null);
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(preSelectedEventID ? 2 : 1);
+  const [openSteps, setOpenSteps] = useState<Set<number>>(new Set(preSelectedEventID ? [2] : [1]));
+
+  const toggleStep = (step: number) => {
+    setOpenSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(step)) {
+        next.delete(step);
+      } else {
+        next.add(step);
+      }
+      return next;
+    });
+  };
+
+  const openStep = (step: number) => {
+    setOpenSteps((prev) => new Set(prev).add(step));
+  };
 
   const updateCondition = <K extends keyof AlertCondition>(
     key: K,
@@ -255,16 +271,16 @@ const CreateAlert = () => {
               <AlertStep
                 stepNumber={1}
                 title="Select Game"
-                isOpen={currentStep === 1}
+                isOpen={openSteps.has(1)}
                 isComplete={isStep1Complete}
                 summary={getStep1Summary()}
-                onToggle={() => setCurrentStep(1)}
+                onToggle={() => toggleStep(1)}
               >
                 <AlertEventSelector
                   value={condition.eventID}
                   onChange={(v) => {
                     updateCondition("eventID", v);
-                    if (v) setCurrentStep(2);
+                    if (v) openStep(2);
                   }}
                 />
               </AlertStep>
@@ -273,10 +289,10 @@ const CreateAlert = () => {
               <AlertStep
                 stepNumber={2}
                 title="Set Condition"
-                isOpen={currentStep === 2}
+                isOpen={openSteps.has(2)}
                 isComplete={isStep2Complete}
                 summary={getStep2Summary()}
-                onToggle={() => setCurrentStep(2)}
+                onToggle={() => toggleStep(2)}
               >
                 <div className="space-y-4">
                   {/* Rule Type */}
@@ -351,7 +367,7 @@ const CreateAlert = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentStep(3)}
+                    onClick={() => openStep(3)}
                     className="w-full"
                   >
                     Continue to Notifications
@@ -363,10 +379,10 @@ const CreateAlert = () => {
               <AlertStep
                 stepNumber={3}
                 title="Notify Me"
-                isOpen={currentStep === 3}
+                isOpen={openSteps.has(3)}
                 isComplete={notificationChannels.length > 0}
                 summary={notificationChannels.length > 0 ? notificationChannels.join(", ") : undefined}
-                onToggle={() => setCurrentStep(3)}
+                onToggle={() => toggleStep(3)}
               >
                 <AlertNotificationChannels
                   selectedChannels={notificationChannels}
