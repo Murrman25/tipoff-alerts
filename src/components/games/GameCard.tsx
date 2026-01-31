@@ -1,6 +1,9 @@
+import { Link } from "react-router-dom";
+import { Bell } from "lucide-react";
 import { GameEvent, LEAGUES, BookmakerID } from "@/types/games";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
 
 // Team logos mapping - in real app, these would come from the API
 import BullsLogo from "@/assets/teams/bulls.png";
@@ -213,6 +216,16 @@ export const GameCard = ({
           </div>
         </div>
       )}
+
+      {/* Create Alert Button */}
+      <div className="mt-4 pt-3 border-t border-border/50">
+        <Link to={`/alerts/create?eventID=${game.eventID}`}>
+          <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground">
+            <Bell className="w-4 h-4 mr-2" />
+            Create Alert
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 };
