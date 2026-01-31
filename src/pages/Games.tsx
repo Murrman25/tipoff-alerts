@@ -1,16 +1,15 @@
 import { useState, useMemo } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { GamesFilters } from "@/components/games/GamesFilters";
 import { GameCard } from "@/components/games/GameCard";
 import { GameCardSkeleton } from "@/components/games/GameCardSkeleton";
 import { EmptyGamesState } from "@/components/games/EmptyGamesState";
 import { GamesFilters as FiltersType } from "@/types/games";
-import { mockGames } from "@/data/mockGames";
+import { useGames } from "@/hooks/useGames";
 import { Button } from "@/components/ui/button";
 
 const Games = () => {
-  const [isLoading, setIsLoading] = useState(false);
   const [filters, setFilters] = useState<FiltersType>({
     leagueID: [],
     bookmakerID: [],
@@ -20,33 +19,22 @@ const Games = () => {
     oddsAvailable: true,
   });
 
-  // Simulate filtering - in real app, this would be an API call
+  // Fetch games from the API
+  const { data: games, isLoading, error, refetch, isFetching } = useGames(filters);
+
+  // Client-side search filtering (API doesn't support team name search)
   const filteredGames = useMemo(() => {
-    return mockGames.filter((game) => {
-      // League filter
-      if (
-        filters.leagueID.length > 0 &&
-        !filters.leagueID.includes(game.leagueID)
-      ) {
-        return false;
-      }
-
-      // Search filter
-      if (filters.searchQuery) {
-        const query = filters.searchQuery.toLowerCase();
-        const matchesHome = game.teams.home.name.toLowerCase().includes(query);
-        const matchesAway = game.teams.away.name.toLowerCase().includes(query);
-        if (!matchesHome && !matchesAway) {
-          return false;
-        }
-      }
-
-      // Date filter (simplified for mock data)
-      // In real implementation, this would filter based on startsAt date
-
-      return true;
+    if (!games) return [];
+    
+    if (!filters.searchQuery) return games;
+    
+    const query = filters.searchQuery.toLowerCase();
+    return games.filter((game) => {
+      const matchesHome = game.teams.home.name.toLowerCase().includes(query);
+      const matchesAway = game.teams.away.name.toLowerCase().includes(query);
+      return matchesHome || matchesAway;
     });
-  }, [filters]);
+  }, [games, filters.searchQuery]);
 
   const hasActiveFilters =
     filters.leagueID.length > 0 ||
@@ -81,6 +69,16 @@ const Games = () => {
                 <span className="text-gradient-amber">Games</span>
               </h1>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
         </div>
       </header>
@@ -96,6 +94,23 @@ const Games = () => {
             isLoading={isLoading}
           />
         </div>
+
+        {/* Error state */}
+        {error && !isLoading && (
+          <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+            <p className="text-sm text-destructive">
+              Failed to load games. Please try again.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="mt-2"
+            >
+              Retry
+            </Button>
+          </div>
+        )}
 
         {/* Games grid */}
         {isLoading ? (
@@ -117,15 +132,14 @@ const Games = () => {
           </div>
         )}
 
-        {/* API integration notice */}
-        <div className="mt-8 p-4 rounded-xl bg-secondary/30 border border-border">
-          <p className="text-sm text-muted-foreground">
-            <span className="text-primary font-medium">Mock Data:</span> This is
-            a UI shell ready for backend integration with the SportsGameOdds
-            API. Real-time data will include live odds, spreads, totals, and
-            more from multiple sportsbooks.
-          </p>
-        </div>
+        {/* Live data indicator */}
+        {!isLoading && !error && games && games.length > 0 && (
+          <div className="mt-8 p-4 rounded-xl bg-primary/10 border border-primary/20">
+            <p className="text-sm text-muted-foreground">
+              <span className="text-primary font-medium">Live Data:</span> Showing {games.length} events from SportsGameOdds API. Data refreshes automatically every minute.
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );
