@@ -1,6 +1,12 @@
 import { Mail, Bell, MessageSquare } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Toggle } from "@/components/ui/toggle";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 export type NotificationChannel = "email" | "push" | "sms";
 
@@ -18,7 +24,7 @@ const channels = [
   },
   {
     id: "push" as NotificationChannel,
-    label: "Push Notification",
+    label: "Push",
     description: "In-app and browser notifications",
     icon: Bell,
   },
@@ -44,45 +50,47 @@ export const AlertNotificationChannels = ({
   };
 
   return (
-    <div className="space-y-3">
-      <label className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-        Notification Delivery
-      </label>
-      <div className="grid gap-3">
-        {channels.map((channel) => {
-          const Icon = channel.icon;
-          const isSelected = selectedChannels.includes(channel.id);
-          
-          return (
-            <div
-              key={channel.id}
-              className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
-                isSelected
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-secondary/30 hover:border-muted-foreground/50"
-              }`}
-              onClick={() => handleToggle(channel.id)}
-            >
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={() => handleToggle(channel.id)}
-                className="border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-              />
-              <Icon className={`w-5 h-5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <Label className="font-medium cursor-pointer">{channel.label}</Label>
-                  {channel.badge && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-amber-gradient text-primary-foreground font-medium">
-                      {channel.badge}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">{channel.description}</p>
-              </div>
-            </div>
-          );
-        })}
+    <div className="space-y-2">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+          Notify via
+        </span>
+        <TooltipProvider delayDuration={200}>
+          <div className="flex items-center gap-2">
+            {channels.map((channel) => {
+              const Icon = channel.icon;
+              const isSelected = selectedChannels.includes(channel.id);
+              
+              return (
+                <Tooltip key={channel.id}>
+                  <TooltipTrigger asChild>
+                    <Toggle
+                      pressed={isSelected}
+                      onPressedChange={() => handleToggle(channel.id)}
+                      aria-label={`Toggle ${channel.label} notifications`}
+                      className={cn(
+                        "h-9 px-3 gap-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground",
+                        "border border-border hover:bg-secondary/50",
+                        "transition-all duration-200"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span className="text-sm font-medium">{channel.label}</span>
+                      {channel.badge && (
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-amber-gradient text-primary-foreground font-medium ml-0.5">
+                          {channel.badge}
+                        </span>
+                      )}
+                    </Toggle>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {channel.description}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
       </div>
       {selectedChannels.length === 0 && (
         <p className="text-xs text-amber-500">Select at least one notification channel</p>
