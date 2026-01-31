@@ -1,241 +1,228 @@
 
-# SportsGameOdds API Integration Plan
+# Fix Games Page Data Display Issues
 
 ## Overview
 
-Integrate live sports and odds data from the SportsGameOdds API into the Games page, replacing the current mock data with real-time information. The API key will be stored securely as a Supabase secret and accessed only through a server-side edge function.
+The Games page isn't displaying properly because the API response structure differs from our type definitions. Team names are in a nested `names` object, and we need to limit results to 5 games.
 
 ---
 
-## Architecture
+## Root Cause Analysis
 
-```text
-+------------------+     +----------------------+     +------------------------+
-|   Games Page     | --> |  Supabase Edge       | --> |  SportsGameOdds API    |
-|   (React)        |     |  Function (Proxy)    |     |  api.sportsgameodds.com|
-+------------------+     +----------------------+     +------------------------+
-        |                         |
-        v                         v
-   useGames Hook            API Key (Secret)
-   (TanStack Query)         SPORTSGAMEODDS_API_KEY
+### Issue 1: Missing Team Names
+
+**API Response Structure:**
+```json
+"teams": {
+  "home": {
+    "teamID": "CHARLOTTE_HORNETS_NBA",
+    "names": {
+      "long": "Charlotte Hornets",
+      "medium": "Hornets", 
+      "short": "CHA"
+    }
+  }
+}
 ```
 
-The edge function acts as a secure proxy, keeping the API key server-side while forwarding requests with appropriate filtering.
+**Current Code Expects:**
+```typescript
+game.teams.home.name  // This is undefined!
+```
+
+**Solution:** Update the `Team` interface and transform data in the hook to flatten names.
+
+### Issue 2: Some Cards Missing Odds
+
+**Cause:** Many events (especially cancelled/postponed games) have empty `byBookmaker: {}` objects. The API also returns historical events with no current odds.
+
+**Solution:** The UI already handles this with conditional rendering, but we should also filter to only show events that haven't ended.
+
+### Issue 3: Too Many Games Loading
+
+**Current:** Loading 50 games
+**Requested:** Load only 5 games
+
+**Solution:** Change limit parameter in `useGames` hook.
 
 ---
 
-## Implementation Steps
+## Implementation Plan
 
-### Step 1: Add API Key Secret
+### Step 1: Update Types
 
-Before any code changes, we need to securely store the API key:
+**File:** `src/types/games.ts`
 
-- **Secret Name:** `SPORTSGAMEODDS_API_KEY`
-- **Value:** The API key you provided
-- This will be accessible in edge functions via `Deno.env.get('SPORTSGAMEODDS_API_KEY')`
-
----
-
-### Step 2: Create Edge Function - `sports-events`
-
-**File:** `supabase/functions/sports-events/index.ts`
-
-The edge function will:
-1. Accept filter parameters from the frontend (league, dateRange, oddsAvailable)
-2. Add the API key securely
-3. Forward the request to SportsGameOdds API
-4. Return the response to the frontend
-
-**Query Parameters Supported:**
-
-| Parameter       | Description                          | Example             |
-|-----------------|--------------------------------------|---------------------|
-| `leagueID`      | Comma-separated leagues              | `NBA,NFL`           |
-| `oddsAvailable` | Only events with odds                | `true`              |
-| `limit`         | Max events to return                 | `50`                |
-
-**Key Implementation Details:**
+Update the `Team` interface to match actual API structure:
 
 ```typescript
-// Construct API URL with filters
-const apiUrl = new URL('https://api.sportsgameodds.com/v2/events');
-apiUrl.searchParams.set('apiKey', Deno.env.get('SPORTSGAMEODDS_API_KEY'));
+export interface TeamNames {
+  long: string;
+  medium: string;
+  short: string;
+  location?: string;
+}
 
-// Forward filter params from client
-if (leagueID) apiUrl.searchParams.set('leagueID', leagueID);
-if (oddsAvailable) apiUrl.searchParams.set('oddsAvailable', 'true');
-
-// Request key odds markets
-apiUrl.searchParams.set('oddID', 'points-home-game-ml-home,points-away-game-ml-away,points-home-game-sp-home,points-away-game-sp-away,points-all-game-ou-over,points-all-game-ou-under');
+export interface Team {
+  teamID: string;
+  names: TeamNames;  // API returns names object
+  name?: string;     // Keep for backwards compat, will be populated by transform
+  abbreviation?: string;
+  logo?: string;
+}
 ```
 
----
-
-### Step 3: Update Supabase Config
-
-**File:** `supabase/config.toml`
-
-Add the edge function configuration with `verify_jwt = false` (public endpoint for game browsing):
-
-```toml
-project_id = "wxcezmqaknhftwnpkanu"
-
-[functions.sports-events]
-verify_jwt = false
-```
-
----
-
-### Step 4: Create useGames Hook
+### Step 2: Transform Data in Hook
 
 **File:** `src/hooks/useGames.ts`
 
-A custom hook using TanStack Query to:
-- Fetch games from the edge function
-- Handle loading, error, and success states
-- Transform API response to match existing `GameEvent` type
-- Re-fetch when filters change
+Add data transformation to flatten team names and filter out ended events:
 
-**Features:**
-
-| Feature              | Implementation                          |
-|----------------------|-----------------------------------------|
-| Auto-refresh         | `refetchInterval: 60000` (1 minute)     |
-| Stale time           | 30 seconds                              |
-| Error handling       | Toast notifications on failure          |
-| Filter reactivity    | Query key includes all filter params    |
-
-**Data Transformation:**
-
-The API response structure closely matches our existing types. The hook will:
-- Map `data` array to `GameEvent[]`
-- Handle any field name differences
-- Provide fallback for missing team names/abbreviations
-
----
-
-### Step 5: Update Games Page
-
-**File:** `src/pages/Games.tsx`
-
-Replace mock data usage with the `useGames` hook:
-
-**Before:**
 ```typescript
-import { mockGames } from "@/data/mockGames";
-// ...
-const filteredGames = useMemo(() => mockGames.filter(...), [filters]);
+// Transform API response to match our expected structure
+const transformedData = result.data
+  // Filter out ended/cancelled events
+  .filter(event => !event.status.ended && !event.status.cancelled)
+  // Transform team names
+  .map(event => ({
+    ...event,
+    teams: {
+      home: {
+        ...event.teams.home,
+        name: event.teams.home.names?.long || event.teams.home.teamID,
+        abbreviation: event.teams.home.names?.short
+      },
+      away: {
+        ...event.teams.away,
+        name: event.teams.away.names?.long || event.teams.away.teamID,
+        abbreviation: event.teams.away.names?.short
+      }
+    }
+  }));
 ```
 
-**After:**
-```typescript
-import { useGames } from "@/hooks/useGames";
-// ...
-const { data: games, isLoading, error, refetch } = useGames(filters);
-```
+Also change limit from 50 to 5.
 
-**Changes:**
-- Remove `mockGames` import
-- Add `useGames` hook call with filters
-- Use `isLoading` from the hook instead of local state
-- Handle error state with UI feedback
-- Remove the "Mock Data" notice banner
-- Add a refresh button in the header
+### Step 3: Update GameCard for Robustness
 
----
+**File:** `src/components/games/GameCard.tsx`
 
-### Step 6: Client-Side Search Filter
-
-Since the API doesn't support team name search, we'll keep client-side filtering for the search query:
+Add fallbacks for team name display:
 
 ```typescript
-const filteredGames = useMemo(() => {
-  if (!games || !filters.searchQuery) return games || [];
-  
-  const query = filters.searchQuery.toLowerCase();
-  return games.filter(game => 
-    game.teams.home.name.toLowerCase().includes(query) ||
-    game.teams.away.name.toLowerCase().includes(query)
-  );
-}, [games, filters.searchQuery]);
+// Safe team name accessor
+const getTeamName = (team: Team) => {
+  return team.name || team.names?.long || team.names?.medium || team.teamID;
+};
 ```
 
 ---
 
 ## File Changes Summary
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `supabase/functions/sports-events/index.ts` | Create | API proxy edge function |
-| `supabase/config.toml` | Update | Add edge function config |
-| `src/hooks/useGames.ts` | Create | Data fetching hook with TanStack Query |
-| `src/pages/Games.tsx` | Update | Integrate useGames hook, remove mock data |
+| File | Changes |
+|------|---------|
+| `src/types/games.ts` | Add `TeamNames` interface, update `Team` interface |
+| `src/hooks/useGames.ts` | Add data transformation, filter ended events, change limit to 5 |
+| `src/components/games/GameCard.tsx` | Add safe team name accessor with fallbacks |
 
 ---
 
-## API Response Mapping
+## Detailed Changes
 
-The SportsGameOdds API response structure:
+### src/types/games.ts
 
-```json
-{
-  "data": [
-    {
-      "eventID": "...",
-      "sportID": "BASKETBALL",
-      "leagueID": "NBA",
-      "teams": {
-        "home": { "teamID": "...", "name": "...", "abbreviation": "..." },
-        "away": { "teamID": "...", "name": "...", "abbreviation": "..." }
-      },
-      "status": {
-        "startsAt": "2026-01-31T19:00:00Z",
-        "started": false,
-        "ended": false,
-        "finalized": false
-      },
-      "odds": {
-        "points-home-game-ml-home": {
-          "byBookmaker": {
-            "draftkings": { "odds": "-150", "available": true }
-          }
-        }
-      }
-    }
-  ]
+Add new interface and update Team:
+
+```typescript
+export interface TeamNames {
+  long: string;
+  medium: string;
+  short: string;
+  location?: string;
+}
+
+export interface Team {
+  teamID: string;
+  names?: TeamNames;
+  name?: string;
+  abbreviation?: string;
+  logo?: string;
+}
+
+export interface EventStatus {
+  startsAt: string;
+  started: boolean;
+  ended: boolean;
+  finalized: boolean;
+  cancelled?: boolean;  // Add cancelled field
+  live?: boolean;       // Add live field
+  period?: string;
+  clock?: string;
 }
 ```
 
-This maps directly to the existing `GameEvent` interface with minimal transformation needed.
+### src/hooks/useGames.ts
+
+Transform data and limit to 5:
+
+```typescript
+params.set('limit', '5');  // Changed from 50
+
+// After fetching, transform:
+const result: SportsEventsResponse = await response.json();
+
+// Filter and transform the data
+const transformedData = (result.data || [])
+  .filter(event => {
+    // Only show upcoming/live events, not ended/cancelled
+    return !event.status?.ended && !event.status?.cancelled;
+  })
+  .map(event => ({
+    ...event,
+    teams: {
+      home: {
+        ...event.teams.home,
+        name: event.teams.home.names?.long || 
+              event.teams.home.names?.medium || 
+              event.teams.home.teamID,
+        abbreviation: event.teams.home.names?.short
+      },
+      away: {
+        ...event.teams.away,
+        name: event.teams.away.names?.long || 
+              event.teams.away.names?.medium || 
+              event.teams.away.teamID,
+        abbreviation: event.teams.away.names?.short
+      }
+    }
+  }));
+
+return transformedData;
+```
+
+### src/components/games/GameCard.tsx
+
+Add safe accessor:
+
+```typescript
+// Helper to safely get team name with fallbacks
+const getTeamName = (team: any) => {
+  return team?.name || team?.names?.long || team?.names?.medium || team?.teamID || 'Unknown Team';
+};
+
+// Then use:
+<span className="font-medium truncate">{getTeamName(game.teams.away)}</span>
+<span className="font-medium truncate">{getTeamName(game.teams.home)}</span>
+```
 
 ---
 
-## Error Handling
-
-| Scenario | Handling |
-|----------|----------|
-| API rate limit | Show toast, suggest retry |
-| Network error | Show error state, retry button |
-| No games found | Show existing EmptyGamesState |
-| Invalid API key | Log error, show generic message |
-
----
-
-## Security Considerations
-
-- API key stored in Supabase secrets (never in frontend code)
-- Edge function acts as secure proxy
-- No sensitive data exposed to client
-- CORS headers properly configured
-
----
-
-## Testing Approach
+## Testing Checklist
 
 After implementation:
-1. Verify games load on page visit
-2. Test league filtering (select NBA, NFL, etc.)
-3. Test search filtering (type team names)
-4. Verify odds display correctly for multiple bookmakers
-5. Check live game indicators work
-6. Confirm error handling on network failure
+- Verify team names display correctly for all games
+- Confirm only 5 games load initially  
+- Check that odds display when available
+- Verify no ended/cancelled games appear
+- Test the refresh button still works
