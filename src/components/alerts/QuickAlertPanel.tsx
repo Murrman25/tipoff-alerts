@@ -55,7 +55,7 @@ export const QuickAlertPanel = ({
                 size="sm"
                 onClick={() => onSelectTemplate(template.id, template.defaults)}
                 className={cn(
-                  "h-9 px-3 gap-1.5 transition-all duration-200",
+                  "h-10 sm:h-9 px-4 sm:px-3 gap-2 sm:gap-1.5 transition-all duration-200",
                   "border-border hover:border-primary/50",
                   isSelected && "border-primary bg-primary/10 text-primary"
                 )}

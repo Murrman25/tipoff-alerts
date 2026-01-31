@@ -60,7 +60,7 @@ export const AlertEventSelector = ({
   return (
     <div className="space-y-3 flex-1">
       {/* League Filter Chips */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
         {leagueFilters.map((league) => (
           <Button
             key={league.id}
@@ -69,7 +69,7 @@ export const AlertEventSelector = ({
             size="sm"
             onClick={() => setSelectedLeague(league.id)}
             className={cn(
-              "h-7 px-2.5 text-xs font-medium rounded-md transition-all",
+              "h-8 sm:h-7 px-3 sm:px-2.5 text-xs font-medium rounded-md transition-all shrink-0",
               selectedLeague === league.id
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"

@@ -258,7 +258,7 @@ const CreateAlert = () => {
       {/* Main Content */}
       <main className="container px-4 md:px-6 py-6 max-w-2xl mx-auto">
         <Card className="bg-card border-border">
-          <CardContent className="p-5 space-y-5">
+          <CardContent className="p-4 sm:p-5 space-y-4 sm:space-y-5">
             {/* Quick Alert Panel */}
             <QuickAlertPanel
               selectedTemplate={selectedTemplate}
@@ -308,7 +308,7 @@ const CreateAlert = () => {
                   </div>
 
                   {/* Market + Team Row */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex items-start gap-2">
                       <div className="flex-1">
                         <AlertMarketSelector
@@ -327,7 +327,7 @@ const CreateAlert = () => {
 
                   {/* Threshold and Direction */}
                   {needsThreshold && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="flex items-start gap-2">
                         <div className="flex-1">
                           <AlertThresholdInput
