@@ -89,9 +89,11 @@ export const Hero = () => {
           <div className="p-6 pt-4">
             <AspectRatio ratio={16 / 9} className="bg-secondary/50 rounded-lg overflow-hidden">
               <video
-                src="/videos/demo.mp4"
+                src="/videos/Sora-4bb00449.mp4"
                 controls
                 autoPlay
+                muted
+                playsInline
                 className="w-full h-full object-contain"
               />
             </AspectRatio>
