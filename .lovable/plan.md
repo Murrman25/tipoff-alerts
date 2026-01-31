@@ -1,272 +1,241 @@
 
-# Mobile Optimization for Create Alert Page
+# SportsGameOdds API Integration Plan
 
 ## Overview
 
-Optimize the Create Alert page for mobile devices by improving touch targets, layout responsiveness, and overall usability on smaller screens.
+Integrate live sports and odds data from the SportsGameOdds API into the Games page, replacing the current mock data with real-time information. The API key will be stored securely as a Supabase secret and accessed only through a server-side edge function.
 
 ---
 
-## Current Issues Identified
+## Architecture
 
-| Issue | Component | Impact |
-|-------|-----------|--------|
-| 2-column grids don't stack on mobile | Market/Team, Threshold/Direction | Fields are cramped on small screens |
-| Quick Alert buttons may wrap awkwardly | QuickAlertPanel | Buttons can get squeezed |
-| League filter chips overflow horizontally | AlertEventSelector | Hard to tap on mobile |
-| Help icons positioned awkwardly | AlertFieldHelp | Takes space, hard to tap |
-| Notification buttons too small | AlertNotificationChannels | Touch targets insufficient |
-| Card padding not optimized | CreateAlert main card | Wastes space on mobile |
-| Select dropdowns need larger touch targets | All selectors | Hard to interact |
+```text
++------------------+     +----------------------+     +------------------------+
+|   Games Page     | --> |  Supabase Edge       | --> |  SportsGameOdds API    |
+|   (React)        |     |  Function (Proxy)    |     |  api.sportsgameodds.com|
++------------------+     +----------------------+     +------------------------+
+        |                         |
+        v                         v
+   useGames Hook            API Key (Secret)
+   (TanStack Query)         SPORTSGAMEODDS_API_KEY
+```
+
+The edge function acts as a secure proxy, keeping the API key server-side while forwarding requests with appropriate filtering.
 
 ---
 
-## Mobile Optimization Strategy
+## Implementation Steps
 
-### 1. Responsive Grid Layouts
+### Step 1: Add API Key Secret
 
-**Market/Team Row (line 311)**
+Before any code changes, we need to securely store the API key:
 
-Stack vertically on mobile, side-by-side on larger screens:
+- **Secret Name:** `SPORTSGAMEODDS_API_KEY`
+- **Value:** The API key you provided
+- This will be accessible in edge functions via `Deno.env.get('SPORTSGAMEODDS_API_KEY')`
 
-| Before | After |
-|--------|-------|
-| `grid grid-cols-2 gap-3` | `grid grid-cols-1 sm:grid-cols-2 gap-3` |
+---
 
-**Threshold/Direction Row (line 330)**
+### Step 2: Create Edge Function - `sports-events`
 
-Same treatment for threshold and direction fields:
+**File:** `supabase/functions/sports-events/index.ts`
 
-| Before | After |
-|--------|-------|
-| `grid grid-cols-2 gap-3` | `grid grid-cols-1 sm:grid-cols-2 gap-3` |
+The edge function will:
+1. Accept filter parameters from the frontend (league, dateRange, oddsAvailable)
+2. Add the API key securely
+3. Forward the request to SportsGameOdds API
+4. Return the response to the frontend
 
-### 2. Improved Touch Targets
+**Query Parameters Supported:**
 
-**Notification Channel Buttons**
+| Parameter       | Description                          | Example             |
+|-----------------|--------------------------------------|---------------------|
+| `leagueID`      | Comma-separated leagues              | `NBA,NFL`           |
+| `oddsAvailable` | Only events with odds                | `true`              |
+| `limit`         | Max events to return                 | `50`                |
 
-Increase button size on mobile for easier tapping:
+**Key Implementation Details:**
 
-```tsx
-// AlertNotificationChannels.tsx line 74
-className={cn(
-  "h-10 sm:h-9 px-4 sm:px-3 gap-2 sm:gap-1.5 transition-all duration-200",
-  // ... rest of classes
-)}
+```typescript
+// Construct API URL with filters
+const apiUrl = new URL('https://api.sportsgameodds.com/v2/events');
+apiUrl.searchParams.set('apiKey', Deno.env.get('SPORTSGAMEODDS_API_KEY'));
+
+// Forward filter params from client
+if (leagueID) apiUrl.searchParams.set('leagueID', leagueID);
+if (oddsAvailable) apiUrl.searchParams.set('oddsAvailable', 'true');
+
+// Request key odds markets
+apiUrl.searchParams.set('oddID', 'points-home-game-ml-home,points-away-game-ml-away,points-home-game-sp-home,points-away-game-sp-away,points-all-game-ou-over,points-all-game-ou-under');
 ```
 
-**Quick Alert Buttons**
+---
 
-Make buttons slightly larger and wrap better:
+### Step 3: Update Supabase Config
 
-```tsx
-// QuickAlertPanel.tsx line 57
-className={cn(
-  "h-10 sm:h-9 px-4 sm:px-3 gap-2 sm:gap-1.5 transition-all duration-200",
-  // ... rest of classes
-)}
+**File:** `supabase/config.toml`
+
+Add the edge function configuration with `verify_jwt = false` (public endpoint for game browsing):
+
+```toml
+project_id = "wxcezmqaknhftwnpkanu"
+
+[functions.sports-events]
+verify_jwt = false
 ```
 
-### 3. League Filter Chips - Horizontal Scroll
+---
 
-Add horizontal scrolling for league filters on mobile instead of wrapping:
+### Step 4: Create useGames Hook
 
-```tsx
-// AlertEventSelector.tsx
-<div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-  {leagueFilters.map((league) => (
-    <Button
-      // Add shrink-0 to prevent chips from shrinking
-      className={cn(
-        "h-8 sm:h-7 px-3 sm:px-2.5 text-xs font-medium rounded-md transition-all shrink-0",
-        // ... rest of classes
-      )}
-    />
-  ))}
-</div>
+**File:** `src/hooks/useGames.ts`
+
+A custom hook using TanStack Query to:
+- Fetch games from the edge function
+- Handle loading, error, and success states
+- Transform API response to match existing `GameEvent` type
+- Re-fetch when filters change
+
+**Features:**
+
+| Feature              | Implementation                          |
+|----------------------|-----------------------------------------|
+| Auto-refresh         | `refetchInterval: 60000` (1 minute)     |
+| Stale time           | 30 seconds                              |
+| Error handling       | Toast notifications on failure          |
+| Filter reactivity    | Query key includes all filter params    |
+
+**Data Transformation:**
+
+The API response structure closely matches our existing types. The hook will:
+- Map `data` array to `GameEvent[]`
+- Handle any field name differences
+- Provide fallback for missing team names/abbreviations
+
+---
+
+### Step 5: Update Games Page
+
+**File:** `src/pages/Games.tsx`
+
+Replace mock data usage with the `useGames` hook:
+
+**Before:**
+```typescript
+import { mockGames } from "@/data/mockGames";
+// ...
+const filteredGames = useMemo(() => mockGames.filter(...), [filters]);
 ```
 
-### 4. Card Padding Optimization
-
-Reduce padding on mobile for more content space:
-
-```tsx
-// CreateAlert.tsx line 261
-<CardContent className="p-4 sm:p-5 space-y-4 sm:space-y-5">
+**After:**
+```typescript
+import { useGames } from "@/hooks/useGames";
+// ...
+const { data: games, isLoading, error, refetch } = useGames(filters);
 ```
 
-### 5. Help Icons - Mobile Friendly Position
+**Changes:**
+- Remove `mockGames` import
+- Add `useGames` hook call with filters
+- Use `isLoading` from the hook instead of local state
+- Handle error state with UI feedback
+- Remove the "Mock Data" notice banner
+- Add a refresh button in the header
 
-On mobile, hide inline help icons and rely on the toggle in header. The help icons take up precious horizontal space:
+---
 
-```tsx
-// AlertFieldHelp.tsx - Add responsive visibility
-if (!showHelp || !content) return null;
+### Step 6: Client-Side Search Filter
 
-return (
-  <Popover>
-    <PopoverTrigger asChild>
-      <button
-        type="button"
-        className={cn(
-          "hidden sm:inline-flex items-center justify-center w-4 h-4 rounded-full",
-          // ... rest of classes
-        )}
-      >
+Since the API doesn't support team name search, we'll keep client-side filtering for the search query:
+
+```typescript
+const filteredGames = useMemo(() => {
+  if (!games || !filters.searchQuery) return games || [];
+  
+  const query = filters.searchQuery.toLowerCase();
+  return games.filter(game => 
+    game.teams.home.name.toLowerCase().includes(query) ||
+    game.teams.away.name.toLowerCase().includes(query)
+  );
+}, [games, filters.searchQuery]);
 ```
-
-### 6. Select Trigger Heights
-
-Ensure consistent, tappable select trigger heights:
-
-Already using `h-11` which is good (44px - Apple's recommended minimum).
-
-### 7. Stepper Header Touch Targets
-
-Increase stepper header padding on mobile:
-
-```tsx
-// CreateAlertStepper.tsx line 34
-className={cn(
-  "flex items-center justify-between w-full py-3 sm:py-2 px-3 rounded-md",
-  // ... rest of classes
-)}
-```
-
-### 8. Create Button - Already Good
-
-The create button already has `h-12` which is excellent for mobile.
 
 ---
 
 ## File Changes Summary
 
-| File | Changes |
-|------|---------|
-| `src/pages/CreateAlert.tsx` | Responsive grids, card padding |
-| `src/components/alerts/AlertEventSelector.tsx` | Horizontal scroll for league chips, larger touch targets |
-| `src/components/alerts/AlertNotificationChannels.tsx` | Larger buttons on mobile |
-| `src/components/alerts/QuickAlertPanel.tsx` | Larger buttons on mobile |
-| `src/components/alerts/CreateAlertStepper.tsx` | Larger step header touch targets |
-| `src/components/alerts/AlertFieldHelp.tsx` | Hide on mobile to save space |
-| `src/index.css` | Add scrollbar-hide utility |
+| File | Action | Purpose |
+|------|--------|---------|
+| `supabase/functions/sports-events/index.ts` | Create | API proxy edge function |
+| `supabase/config.toml` | Update | Add edge function config |
+| `src/hooks/useGames.ts` | Create | Data fetching hook with TanStack Query |
+| `src/pages/Games.tsx` | Update | Integrate useGames hook, remove mock data |
 
 ---
 
-## Detailed Changes
+## API Response Mapping
 
-### CreateAlert.tsx
+The SportsGameOdds API response structure:
 
-**Line 261** - Card padding:
-```tsx
-<CardContent className="p-4 sm:p-5 space-y-4 sm:space-y-5">
-```
-
-**Line 311** - Market/Team grid:
-```tsx
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-```
-
-**Line 330** - Threshold/Direction grid:
-```tsx
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-```
-
-### AlertEventSelector.tsx
-
-**Line 63** - League chips container with horizontal scroll:
-```tsx
-<div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-```
-
-**Line 71-77** - Larger chip buttons:
-```tsx
-className={cn(
-  "h-8 sm:h-7 px-3 sm:px-2.5 text-xs font-medium rounded-md transition-all shrink-0",
-  selectedLeague === league.id
-    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-    : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
-)}
-```
-
-### AlertNotificationChannels.tsx
-
-**Line 74-79** - Larger notification buttons:
-```tsx
-className={cn(
-  "h-10 sm:h-9 px-4 sm:px-3 gap-2 sm:gap-1.5 transition-all duration-200",
-  isSelected 
-    ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground" 
-    : "bg-transparent hover:bg-secondary/50"
-)}
-```
-
-### QuickAlertPanel.tsx
-
-**Line 57-61** - Larger quick alert buttons:
-```tsx
-className={cn(
-  "h-10 sm:h-9 px-4 sm:px-3 gap-2 sm:gap-1.5 transition-all duration-200",
-  "border-border hover:border-primary/50",
-  isSelected && "border-primary bg-primary/10 text-primary"
-)}
-```
-
-### CreateAlertStepper.tsx
-
-**Line 34** - Larger step header touch targets:
-```tsx
-className={cn(
-  "flex items-center justify-between w-full py-3 sm:py-2 px-3 rounded-md",
-  // ... rest of classes
-)}
-```
-
-### AlertFieldHelp.tsx
-
-**Line 26-30** - Hide on mobile:
-```tsx
-className={cn(
-  "hidden sm:inline-flex items-center justify-center w-4 h-4 rounded-full",
-  "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
-  "transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-  className
-)}
-```
-
-### src/index.css
-
-Add scrollbar-hide utility (line ~149):
-```css
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+```json
+{
+  "data": [
+    {
+      "eventID": "...",
+      "sportID": "BASKETBALL",
+      "leagueID": "NBA",
+      "teams": {
+        "home": { "teamID": "...", "name": "...", "abbreviation": "..." },
+        "away": { "teamID": "...", "name": "...", "abbreviation": "..." }
+      },
+      "status": {
+        "startsAt": "2026-01-31T19:00:00Z",
+        "started": false,
+        "ended": false,
+        "finalized": false
+      },
+      "odds": {
+        "points-home-game-ml-home": {
+          "byBookmaker": {
+            "draftkings": { "odds": "-150", "available": true }
+          }
+        }
+      }
+    }
+  ]
 }
 ```
 
----
-
-## Visual Improvements
-
-| Screen Size | Before | After |
-|-------------|--------|-------|
-| Mobile (< 640px) | 2-column cramped grids | Single-column stacked layout |
-| Mobile | Small 36px buttons | Larger 40px buttons |
-| Mobile | Wrapped league chips | Horizontal scrollable chips |
-| Mobile | Inline help icons crowding | Help icons hidden, header toggle available |
-| Mobile | Standard padding | Tighter padding for more content |
+This maps directly to the existing `GameEvent` interface with minimal transformation needed.
 
 ---
 
-## Testing Checklist
+## Error Handling
 
-After implementation, verify on mobile:
-- All buttons are easily tappable (44px minimum touch target)
-- League filter chips scroll horizontally without wrapping
-- Form fields stack vertically and don't overlap
-- Dropdown menus open properly and are scrollable
-- Create Alert button is prominent and accessible
-- Step headers are easy to tap to expand/collapse
+| Scenario | Handling |
+|----------|----------|
+| API rate limit | Show toast, suggest retry |
+| Network error | Show error state, retry button |
+| No games found | Show existing EmptyGamesState |
+| Invalid API key | Log error, show generic message |
+
+---
+
+## Security Considerations
+
+- API key stored in Supabase secrets (never in frontend code)
+- Edge function acts as secure proxy
+- No sensitive data exposed to client
+- CORS headers properly configured
+
+---
+
+## Testing Approach
+
+After implementation:
+1. Verify games load on page visit
+2. Test league filtering (select NBA, NFL, etc.)
+3. Test search filtering (type team names)
+4. Verify odds display correctly for multiple bookmakers
+5. Check live game indicators work
+6. Confirm error handling on network failure
