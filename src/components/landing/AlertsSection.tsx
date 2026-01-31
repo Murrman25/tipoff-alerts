@@ -16,34 +16,66 @@ import NuggetsLogo from "@/assets/teams/nuggets.png";
 const formatOdds = (odds: number) => (odds > 0 ? `+${odds}` : `${odds}`);
 
 // Alert Builder Preview Component
-const AlertBuilderPreview = () => (
-  <div className="mt-4 space-y-2 text-sm">
-    <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 border border-border">
-      <span className="text-primary font-medium">IF</span>
-      <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted border border-border">
-        <img src={BullsLogo} alt="Bulls" className="w-4 h-4 object-contain" />
-        <span>Bulls</span>
-        <ChevronDown className="w-3 h-3 text-muted-foreground" />
+const AlertBuilderPreview = () => {
+  const templates = [
+    { label: "+100 Alert", icon: "🎯" },
+    { label: "Line Movement", icon: "📈" },
+    { label: "Pregame Only", icon: "⏰" },
+    { label: "Total Moves", icon: "🔄" },
+  ];
+
+  return (
+    <div className="mt-4 space-y-2 text-sm">
+      <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 border border-border">
+        <span className="text-primary font-medium">IF</span>
+        <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted border border-border">
+          <img src={BullsLogo} alt="Bulls" className="w-4 h-4 object-contain" />
+          <span>Bulls</span>
+          <ChevronDown className="w-3 h-3 text-muted-foreground" />
+        </div>
+        <span className="text-muted-foreground">ML reaches</span>
+        <span className="text-primary font-mono font-semibold">+100</span>
       </div>
-      <span className="text-muted-foreground">ML reaches</span>
-      <span className="text-primary font-mono font-semibold">+100</span>
-    </div>
-    <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 border border-border">
-      <span className="text-accent font-medium">AND</span>
-      <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted border border-border">
-        <span>Game is</span>
-        <ChevronDown className="w-3 h-3 text-muted-foreground" />
+      <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 border border-border">
+        <span className="text-accent font-medium">AND</span>
+        <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted border border-border">
+          <span>Game is</span>
+          <ChevronDown className="w-3 h-3 text-muted-foreground" />
+        </div>
+        <span className="text-primary font-mono font-semibold">LIVE</span>
       </div>
-      <span className="text-primary font-mono font-semibold">LIVE</span>
+      <div className="flex items-center gap-2 p-2 rounded bg-green-500/10 border border-green-500/30">
+        <span className="text-green-400 font-medium">THEN</span>
+        <div className="flex items-center gap-1.5">
+          <span className="px-2 py-0.5 rounded text-xs bg-secondary border border-border">📱 Push</span>
+          <span className="text-muted-foreground">+</span>
+          <span className="px-2 py-0.5 rounded text-xs bg-secondary border border-border">📧 Email</span>
+        </div>
+      </div>
+      <div className="p-2 rounded bg-primary/5 border border-primary/20 text-xs text-muted-foreground italic">
+        → "Alert me when Bulls ML is even money during live play"
+      </div>
+      <button className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:opacity-90 transition-opacity">
+        Create Alert
+      </button>
+
+      {/* Divider */}
+      <div className="border-t border-border/50 mt-3 pt-3">
+        <p className="text-xs text-muted-foreground mb-2">Popular Templates:</p>
+        <div className="flex flex-wrap gap-1.5">
+          {templates.map((template) => (
+            <span
+              key={template.label}
+              className="px-2 py-1 rounded text-xs bg-secondary/50 border border-border hover:border-primary/50 cursor-pointer transition-colors"
+            >
+              {template.icon} {template.label}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
-    <div className="p-2 rounded bg-primary/5 border border-primary/20 text-xs text-muted-foreground italic">
-      → "Alert me when Bulls ML is even money during live play"
-    </div>
-    <button className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:opacity-90 transition-opacity">
-      Create Alert
-    </button>
-  </div>
-);
+  );
+};
 
 // Quick +100 Alert Preview Component
 const QuickAlertPreview = () => (

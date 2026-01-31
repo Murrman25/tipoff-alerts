@@ -219,8 +219,17 @@ const AllSportsPreview = () => {
   ];
   const total = sports.reduce((sum, s) => sum + s.count, 0);
 
+  const markets = ["Moneyline", "Spread", "Totals", "Player Props", "Futures"];
+  
+  const stats = [
+    { label: "500+ events weekly", icon: "📊" },
+    { label: "15+ sportsbooks", icon: "🏆" },
+    { label: "<1s refresh", icon: "⚡" },
+  ];
+
   return (
-    <div className="mt-4">
+    <div className="mt-4 space-y-4">
+      {/* Sports chips */}
       <div className="flex flex-wrap gap-2">
         {sports.map((sport) => (
           <span
@@ -236,9 +245,41 @@ const AllSportsPreview = () => {
           </span>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground mt-3">
+      
+      <p className="text-xs text-muted-foreground">
         <span className="text-primary font-semibold">{total}</span> games available today
       </p>
+
+      {/* Divider */}
+      <div className="border-t border-border/50" />
+
+      {/* Markets Covered */}
+      <div>
+        <p className="text-xs text-muted-foreground mb-2">Markets Covered:</p>
+        <div className="flex flex-wrap gap-1.5">
+          {markets.map((market) => (
+            <span
+              key={market}
+              className="px-2 py-1 rounded text-xs bg-secondary/50 border border-border text-foreground"
+            >
+              {market}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border/50" />
+
+      {/* Stats */}
+      <div className="space-y-1.5">
+        {stats.map((stat) => (
+          <div key={stat.label} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{stat.icon}</span>
+            <span>{stat.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
