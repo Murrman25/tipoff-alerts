@@ -1,205 +1,131 @@
 
 
-# Alert Builder Page Implementation Plan
+# Add Alert Creation from Games Page
 
 ## Overview
 
-Create a new `/alerts/create` page that enables users to build sophisticated alert conditions for sports betting odds. Based on the reference screenshot, the alert system will feature a form-based interface with selectable rule types, events, markets, teams, thresholds, and directions.
+Add a "Create Alert" button to each game card in the Games page that allows users to quickly set up an alert for a specific game. When clicked, it will navigate to the Create Alert page with the game pre-selected, streamlining the alert creation flow.
 
-## Alert System Feature Set
+## User Experience Flow
 
-### Rule Types (Core Alert Triggers)
-
-| Rule Type | Description | Plan Tier | Use Case |
-|-----------|-------------|-----------|----------|
-| Threshold At | Alert when a value reaches a target number | Free | "Alert when spread is at +10.5" |
-| Threshold Cross | Alert when a value crosses above/below a line | Free | "Alert when ML crosses +100" |
-| Value Change | Alert on any movement in odds/lines | Pro | "Alert on any spread movement" |
-| Percentage Move | Alert when odds shift by X% | Pro | "Alert when odds move 10%" |
-| Best Available | Alert when a line becomes best across books | Pro | "Alert when DraftKings has best ML" |
-| Arbitrage | Alert on arbitrage opportunities | Legend | "Alert on any arb opportunity" |
-
-### Market Types
-
-- Moneyline (ML)
-- Spread (SP)
-- Totals / Over-Under (OU)
-- Player Props (future)
-
-### Direction Options
-
-- At or above
-- At or below
-- Exactly at
-- Crosses above
-- Crosses below
-
-### Time Window Options
-
-- Pregame only
-- Live only
-- Both pregame and live
+```text
++--------------------------------------------------+
+| Game Card (Chicago Bulls vs Warriors)            |
+|                                                   |
+|   [Team info, odds, scores as current]           |
+|                                                   |
+|   +------------------------------------------+   |
+|   |  [Bell Icon] Create Alert                |   |
+|   +------------------------------------------+   |
++--------------------------------------------------+
+           |
+           v (on click)
+           
++--------------------------------------------------+
+| Create Alert Page                                 |
+|                                                   |
+| Event: [Bulls @ Warriors - LIVE]  <-- Pre-filled |
+| Market: [Spread]                                  |
+| Team: [Select team]                               |
+| ...                                               |
++--------------------------------------------------+
+```
 
 ---
 
-## Technical Implementation
+## Implementation Details
 
-### New Files to Create
+### 1. Update GameCard Component
 
-```
-src/types/alerts.ts              - Alert type definitions
-src/pages/CreateAlert.tsx        - Main alert creation page
-src/components/alerts/AlertRuleTypeSelector.tsx   - Rule type picker with tier badges
-src/components/alerts/AlertEventSelector.tsx      - Game/event dropdown
-src/components/alerts/AlertMarketSelector.tsx     - Market type dropdown
-src/components/alerts/AlertTeamSelector.tsx       - Team selection
-src/components/alerts/AlertThresholdInput.tsx     - Threshold value input
-src/components/alerts/AlertDirectionSelector.tsx  - Direction dropdown
-src/components/alerts/AlertTimeWindow.tsx         - Pregame/Live checkbox
-src/components/alerts/AlertSummary.tsx            - Human-readable preview
-src/data/mockEvents.ts           - Mock events for selection
-```
+Add a "Create Alert" button to each game card that navigates to `/alerts/create` with the game's `eventID` as a URL parameter.
 
-### Type Definitions (src/types/alerts.ts)
+**File**: `src/components/games/GameCard.tsx`
 
-```typescript
-export type RuleType = 
-  | 'threshold_at' 
-  | 'threshold_cross' 
-  | 'value_change' 
-  | 'percentage_move' 
-  | 'best_available' 
-  | 'arbitrage';
+**Changes**:
+- Import `Link` from `react-router-dom` and `Bell` icon from `lucide-react`
+- Add a footer section with a "Create Alert" button
+- Pass the `eventID` as a query parameter: `/alerts/create?eventID={game.eventID}`
 
-export type MarketType = 'ml' | 'sp' | 'ou';
+### 2. Update CreateAlert Page
 
-export type DirectionType = 
-  | 'at_or_above' 
-  | 'at_or_below' 
-  | 'exactly' 
-  | 'crosses_above' 
-  | 'crosses_below';
+Modify the CreateAlert page to read the `eventID` from URL parameters and pre-populate the event selector.
 
-export type TimeWindow = 'pregame' | 'live' | 'both';
+**File**: `src/pages/CreateAlert.tsx`
 
-export type PlanTier = 'free' | 'pro' | 'legend';
+**Changes**:
+- Import `useSearchParams` from `react-router-dom`
+- Read `eventID` from URL on mount
+- Pre-populate the condition state with the passed `eventID`
+- The existing `AlertEventSelector` will automatically show the selected game
 
-export interface AlertCondition {
-  ruleType: RuleType;
-  eventID: string | null;
-  marketType: MarketType;
-  teamSide: 'home' | 'away' | null;
-  threshold: number | null;
-  direction: DirectionType;
-  timeWindow: TimeWindow;
-}
+### 3. Component Updates
 
-export interface RuleTypeOption {
-  id: RuleType;
-  name: string;
-  description: string;
-  planRequired: PlanTier;
-}
+**Button Styling**:
+- Use a subtle, secondary style button with a bell icon
+- Position at the bottom of the card in a new footer area
+- Full-width button with hover state matching the dark theme
+
+---
+
+## Technical Approach
+
+### URL Parameter Passing
+
+```text
+From Games Page:
+  /alerts/create?eventID=nba_2024_chi_gsw_001
+
+On CreateAlert Page:
+  - useSearchParams() to read eventID
+  - Initialize condition.eventID with the URL param value
+  - Event selector shows pre-selected game
 ```
 
-### Page Layout (Matching Reference Screenshot)
+### GameCard Changes
 
-```
-+----------------------------------------------------------+
-| ← Back                  Create Alert                       |
-+----------------------------------------------------------+
-|                                                            |
-| RULE TYPE                    | PLAN REQUIRED | WHAT IT DOES|
-| [Threshold At        ▼]      | Included Free | Description |
-|                                                            |
-| EVENT                | MARKET          | TEAM              |
-| [Select game     ▼]  | [SPREAD     ▼]  | [Team name   ▼]  |
-|                                                            |
-| THRESHOLD            | DIRECTION                           |
-| [10.5          ]     | [At or above              ▼]        |
-|                                                            |
-| ☑ Live-only alert                                          |
-|                                                            |
-+----------------------------------------------------------+
-| Alert Preview:                                             |
-| "Alert me when Lakers spread reaches +10.5 or better"      |
-+----------------------------------------------------------+
-|                                    [Create Alert]          |
-+----------------------------------------------------------+
-```
+Add a new section at the bottom of the card:
 
-### Styling Approach
-
-- Use existing dark charcoal theme with amber accents
-- Form inputs: `bg-secondary/50 border-border` (matching Games page)
-- Select dropdowns: Use `@/components/ui/select` with dark styling
-- Labels: `text-xs uppercase tracking-wide text-muted-foreground`
-- Plan tier badges: amber gradient for Pro, outline for Free/Legend
-- Card containers: `bg-card border border-border rounded-xl`
-
-### Component Details
-
-**AlertRuleTypeSelector**: Dropdown showing all rule types with:
-- Plan tier badge (amber for Pro, muted for Free)
-- Description of what the rule does
-- Disabled state for rules above user's tier
-
-**AlertEventSelector**: Searchable dropdown populated from mock games with:
-- Team names and logos
-- League badge
-- Start time
-- Live indicator if applicable
-
-**AlertMarketSelector**: Simple select with ML/Spread/Totals options
-
-**AlertTeamSelector**: Dynamic based on selected event:
-- Shows home/away team options
-- Displays team logo and name
-
-**AlertThresholdInput**: Numeric input styled like reference:
-- Dark background
-- Accepts decimal values for spreads/totals
-- American odds format for ML
-
-**AlertDirectionSelector**: Dropdown with direction options
-
-**AlertTimeWindow**: Checkbox for "Live-only alert"
-
-**AlertSummary**: Generates human-readable summary:
-- "Alert me when [Team] [Market] reaches [Threshold] or [Direction]"
-
-### Routing Update
-
-Add route in `App.tsx`:
 ```tsx
-<Route path="/alerts/create" element={<CreateAlert />} />
+<div className="mt-4 pt-3 border-t border-border/50">
+  <Link to={`/alerts/create?eventID=${game.eventID}`}>
+    <Button variant="ghost" className="w-full">
+      <Bell className="w-4 h-4 mr-2" />
+      Create Alert
+    </Button>
+  </Link>
+</div>
 ```
 
-### Navigation Update
+### CreateAlert Changes
 
-Add "Create Alert" link to Navbar dropdown under Info section and possibly as a prominent CTA button.
+Read and apply URL parameter on component mount:
 
----
+```tsx
+const [searchParams] = useSearchParams();
+const preSelectedEventID = searchParams.get("eventID");
 
-## Mock Data Strategy
-
-- Reuse `mockGames` from existing data
-- Transform to dropdown-friendly format with:
-  - Event label: "Lakers @ Warriors - 2h" (with start time)
-  - Team options derived from event
-
----
-
-## Form State Management
-
-Use React `useState` for form state with an `AlertCondition` object. No external form library needed for this initial implementation.
+// Initialize condition with pre-selected event
+const [condition, setCondition] = useState<AlertCondition>({
+  ruleType: "threshold_at",
+  eventID: preSelectedEventID || null,
+  // ... rest of defaults
+});
+```
 
 ---
 
-## Future Considerations (Not in Scope)
+## Files to Modify
 
-- Backend integration with Supabase for storing alerts
-- Push notification delivery
-- User authentication for alert ownership
-- Multiple conditions with AND/OR logic
-- Alert history and management page
+| File | Change |
+|------|--------|
+| `src/components/games/GameCard.tsx` | Add "Create Alert" button with link to alert creation |
+| `src/pages/CreateAlert.tsx` | Read `eventID` from URL params and pre-populate form |
+
+---
+
+## User Benefits
+
+- **Reduced friction**: Users can create alerts directly from games they're browsing
+- **Context preservation**: The selected game is automatically pre-filled
+- **Seamless workflow**: Natural flow from discovery to action
+
