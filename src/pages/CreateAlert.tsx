@@ -282,6 +282,7 @@ const CreateAlert = () => {
                 <AlertEventSelector
                   value={condition.eventID}
                   onChange={handleGameSelect}
+                  preSelectedEventID={preSelectedEventID}
                 />
               </AlertStep>
 

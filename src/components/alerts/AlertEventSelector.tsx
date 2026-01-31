@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Select,
   SelectContent,
@@ -13,11 +13,13 @@ import { Search, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { LEAGUES, LeagueID, GameEvent } from "@/types/games";
 import { useGames } from "@/hooks/useGames";
+import { useGameById } from "@/hooks/useGameById";
 import { cn } from "@/lib/utils";
 
 interface AlertEventSelectorProps {
   value: string | null;
   onChange: (value: string | null, game: GameEvent | null) => void;
+  preSelectedEventID?: string | null;
 }
 
 const leagueFilters: { id: "all" | LeagueID; label: string }[] = [
@@ -28,9 +30,11 @@ const leagueFilters: { id: "all" | LeagueID; label: string }[] = [
 export const AlertEventSelector = ({
   value,
   onChange,
+  preSelectedEventID,
 }: AlertEventSelectorProps) => {
   const [selectedLeague, setSelectedLeague] = useState<"all" | LeagueID>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
   // Fetch games from API with selected league filter
   const { data: games, isLoading } = useGames({
@@ -42,8 +46,30 @@ export const AlertEventSelector = ({
     oddsAvailable: true,
   });
 
+  // Fetch specific game if pre-selected
+  const { data: preSelectedGame, isLoading: isLoadingPreSelected } = useGameById(
+    preSelectedEventID && !hasAutoSelected ? preSelectedEventID : null
+  );
+
+  // Effect to auto-select when pre-selected game loads
+  useEffect(() => {
+    if (preSelectedEventID && preSelectedGame && !hasAutoSelected) {
+      onChange(preSelectedEventID, preSelectedGame);
+      setHasAutoSelected(true);
+    }
+  }, [preSelectedGame, preSelectedEventID, hasAutoSelected, onChange]);
+
+  // Combine pre-selected game with list (if not already present)
+  const allGames = useMemo(() => {
+    const gameList = [...(games || [])];
+    if (preSelectedGame && !gameList.find(g => g.eventID === preSelectedGame.eventID)) {
+      gameList.unshift(preSelectedGame);
+    }
+    return gameList;
+  }, [games, preSelectedGame]);
+
   // Client-side search filtering
-  const filteredGames = (games || []).filter((game) => {
+  const filteredGames = allGames.filter((game) => {
     const query = searchQuery.toLowerCase();
     const homeName = game.teams.home.name || game.teams.home.teamID || '';
     const awayName = game.teams.away.name || game.teams.away.teamID || '';
@@ -58,6 +84,8 @@ export const AlertEventSelector = ({
       awayAbbr.toLowerCase().includes(query)
     );
   });
+
+  const isLoadingAny = isLoading || isLoadingPreSelected;
 
   const formatEventLabel = (game: GameEvent) => {
     const awayAbbr = game.teams.away.abbreviation || game.teams.away.name?.slice(0, 3).toUpperCase() || 'AWY';
@@ -116,10 +144,10 @@ export const AlertEventSelector = ({
       {/* Game Dropdown */}
       <Select value={value || ""} onValueChange={handleSelect}>
         <SelectTrigger className="bg-secondary/50 border-border h-11">
-          <SelectValue placeholder={isLoading ? "Loading games..." : "Select a game"} />
+          <SelectValue placeholder={isLoadingAny ? "Loading games..." : "Select a game"} />
         </SelectTrigger>
         <SelectContent className="bg-card border-border max-h-[300px]">
-          {isLoading ? (
+          {isLoadingAny ? (
             <div className="py-4 px-3 text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
               Loading games...
