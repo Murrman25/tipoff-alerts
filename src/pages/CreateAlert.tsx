@@ -28,17 +28,13 @@ import {
 import { AuthModal } from "@/components/auth";
 import {
   AlertCondition,
-  RuleType,
-  MarketType,
-  DirectionType,
-  TimeWindow,
   QuickAlertTemplateId,
 } from "@/types/alerts";
+import { GameEvent } from "@/types/games";
 import { useAuth } from "@/hooks/useAuth";
 import { useFirstTimeVisit } from "@/hooks/useFirstTimeVisit";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { mockGames } from "@/data/mockGames";
 
 const CreateAlert = () => {
   const navigate = useNavigate();
@@ -56,6 +52,7 @@ const CreateAlert = () => {
     direction: "at_or_above",
     timeWindow: "both",
   });
+  const [selectedGame, setSelectedGame] = useState<GameEvent | null>(null);
   const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>(["email"]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -105,6 +102,12 @@ const CreateAlert = () => {
     });
   };
 
+  const handleGameSelect = (eventID: string | null, game: GameEvent | null) => {
+    updateCondition("eventID", eventID);
+    setSelectedGame(game);
+    if (eventID) openStep(2);
+  };
+
   const handleTemplateSelect = (templateId: QuickAlertTemplateId, defaults: Partial<AlertCondition>) => {
     setSelectedTemplate(templateId);
     setCondition((prev) => ({
@@ -127,10 +130,10 @@ const CreateAlert = () => {
 
   // Generate step summaries
   const getStep1Summary = () => {
-    if (!condition.eventID) return undefined;
-    const game = mockGames.find(g => g.eventID === condition.eventID);
-    if (!game) return condition.eventID;
-    return `${game.teams.away.abbreviation} @ ${game.teams.home.abbreviation}`;
+    if (!condition.eventID || !selectedGame) return undefined;
+    const awayAbbr = selectedGame.teams.away.abbreviation || selectedGame.teams.away.name?.slice(0, 3).toUpperCase() || 'AWY';
+    const homeAbbr = selectedGame.teams.home.abbreviation || selectedGame.teams.home.name?.slice(0, 3).toUpperCase() || 'HME';
+    return `${awayAbbr} @ ${homeAbbr}`;
   };
 
   const getStep2Summary = () => {
@@ -225,7 +228,7 @@ const CreateAlert = () => {
         <div className="container px-4 md:px-6">
           <div className="flex items-center h-16 gap-4">
             <Link
-              to="/"
+              to="/games"
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -278,10 +281,7 @@ const CreateAlert = () => {
               >
                 <AlertEventSelector
                   value={condition.eventID}
-                  onChange={(v) => {
-                    updateCondition("eventID", v);
-                    if (v) openStep(2);
-                  }}
+                  onChange={handleGameSelect}
                 />
               </AlertStep>
 
@@ -319,7 +319,7 @@ const CreateAlert = () => {
                       <AlertFieldHelp fieldKey="marketType" showHelp={showHelp} className="mt-7" />
                     </div>
                     <AlertTeamSelector
-                      eventID={condition.eventID}
+                      game={selectedGame}
                       value={condition.teamSide}
                       onChange={(v) => updateCondition("teamSide", v)}
                     />

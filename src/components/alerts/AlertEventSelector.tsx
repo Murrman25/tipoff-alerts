@@ -9,15 +9,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
-import { mockGames } from "@/data/mockGames";
+import { Search, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { LEAGUES, LeagueID } from "@/types/games";
+import { LEAGUES, LeagueID, GameEvent } from "@/types/games";
+import { useGames } from "@/hooks/useGames";
 import { cn } from "@/lib/utils";
 
 interface AlertEventSelectorProps {
   value: string | null;
-  onChange: (value: string | null) => void;
+  onChange: (value: string | null, game: GameEvent | null) => void;
 }
 
 const leagueFilters: { id: "all" | LeagueID; label: string }[] = [
@@ -32,29 +32,50 @@ export const AlertEventSelector = ({
   const [selectedLeague, setSelectedLeague] = useState<"all" | LeagueID>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredGames = mockGames.filter((game) => {
-    const matchesLeague =
-      selectedLeague === "all" || game.leagueID === selectedLeague;
-    const query = searchQuery.toLowerCase();
-    const matchesSearch =
-      query === "" ||
-      game.teams.home.name.toLowerCase().includes(query) ||
-      game.teams.away.name.toLowerCase().includes(query) ||
-      game.teams.home.abbreviation?.toLowerCase().includes(query) ||
-      game.teams.away.abbreviation?.toLowerCase().includes(query);
-    return matchesLeague && matchesSearch;
+  // Fetch games from API with selected league filter
+  const { data: games, isLoading } = useGames({
+    leagueID: selectedLeague === "all" ? [] : [selectedLeague],
+    bookmakerID: [],
+    betTypeID: [],
+    searchQuery: "",
+    dateRange: "today",
+    oddsAvailable: true,
   });
 
-  const formatEventLabel = (game: (typeof mockGames)[0]) => {
-    return `${game.teams.away.abbreviation} @ ${game.teams.home.abbreviation}`;
+  // Client-side search filtering
+  const filteredGames = (games || []).filter((game) => {
+    const query = searchQuery.toLowerCase();
+    const homeName = game.teams.home.name || game.teams.home.teamID || '';
+    const awayName = game.teams.away.name || game.teams.away.teamID || '';
+    const homeAbbr = game.teams.home.abbreviation || '';
+    const awayAbbr = game.teams.away.abbreviation || '';
+    
+    return (
+      query === "" ||
+      homeName.toLowerCase().includes(query) ||
+      awayName.toLowerCase().includes(query) ||
+      homeAbbr.toLowerCase().includes(query) ||
+      awayAbbr.toLowerCase().includes(query)
+    );
+  });
+
+  const formatEventLabel = (game: GameEvent) => {
+    const awayAbbr = game.teams.away.abbreviation || game.teams.away.name?.slice(0, 3).toUpperCase() || 'AWY';
+    const homeAbbr = game.teams.home.abbreviation || game.teams.home.name?.slice(0, 3).toUpperCase() || 'HME';
+    return `${awayAbbr} @ ${homeAbbr}`;
   };
 
-  const getTimeLabel = (game: (typeof mockGames)[0]) => {
+  const getTimeLabel = (game: GameEvent) => {
     if (game.status.started && !game.status.ended) {
       return "LIVE";
     }
     const startTime = new Date(game.status.startsAt);
     return formatDistanceToNow(startTime, { addSuffix: true });
+  };
+
+  const handleSelect = (eventID: string) => {
+    const selectedGame = filteredGames.find(g => g.eventID === eventID) || null;
+    onChange(eventID || null, selectedGame);
   };
 
   return (
@@ -93,12 +114,17 @@ export const AlertEventSelector = ({
       </div>
 
       {/* Game Dropdown */}
-      <Select value={value || ""} onValueChange={(v) => onChange(v || null)}>
+      <Select value={value || ""} onValueChange={handleSelect}>
         <SelectTrigger className="bg-secondary/50 border-border h-11">
-          <SelectValue placeholder="Select a game" />
+          <SelectValue placeholder={isLoading ? "Loading games..." : "Select a game"} />
         </SelectTrigger>
         <SelectContent className="bg-card border-border max-h-[300px]">
-          {filteredGames.length === 0 ? (
+          {isLoading ? (
+            <div className="py-4 px-3 text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading games...
+            </div>
+          ) : filteredGames.length === 0 ? (
             <div className="py-4 px-3 text-sm text-muted-foreground text-center">
               No games found
             </div>
