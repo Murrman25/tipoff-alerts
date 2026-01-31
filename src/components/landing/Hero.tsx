@@ -1,7 +1,29 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap } from "lucide-react";
+import { ArrowRight, Zap, Play } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 export const Hero = () => {
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+  // Auto-close modal after 15 seconds
+  useEffect(() => {
+    if (isVideoModalOpen) {
+      const timer = setTimeout(() => {
+        setIsVideoModalOpen(false);
+      }, 15000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isVideoModalOpen]);
+
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
       {/* Background gradient effects */}
@@ -41,8 +63,10 @@ export const Hero = () => {
               size="lg" 
               variant="outline" 
               className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 px-8 py-6 text-lg"
+              onClick={() => setIsVideoModalOpen(true)}
             >
-              See how it works
+              <Play className="w-5 h-5 mr-2" />
+              Watch now
             </Button>
           </div>
 
@@ -52,6 +76,28 @@ export const Hero = () => {
           </p>
         </div>
       </div>
+
+      {/* Video Modal */}
+      <Dialog open={isVideoModalOpen} onOpenChange={setIsVideoModalOpen}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle className="text-xl">See how TipOff works</DialogTitle>
+            <DialogDescription>
+              Watch how TipOff helps you catch every move in real-time.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-6 pt-4">
+            <AspectRatio ratio={16 / 9} className="bg-secondary/50 rounded-lg overflow-hidden">
+              <video
+                src="/videos/demo.mp4"
+                controls
+                autoPlay
+                className="w-full h-full object-contain"
+              />
+            </AspectRatio>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };
