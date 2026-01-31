@@ -24,7 +24,7 @@ export const AlertFieldHelp = ({ fieldKey, showHelp, className }: AlertFieldHelp
         <button
           type="button"
           className={cn(
-            "inline-flex items-center justify-center w-4 h-4 rounded-full",
+            "hidden sm:inline-flex items-center justify-center w-4 h-4 rounded-full",
             "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
             "transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             className

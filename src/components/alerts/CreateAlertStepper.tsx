@@ -31,7 +31,7 @@ export const AlertStep = ({
       <CollapsibleTrigger asChild>
         <button
           className={cn(
-            "flex items-center justify-between w-full py-2 px-3 rounded-md",
+            "flex items-center justify-between w-full py-3 sm:py-2 px-3 rounded-md",
             "transition-all duration-200 ease-out",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             isOpen

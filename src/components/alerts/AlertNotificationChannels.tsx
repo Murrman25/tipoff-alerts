@@ -72,7 +72,7 @@ export const AlertNotificationChannels = ({
                       aria-pressed={isSelected}
                       aria-label={`Toggle ${channel.label} notifications`}
                       className={cn(
-                        "h-9 px-3 gap-1.5 transition-all duration-200",
+                        "h-10 sm:h-9 px-4 sm:px-3 gap-2 sm:gap-1.5 transition-all duration-200",
                         isSelected 
                           ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground" 
                           : "bg-transparent hover:bg-secondary/50"
