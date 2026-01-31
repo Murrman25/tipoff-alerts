@@ -1,246 +1,221 @@
 
-# Streamline Create Alert Stepper UI
+# Fix Stepper Navigation & Game Change Reset
 
 ## Overview
 
-Simplify the stepper UI to be more compact and intuitive. The current design has bulky section headers that dominate the interface and make it unclear what actions are available in each section. This plan addresses all the user's concerns:
-
-1. **Compact section headers** - Reduce visual weight, make them smaller and cleaner
-2. **Clear selectables** - Make form fields immediately visible, not hidden inside collapsed sections
-3. **Sport filter before game selection** - Add a sport/league dropdown to filter games
-4. **Search text box** - Add text search to quickly find games
+Enable free navigation between all three steps at any time, and properly reset the condition fields (but not notifications) when the selected game changes.
 
 ---
 
-## Current Problems
+## Current Issues
 
-| Issue | Current State | Proposed Fix |
-|-------|---------------|--------------|
-| Section headers too large | `p-3` padding, `w-7 h-7` step circles, full border treatment | Reduce to `p-2`, smaller circles `w-5 h-5`, subtle styling |
-| Unclear what's selectable | Form content inside collapsible hidden by default | Show form fields inline below compact header bar |
-| No sport filter | All games shown in one dropdown | Add league/sport filter chips before game dropdown |
-| No game search | Must scroll through dropdown list | Add search input with real-time filtering |
+| Problem | Location | Root Cause |
+|---------|----------|------------|
+| Can't expand Step 2 freely | Line 275 in CreateAlert.tsx | `onToggle` has guard: `isStep1Complete && setCurrentStep(2)` |
+| Can't expand Step 3 freely | Line 367 in CreateAlert.tsx | `onToggle` has guard: `isStep2Complete && setCurrentStep(3)` |
+| Changing game doesn't clear conditions | Lines 72-74 in CreateAlert.tsx | Only resets `teamSide`, not other condition fields |
+| "Continue" button blocks navigation | Lines 347-356 | Only visible when Step 2 complete |
 
 ---
 
-## Design Changes
+## Solution
 
-### 1. Compact Step Headers
+### 1. Remove Navigation Guards
 
-Replace the current large clickable cards with minimal inline headers:
+Update all three `AlertStep` components to allow free toggling:
 
 **Before:**
-```text
-+-----------------------------------------------------------+
-|  (1)  Select Game                                    [v]  |
-|       CHI @ GSW                                           |
-+-----------------------------------------------------------+
+```tsx
+<AlertStep
+  stepNumber={2}
+  onToggle={() => isStep1Complete && setCurrentStep(2)}
+  ...
+>
+
+<AlertStep
+  stepNumber={3}
+  onToggle={() => isStep2Complete && setCurrentStep(3)}
+  ...
+>
 ```
 
 **After:**
-```text
-Step 1: Game  ·  CHI @ GSW                             [Edit]
-+-----------------------------------------------------------+
-| [NBA] [NFL] [NHL] [MLB]                                   |
-| [Search games...]                                         |
-| [v Select game                                    ]       |
-+-----------------------------------------------------------+
+```tsx
+<AlertStep
+  stepNumber={2}
+  onToggle={() => setCurrentStep(currentStep === 2 ? 1 : 2)}
+  ...
+>
+
+<AlertStep
+  stepNumber={3}
+  onToggle={() => setCurrentStep(currentStep === 3 ? 2 : 3)}
+  ...
+>
 ```
 
-The header becomes a single compact line with:
-- Step number and title inline
-- Summary shown inline (not as a sub-line)
-- Small "Edit" or chevron button to collapse/expand
-- Content area is more prominent with clear form fields
+This makes each step header toggle between open/closed states, or allows clicking to jump to any step.
 
----
+### 2. Simplify Toggle Logic
 
-### 2. Enhanced Game Selection (Step 1)
-
-Add two new filter elements before the game dropdown:
-
-```text
-+---------------------------------------------------------------+
-| LEAGUE:  [All] [NBA] [NFL] [NHL] [MLB] [NCAAB]               |
-+---------------------------------------------------------------+
-| Search:  [Type team name or game...]                          |
-+---------------------------------------------------------------+
-| Game:    [v CHI @ GSW - NBA - LIVE                      ]    |
-+---------------------------------------------------------------+
-```
-
-**Implementation:**
-- League filter: Toggle button group (using existing `LEAGUES` from `types/games.ts`)
-- Search input: Text field that filters games by team name or abbreviation
-- Game dropdown: Shows filtered results with league badge and time status
-
----
-
-### 3. Simplified Step Header Component
-
-Update `CreateAlertStepper.tsx` to:
-- Reduce padding from `p-3` to `py-2 px-3`
-- Shrink step circle from `w-7 h-7` to `w-5 h-5`
-- Make header more horizontal (step + title + summary all inline)
-- Remove heavy border treatment when not active
-- Use subtle separator line instead of full border box
-
----
-
-### 4. Updated AlertEventSelector Component
-
-Redesign with filtering capabilities:
+Create a simple toggle function that:
+- If clicking the currently open step, close it (go to previous step or stay)
+- If clicking a different step, open that step
 
 ```tsx
-interface AlertEventSelectorProps {
-  value: string | null;
-  onChange: (value: string | null) => void;
+const handleStepToggle = (step: 1 | 2 | 3) => {
+  // If clicking the current step, toggle it closed (go to previous)
+  // If clicking a different step, open it
+  setCurrentStep(step);
+};
+```
+
+Actually, simpler: just set the clicked step as current. The Collapsible handles the open/close state via `isOpen={currentStep === X}`.
+
+### 3. Reset Condition Fields on Game Change
+
+When `eventID` changes, reset all condition-related fields but preserve notification preferences:
+
+**Before (line 72-74):**
+```tsx
+if (key === "eventID") {
+  updated.teamSide = null;
 }
+```
 
-// Add internal state for:
-// - selectedLeague: LeagueID | 'all'
-// - searchQuery: string
+**After:**
+```tsx
+if (key === "eventID") {
+  // Reset all condition fields when game changes
+  updated.teamSide = null;
+  updated.threshold = null;
+  updated.marketType = "sp"; // Reset to default
+  updated.direction = updated.ruleType === "threshold_cross" ? "crosses_above" : "at_or_above";
+}
+```
 
-// Filter games based on both league and search before displaying
+### 4. Remove "Continue" Button Condition
+
+Make the "Continue to Notifications" button always visible to encourage navigation:
+
+**Before:**
+```tsx
+{isStep2Complete && (
+  <Button onClick={() => setCurrentStep(3)}>
+    Continue to Notifications
+  </Button>
+)}
+```
+
+**After:**
+```tsx
+<Button 
+  variant="outline"
+  size="sm"
+  onClick={() => setCurrentStep(3)}
+  className="w-full"
+>
+  Continue to Notifications
+</Button>
 ```
 
 ---
 
 ## File Changes
 
-### `src/components/alerts/CreateAlertStepper.tsx`
-
-**Changes:**
-- Reduce step header padding: `p-3` → `py-2 px-3`
-- Shrink step circle: `w-7 h-7` → `w-5 h-5`, text from `text-sm` to `text-xs`
-- Make header layout more horizontal with summary inline
-- Lighter border treatment: remove full border, use bottom border only for inactive steps
-- Smaller chevron icon: `w-5 h-5` → `w-4 h-4`
-
----
-
-### `src/components/alerts/AlertEventSelector.tsx`
-
-**Complete rewrite with:**
-
-1. **League filter chips** at top
-   - "All" + individual league buttons (NBA, NFL, NHL, MLB, NCAAB, NCAAF)
-   - Toggle button group styling
-   - Filter games by selected league
-
-2. **Search input**
-   - Text field with search icon
-   - Real-time filtering by team name/abbreviation
-   - Placeholder: "Search teams..."
-
-3. **Filtered game dropdown**
-   - Only show games matching league + search filters
-   - Maintain existing display format (badge + teams + time)
-   - Show "No games found" when filters yield no results
-
----
-
 ### `src/pages/CreateAlert.tsx`
 
-**Minor updates:**
-- Remove the `AlertFieldHelp` wrapper around the event selector (it's showing `teamSide` help which is wrong)
-- Ensure proper spacing between steps
+| Line(s) | Change |
+|---------|--------|
+| 72-74 | Expand reset logic to clear all condition fields when game changes |
+| 257 | Update Step 1 onToggle to simple: `() => setCurrentStep(1)` |
+| 275 | Remove guard, change to: `() => setCurrentStep(2)` |
+| 347 | Remove conditional wrapper around Continue button |
+| 367 | Remove guard, change to: `() => setCurrentStep(3)` |
 
----
-
-## Visual Comparison
-
-### Before (Current)
-
-```text
-+-----------------------------------------------------------+
-|  [1]  Select Game                                    [v]  |
-|                                                           |
-|       STEP HEADER IS LARGE AND DOMINANT                   |
-+-----------------------------------------------------------+
-           (collapsed - no visible form fields)
-
-+-----------------------------------------------------------+
-|  [2]  Set Condition                                  [v]  |
-|                                                           |
-+-----------------------------------------------------------+
-           (collapsed - unclear what to do)
-```
-
-### After (Proposed)
-
-```text
-Step 1 · Game                                          [v]
-+-----------------------------------------------------------+
-| [All] [NBA] [NFL] [NHL] [MLB]                             |
-|                                                           |
-| [Search teams...]                                         |
-|                                                           |
-| [v Select a game                                    ]     |
-+-----------------------------------------------------------+
-
-Step 2 · Condition · SP +3.5                     [complete]
---- (collapsed with summary visible) ---
-
-Step 3 · Notify · Email, Push                    [complete]
---- (collapsed with summary visible) ---
-```
-
----
-
-## Technical Details
-
-### League Filter Implementation
-
-Using toggle buttons from existing UI components:
-
+**Updated updateCondition function:**
 ```tsx
-const leagues = [
-  { id: 'all', label: 'All' },
-  { id: 'NBA', label: 'NBA' },
-  { id: 'NFL', label: 'NFL' },
-  { id: 'NHL', label: 'NHL' },
-  { id: 'MLB', label: 'MLB' },
-  { id: 'NCAAB', label: 'NCAAB' },
-];
-
-// Filter logic
-const filteredGames = mockGames.filter(game => {
-  const matchesLeague = selectedLeague === 'all' || game.leagueID === selectedLeague;
-  const matchesSearch = searchQuery === '' || 
-    game.teams.home.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    game.teams.away.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    game.teams.home.abbreviation?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    game.teams.away.abbreviation?.toLowerCase().includes(searchQuery.toLowerCase());
-  return matchesLeague && matchesSearch;
-});
+const updateCondition = <K extends keyof AlertCondition>(
+  key: K,
+  value: AlertCondition[K]
+) => {
+  setCondition((prev) => {
+    const updated = { ...prev, [key]: value };
+    
+    // When game changes, reset all condition fields (but not ruleType)
+    if (key === "eventID") {
+      updated.teamSide = null;
+      updated.threshold = null;
+      updated.marketType = "sp";
+      updated.direction = prev.ruleType === "threshold_cross" ? "crosses_above" : "at_or_above";
+    }
+    
+    if (key === "ruleType") {
+      if (value === "threshold_cross") {
+        updated.direction = "crosses_above";
+      } else if (value === "threshold_at") {
+        updated.direction = "at_or_above";
+      }
+    }
+    
+    return updated;
+  });
+};
 ```
 
-### Search Debouncing
-
-For performance, debounce the search input (though with mock data it's not critical):
-
+**Updated Step handlers:**
 ```tsx
-const [searchQuery, setSearchQuery] = useState('');
-// Filter happens on render, no need for heavy debouncing with local data
+{/* Step 1: Select Game */}
+<AlertStep
+  stepNumber={1}
+  title="Select Game"
+  isOpen={currentStep === 1}
+  isComplete={isStep1Complete}
+  summary={getStep1Summary()}
+  onToggle={() => setCurrentStep(1)}
+>
+
+{/* Step 2: Set Condition */}
+<AlertStep
+  stepNumber={2}
+  title="Set Condition"
+  isOpen={currentStep === 2}
+  isComplete={isStep2Complete}
+  summary={getStep2Summary()}
+  onToggle={() => setCurrentStep(2)}
+>
+
+{/* Step 3: Notify Me */}
+<AlertStep
+  stepNumber={3}
+  title="Notify Me"
+  isOpen={currentStep === 3}
+  isComplete={notificationChannels.length > 0}
+  summary={notificationChannels.length > 0 ? notificationChannels.join(", ") : undefined}
+  onToggle={() => setCurrentStep(3)}
+>
 ```
 
 ---
 
-## Files to Modify
+## Navigation Behavior After Changes
 
-| File | Changes |
-|------|---------|
-| `src/components/alerts/CreateAlertStepper.tsx` | Compact header styling, smaller step circles, inline summary |
-| `src/components/alerts/AlertEventSelector.tsx` | Add league filter chips, search input, filtered dropdown |
-| `src/pages/CreateAlert.tsx` | Remove incorrect `AlertFieldHelp` wrapper in Step 1 |
+| Action | Result |
+|--------|--------|
+| Click Step 1 header | Opens Step 1, closes others |
+| Click Step 2 header | Opens Step 2, closes others (even if Step 1 incomplete) |
+| Click Step 3 header | Opens Step 3, closes others (even if Step 2 incomplete) |
+| Select a game | Auto-advances to Step 2 (existing behavior preserved) |
+| Change the game | Clears team, threshold, market, direction - keeps notifications |
+| Click "Continue to Notifications" | Always visible, opens Step 3 |
 
 ---
 
-## Benefits
+## Summary
 
-- **Clearer hierarchy**: Form fields are prominent, headers are subtle
-- **Faster selection**: League filter reduces dropdown options significantly
-- **Searchable**: Users can type team names to find games instantly
-- **Less clutter**: Compact headers take less vertical space
-- **Better mobile UX**: Horizontal league chips are touch-friendly
+This is a focused change to `src/pages/CreateAlert.tsx` only:
+- Remove conditional guards from step toggle handlers
+- Expand the game-change reset logic to clear all condition fields
+- Remove the conditional wrapper around the Continue button
+
+The stepper component itself (`CreateAlertStepper.tsx`) doesn't need changes - it already correctly handles the open/close animation via the `isOpen` prop.
