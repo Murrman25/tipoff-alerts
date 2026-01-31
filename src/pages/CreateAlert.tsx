@@ -18,7 +18,6 @@ import {
   AlertThresholdInput,
   AlertDirectionSelector,
   AlertTimeWindow,
-  AlertSummary,
   AlertNotificationChannels,
   NotificationChannel,
   AlertFieldHelp,
@@ -376,9 +375,6 @@ const CreateAlert = () => {
                 />
               </AlertStep>
             </CreateAlertStepper>
-
-            {/* Alert Summary */}
-            <AlertSummary condition={condition} />
 
             {/* Create Button */}
             <Button
