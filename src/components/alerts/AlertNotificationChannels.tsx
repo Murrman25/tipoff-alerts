@@ -1,5 +1,5 @@
 import { Mail, Bell, MessageSquare } from "lucide-react";
-import { Toggle } from "@/components/ui/toggle";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -64,14 +64,18 @@ export const AlertNotificationChannels = ({
               return (
                 <Tooltip key={channel.id}>
                   <TooltipTrigger asChild>
-                    <Toggle
-                      pressed={isSelected}
-                      onPressedChange={() => handleToggle(channel.id)}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggle(channel.id)}
+                      aria-pressed={isSelected}
                       aria-label={`Toggle ${channel.label} notifications`}
                       className={cn(
-                        "h-9 px-3 gap-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground",
-                        "border border-border hover:bg-secondary/50",
-                        "transition-all duration-200"
+                        "h-9 px-3 gap-1.5 transition-all duration-200",
+                        isSelected 
+                          ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground" 
+                          : "bg-transparent hover:bg-secondary/50"
                       )}
                     >
                       <Icon className="w-4 h-4" />
@@ -81,7 +85,7 @@ export const AlertNotificationChannels = ({
                           {channel.badge}
                         </span>
                       )}
-                    </Toggle>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-xs">
                     {channel.description}
