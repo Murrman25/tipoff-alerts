@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,8 @@ import {
   AlertDirectionSelector,
   AlertTimeWindow,
   AlertSummary,
+  AlertNotificationChannels,
+  NotificationChannel,
 } from "@/components/alerts";
 import {
   AlertCondition,
@@ -23,6 +25,7 @@ import {
 import { toast } from "sonner";
 
 const CreateAlert = () => {
+  const navigate = useNavigate();
   const [condition, setCondition] = useState<AlertCondition>({
     ruleType: "threshold_at",
     eventID: null,
@@ -32,6 +35,7 @@ const CreateAlert = () => {
     direction: "at_or_above",
     timeWindow: "both",
   });
+  const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>(["email"]);
 
   const updateCondition = <K extends keyof AlertCondition>(
     key: K,
@@ -61,6 +65,7 @@ const CreateAlert = () => {
   const isFormValid =
     condition.eventID !== null &&
     condition.teamSide !== null &&
+    notificationChannels.length > 0 &&
     (condition.threshold !== null ||
       condition.ruleType === "value_change" ||
       condition.ruleType === "arbitrage" ||
@@ -72,9 +77,16 @@ const CreateAlert = () => {
       return;
     }
     
-    // TODO: Save to Supabase
+    if (notificationChannels.length === 0) {
+      toast.error("Please select at least one notification channel");
+      return;
+    }
+    
+    // TODO: Save to Supabase with auth
     toast.success("Alert created successfully!");
     console.log("Alert condition:", condition);
+    console.log("Notification channels:", notificationChannels);
+    navigate("/alerts");
   };
 
   // Check if threshold is needed
@@ -152,6 +164,12 @@ const CreateAlert = () => {
             <AlertTimeWindow
               value={condition.timeWindow}
               onChange={(v) => updateCondition("timeWindow", v)}
+            />
+
+            {/* Notification Channels */}
+            <AlertNotificationChannels
+              selectedChannels={notificationChannels}
+              onChange={setNotificationChannels}
             />
 
             {/* Alert Summary */}

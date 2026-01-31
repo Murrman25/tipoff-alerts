@@ -66,6 +66,12 @@ export const Navbar = () => {
               Browse Games
             </Link>
             <Link
+              to="/alerts"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              My Alerts
+            </Link>
+            <Link
               to="/alerts/create"
               className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
             >
@@ -109,13 +115,27 @@ export const Navbar = () => {
                   {link.label}
                 </a>
               ))}
-              <div className="pt-4 border-t border-border">
+              <div className="pt-4 border-t border-border space-y-2">
                 <Link
                   to="/games"
-                  className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                  className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Browse Games →
+                  Browse Games
+                </Link>
+                <Link
+                  to="/alerts"
+                  className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My Alerts
+                </Link>
+                <Link
+                  to="/alerts/create"
+                  className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Create Alert →
                 </Link>
               </div>
               <div className="flex gap-4 pt-4 border-t border-border">
