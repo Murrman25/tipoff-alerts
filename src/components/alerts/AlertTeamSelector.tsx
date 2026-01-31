@@ -5,24 +5,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockGames } from "@/data/mockGames";
+import { GameEvent } from "@/types/games";
 
 interface AlertTeamSelectorProps {
-  eventID: string | null;
+  game: GameEvent | null;
   value: "home" | "away" | null;
   onChange: (value: "home" | "away" | null) => void;
 }
 
+// Helper to safely get team name with fallbacks
+const getTeamName = (team: any): string => {
+  return team?.name || team?.names?.long || team?.names?.medium || team?.teamID || 'Unknown Team';
+};
+
 export const AlertTeamSelector = ({
-  eventID,
+  game,
   value,
   onChange,
 }: AlertTeamSelectorProps) => {
-  const selectedGame = eventID
-    ? mockGames.find((g) => g.eventID === eventID)
-    : null;
-
-  if (!selectedGame) {
+  if (!game) {
     return (
       <div className="space-y-2">
         <label className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
@@ -53,13 +54,13 @@ export const AlertTeamSelector = ({
           <SelectItem value="home" className="py-2">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">HOME</span>
-              <span className="font-medium">{selectedGame.teams.home.name}</span>
+              <span className="font-medium">{getTeamName(game.teams.home)}</span>
             </div>
           </SelectItem>
           <SelectItem value="away" className="py-2">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">AWAY</span>
-              <span className="font-medium">{selectedGame.teams.away.name}</span>
+              <span className="font-medium">{getTeamName(game.teams.away)}</span>
             </div>
           </SelectItem>
         </SelectContent>
