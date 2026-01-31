@@ -69,8 +69,12 @@ const CreateAlert = () => {
     setCondition((prev) => {
       const updated = { ...prev, [key]: value };
       
+      // When game changes, reset all condition fields (but not ruleType or notifications)
       if (key === "eventID") {
         updated.teamSide = null;
+        updated.threshold = null;
+        updated.marketType = "sp";
+        updated.direction = prev.ruleType === "threshold_cross" ? "crosses_above" : "at_or_above";
       }
       
       if (key === "ruleType") {
@@ -272,7 +276,7 @@ const CreateAlert = () => {
                 isOpen={currentStep === 2}
                 isComplete={isStep2Complete}
                 summary={getStep2Summary()}
-                onToggle={() => isStep1Complete && setCurrentStep(2)}
+                onToggle={() => setCurrentStep(2)}
               >
                 <div className="space-y-4">
                   {/* Rule Type */}
@@ -344,16 +348,14 @@ const CreateAlert = () => {
                     </div>
                   )}
 
-                  {isStep2Complete && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentStep(3)}
-                      className="w-full"
-                    >
-                      Continue to Notifications
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentStep(3)}
+                    className="w-full"
+                  >
+                    Continue to Notifications
+                  </Button>
                 </div>
               </AlertStep>
 
@@ -364,7 +366,7 @@ const CreateAlert = () => {
                 isOpen={currentStep === 3}
                 isComplete={notificationChannels.length > 0}
                 summary={notificationChannels.length > 0 ? notificationChannels.join(", ") : undefined}
-                onToggle={() => isStep2Complete && setCurrentStep(3)}
+                onToggle={() => setCurrentStep(3)}
               >
                 <AlertNotificationChannels
                   selectedChannels={notificationChannels}
