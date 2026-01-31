@@ -1,132 +1,57 @@
 
 
-# Add Video Modal to Hero Section
+# Close Video Modal on Video End
 
 ## Overview
 
-Update the "See how it works" button in the Hero section to open a video modal. The button will be renamed to "Watch now" and the modal will automatically close 15 seconds after opening.
+Replace the 15-second timer with an event-based approach that closes the modal when the video finishes playing naturally.
 
 ---
 
-## Video File Location
+## Implementation
 
-Please upload your video file to:
+### File: `src/components/landing/Hero.tsx`
 
-```
-public/videos/demo.mp4
-```
+**Changes:**
 
-Create the `videos` folder inside `public` and place your video there. The file will be accessible at `/videos/demo.mp4` in the app.
+1. **Remove the `useEffect` timer** - Delete the entire `useEffect` block that sets the 15-second timeout
 
-**Supported formats**: MP4 is recommended for best browser compatibility. WebM is also supported.
+2. **Add `onEnded` handler to video element** - Use the native HTML5 `onEnded` event to close the modal when playback completes
 
----
+### Code Changes
 
-## Implementation Details
-
-### 1. Update Hero Component
-
-**File**: `src/components/landing/Hero.tsx`
-
-**Changes**:
-- Import `Dialog` components and `Play` icon
-- Add state for modal open/close (`useState`)
-- Add `useEffect` for auto-close timer (15 seconds)
-- Rename button text from "See how it works" to "Watch now"
-- Add the video modal with native HTML5 `<video>` element
-
-### Modal Design
-
-```text
-+--------------------------------------------------+
-|                                           [X]     |
-|                                                   |
-|   +------------------------------------------+   |
-|   |                                          |   |
-|   |              VIDEO PLAYER                |   |
-|   |           (autoplay, controls)           |   |
-|   |                                          |   |
-|   +------------------------------------------+   |
-|                                                   |
-|   See how TipOff helps you catch every move      |
-|                                                   |
-+--------------------------------------------------+
-```
-
-**Modal Features**:
-- 16:9 aspect ratio container for the video
-- Native HTML5 video controls (play, pause, volume, fullscreen)
-- Autoplay when modal opens
-- Dark overlay background (matches existing Dialog style)
-- Close button in top-right corner
-- Auto-closes after 15 seconds via `setTimeout`
-
----
-
-## Technical Approach
-
-### Auto-Close Timer Logic
-
+**Remove this block:**
 ```typescript
-const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-
 useEffect(() => {
   if (isVideoModalOpen) {
     const timer = setTimeout(() => {
       setIsVideoModalOpen(false);
-    }, 15000); // 15 seconds
-    
+    }, 15000);
+
     return () => clearTimeout(timer);
   }
 }, [isVideoModalOpen]);
 ```
 
-The timer:
-- Starts when modal opens
-- Clears if modal is manually closed before 15 seconds
-- Uses cleanup function to prevent memory leaks
-
-### Video Element
-
-```html
-<video 
-  src="/videos/demo.mp4" 
-  controls 
-  autoPlay 
+**Update video element:**
+```tsx
+<video
+  src="/videos/Sora-4bb00449.mp4"
+  controls
+  autoPlay
+  muted
+  playsInline
+  onEnded={() => setIsVideoModalOpen(false)}
   className="w-full h-full object-contain"
 />
 ```
 
 ---
 
-## Files to Modify
+## Benefits
 
-| File | Changes |
-|------|---------|
-| `src/components/landing/Hero.tsx` | Add video modal, rename button, implement auto-close |
-
-## Files to Create (by user)
-
-| Path | Description |
-|------|-------------|
-| `public/videos/demo.mp4` | Your demo video file |
-
----
-
-## Button Change
-
-**Before**:
-```tsx
-<Button variant="outline">
-  See how it works
-</Button>
-```
-
-**After**:
-```tsx
-<Button variant="outline" onClick={() => setIsVideoModalOpen(true)}>
-  <Play className="w-4 h-4 mr-2" />
-  Watch now
-</Button>
-```
+- Modal stays open for exact video duration (no guessing timer length)
+- Works automatically if you change to a different video
+- User can still manually close with X button anytime
+- Cleaner code with no timer management
 
