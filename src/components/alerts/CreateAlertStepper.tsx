@@ -31,12 +31,13 @@ export const AlertStep = ({
       <CollapsibleTrigger asChild>
         <button
           className={cn(
-            "flex items-center justify-between w-full p-3 rounded-lg transition-all",
+            "flex items-center justify-between w-full p-3 rounded-lg",
+            "transition-all duration-200 ease-out",
             "border focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             isOpen
               ? "border-primary/30 bg-secondary"
               : isComplete
-              ? "border-primary/20 bg-primary/5 hover:bg-primary/10"
+              ? "border-primary/20 bg-primary/5 hover:bg-primary/10 hover:scale-[1.01]"
               : "border-border bg-secondary/50 hover:bg-secondary"
           )}
         >
@@ -44,6 +45,7 @@ export const AlertStep = ({
             <div
               className={cn(
                 "flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium",
+                "transition-all duration-200",
                 isComplete
                   ? "bg-primary text-primary-foreground"
                   : isOpen
@@ -56,26 +58,34 @@ export const AlertStep = ({
             <div className="flex flex-col items-start">
               <span
                 className={cn(
-                  "text-sm font-medium",
+                  "text-sm font-medium transition-colors duration-200",
                   isComplete ? "text-primary" : "text-foreground"
                 )}
               >
                 {title}
               </span>
               {summary && !isOpen && (
-                <span className="text-xs text-muted-foreground">{summary}</span>
+                <span className="text-xs text-muted-foreground animate-fade-in">
+                  {summary}
+                </span>
               )}
             </div>
           </div>
           <ChevronDown
             className={cn(
-              "w-5 h-5 text-muted-foreground transition-transform duration-200",
+              "w-5 h-5 text-muted-foreground transition-transform duration-300 ease-out",
               isOpen && "rotate-180"
             )}
           />
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+      <CollapsibleContent
+        className={cn(
+          "overflow-hidden",
+          "data-[state=open]:animate-collapsible-down",
+          "data-[state=closed]:animate-collapsible-up"
+        )}
+      >
         <div className="pt-4 pb-2 space-y-4">{children}</div>
       </CollapsibleContent>
     </Collapsible>

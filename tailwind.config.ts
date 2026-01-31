@@ -122,6 +122,14 @@ export default {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-3px)" },
         },
+        "collapsible-down": {
+          from: { height: "0", opacity: "0" },
+          to: { height: "var(--radix-collapsible-content-height)", opacity: "1" },
+        },
+        "collapsible-up": {
+          from: { height: "var(--radix-collapsible-content-height)", opacity: "1" },
+          to: { height: "0", opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -132,6 +140,8 @@ export default {
         "notification-slide-in": "notification-slide-in 0.4s ease-out",
         "odds-flash": "odds-flash 0.5s ease-out",
         "arrow-bounce": "arrow-bounce 0.4s ease-out",
+        "collapsible-down": "collapsible-down 0.3s ease-out",
+        "collapsible-up": "collapsible-up 0.2s ease-out",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
