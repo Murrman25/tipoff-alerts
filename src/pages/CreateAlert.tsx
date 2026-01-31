@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   AlertNotificationChannels,
   NotificationChannel,
 } from "@/components/alerts";
+import { AuthModal } from "@/components/auth";
 import {
   AlertCondition,
   RuleType,
@@ -22,12 +23,15 @@ import {
   DirectionType,
   TimeWindow,
 } from "@/types/alerts";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const CreateAlert = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preSelectedEventID = searchParams.get("eventID");
+  const { user, isLoading: authLoading } = useAuth();
 
   const [condition, setCondition] = useState<AlertCondition>({
     ruleType: "threshold_at",
@@ -39,6 +43,8 @@ const CreateAlert = () => {
     timeWindow: "both",
   });
   const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>(["email"]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const updateCondition = <K extends keyof AlertCondition>(
     key: K,
@@ -74,7 +80,52 @@ const CreateAlert = () => {
       condition.ruleType === "arbitrage" ||
       condition.ruleType === "best_available");
 
-  const handleCreateAlert = () => {
+  const saveAlertToDatabase = async () => {
+    if (!user) return;
+
+    setIsSaving(true);
+    try {
+      // Insert the alert
+      const { data: alertData, error: alertError } = await supabase
+        .from("alerts")
+        .insert({
+          user_id: user.id,
+          rule_type: condition.ruleType,
+          event_id: condition.eventID,
+          market_type: condition.marketType,
+          team_side: condition.teamSide,
+          threshold: condition.threshold,
+          direction: condition.direction,
+          time_window: condition.timeWindow,
+        })
+        .select()
+        .single();
+
+      if (alertError) throw alertError;
+
+      // Insert notification channels
+      const channelInserts = notificationChannels.map((channel) => ({
+        alert_id: alertData.id,
+        channel_type: channel,
+        is_enabled: true,
+      }));
+
+      const { error: channelError } = await supabase
+        .from("alert_notification_channels")
+        .insert(channelInserts);
+
+      if (channelError) throw channelError;
+
+      toast.success("Alert created successfully!");
+      navigate("/alerts");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create alert");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCreateAlert = async () => {
     if (!isFormValid) {
       toast.error("Please complete all required fields");
       return;
@@ -84,12 +135,22 @@ const CreateAlert = () => {
       toast.error("Please select at least one notification channel");
       return;
     }
-    
-    // TODO: Save to Supabase with auth
-    toast.success("Alert created successfully!");
-    console.log("Alert condition:", condition);
-    console.log("Notification channels:", notificationChannels);
-    navigate("/alerts");
+
+    // Check if user is authenticated
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    await saveAlertToDatabase();
+  };
+
+  // Handle auth success - save the pending alert
+  const handleAuthSuccess = async () => {
+    // Wait a moment for auth state to propagate
+    setTimeout(async () => {
+      await saveAlertToDatabase();
+    }, 500);
   };
 
   // Check if threshold is needed
@@ -181,15 +242,22 @@ const CreateAlert = () => {
             {/* Create Button */}
             <Button
               onClick={handleCreateAlert}
-              disabled={!isFormValid}
+              disabled={!isFormValid || isSaving}
               className="w-full bg-amber-gradient text-primary-foreground hover:opacity-90 h-12 text-base font-medium"
             >
               <Zap className="w-5 h-5 mr-2" />
-              Create Alert
+              {isSaving ? "Creating..." : user ? "Create Alert" : "Sign in to Create Alert"}
             </Button>
           </CardContent>
         </Card>
       </main>
+
+      {/* Auth Modal */}
+      <AuthModal
+        open={showAuthModal}
+        onOpenChange={setShowAuthModal}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };

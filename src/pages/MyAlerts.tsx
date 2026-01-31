@@ -1,58 +1,87 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Zap, Plus, Bell, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Zap, Plus, Bell, Trash2, ToggleLeft, ToggleRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockGames } from "@/data/mockGames";
 import { MARKET_OPTIONS, RULE_TYPE_OPTIONS } from "@/types/alerts";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-// Mock alerts data for UI development
-const mockAlerts = [
-  {
-    id: "1",
-    rule_type: "threshold_at",
-    event_id: "nba_2024_chi_gsw_001",
-    market_type: "sp",
-    team_side: "home",
-    threshold: 3.5,
-    direction: "at_or_above",
-    time_window: "both",
-    is_active: true,
-    channels: ["email", "push"],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    rule_type: "value_change",
-    event_id: "nfl_2024_min_was_001",
-    market_type: "ml",
-    team_side: "away",
-    threshold: null,
-    direction: "crosses_above",
-    time_window: "live",
-    is_active: true,
-    channels: ["email"],
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: "3",
-    rule_type: "threshold_cross",
-    event_id: "nba_2024_den_bos_002",
-    market_type: "ou",
-    team_side: null,
-    threshold: 230,
-    direction: "crosses_below",
-    time_window: "pregame",
-    is_active: false,
-    channels: ["sms"],
-    created_at: new Date(Date.now() - 172800000).toISOString(),
-  },
-];
+interface Alert {
+  id: string;
+  rule_type: string;
+  event_id: string | null;
+  market_type: string;
+  team_side: string | null;
+  threshold: number | null;
+  direction: string;
+  time_window: string;
+  is_active: boolean;
+  created_at: string;
+  channels: string[];
+}
 
 const MyAlerts = () => {
-  const [alerts, setAlerts] = useState(mockAlerts);
+  const { user, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth?redirect=/alerts");
+    }
+  }, [user, authLoading, navigate]);
+
+  // Fetch alerts from database
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      if (!user) return;
+
+      try {
+        // Fetch alerts
+        const { data: alertsData, error: alertsError } = await supabase
+          .from("alerts")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (alertsError) throw alertsError;
+
+        // Fetch channels for all alerts
+        const alertIds = alertsData.map((a) => a.id);
+        const { data: channelsData, error: channelsError } = await supabase
+          .from("alert_notification_channels")
+          .select("*")
+          .in("alert_id", alertIds);
+
+        if (channelsError) throw channelsError;
+
+        // Map channels to alerts
+        const alertsWithChannels = alertsData.map((alert) => ({
+          ...alert,
+          channels: channelsData
+            .filter((c) => c.alert_id === alert.id && c.is_enabled)
+            .map((c) => c.channel_type),
+        }));
+
+        setAlerts(alertsWithChannels);
+      } catch (error: any) {
+        toast.error("Failed to load alerts");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchAlerts();
+    }
+  }, [user]);
 
   const getGameInfo = (eventId: string | null) => {
     if (!eventId) return null;
@@ -76,22 +105,56 @@ const MyAlerts = () => {
     return styles[channel] || "bg-muted";
   };
 
-  const toggleAlert = (id: string) => {
+  const toggleAlert = async (id: string) => {
+    const alert = alerts.find((a) => a.id === id);
+    if (!alert) return;
+
+    const newStatus = !alert.is_active;
+
+    // Optimistic update
     setAlerts((prev) =>
-      prev.map((alert) =>
-        alert.id === id ? { ...alert, is_active: !alert.is_active } : alert
-      )
+      prev.map((a) => (a.id === id ? { ...a, is_active: newStatus } : a))
     );
+
+    try {
+      const { error } = await supabase
+        .from("alerts")
+        .update({ is_active: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+    } catch (error) {
+      // Revert on error
+      setAlerts((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, is_active: !newStatus } : a))
+      );
+      toast.error("Failed to update alert");
+    }
   };
 
-  const deleteAlert = (id: string) => {
-    setAlerts((prev) => prev.filter((alert) => alert.id !== id));
+  const deleteAlert = async (id: string) => {
+    const alertToDelete = alerts.find((a) => a.id === id);
+    if (!alertToDelete) return;
+
+    // Optimistic update
+    setAlerts((prev) => prev.filter((a) => a.id !== id));
+
+    try {
+      const { error } = await supabase.from("alerts").delete().eq("id", id);
+
+      if (error) throw error;
+      toast.success("Alert deleted");
+    } catch (error) {
+      // Revert on error
+      setAlerts((prev) => [...prev, alertToDelete]);
+      toast.error("Failed to delete alert");
+    }
   };
 
   const activeAlerts = alerts.filter((a) => a.is_active);
   const inactiveAlerts = alerts.filter((a) => !a.is_active);
 
-  const AlertCard = ({ alert }: { alert: (typeof mockAlerts)[0] }) => {
+  const AlertCard = ({ alert }: { alert: Alert }) => {
     const game = getGameInfo(alert.event_id);
     const teamName = game
       ? alert.team_side === "home"
@@ -180,6 +243,15 @@ const MyAlerts = () => {
       </Card>
     );
   };
+
+  // Show loading while checking auth
+  if (authLoading || (user && isLoading)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
