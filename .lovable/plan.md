@@ -1,212 +1,184 @@
 
-# Browse Games Page Enhancements
+# Add League Logo Images to Filters and Game Cards
 
 ## Summary
-Improve the visual layout, spacing, hierarchy, and live game indicators on the Games page to create a more polished, scannable, and engaging experience.
+Update the league dropdown in GamesFilters and the league badge in GameCard to display official league logos alongside (or in place of) the text-only league names. The user has uploaded 7 league logos: NFL, NBA, MLB, NHL, MLS, NCAAB, and NCAAF.
 
 ---
 
-## Current State Analysis
+## Uploaded League Logos
 
-| Area | Current | Issue |
-|------|---------|-------|
-| Layout | 3-column grid, uniform cards | All games look the same regardless of status |
-| Live indicator | Small green badge with pulse | Subtle, easy to miss in a list |
-| Scores | Inline with team name | Gets lost, poor hierarchy |
-| Spacing | Consistent 16px padding | Decent, but score area feels cramped |
-| Card border | Standard border | No visual distinction for live games |
+| League | Uploaded File | Mapped ID |
+|--------|---------------|-----------|
+| NFL | Property_1_NFL_Logo.png | NFL |
+| NBA | Property_1_NBA_Logo.png | NBA |
+| MLB | Property_1_MLB_Logo.png | MLB |
+| NHL | Property_1_NHL_Logo.png | NHL |
+| MLS | Property_1_MLS.png | (not currently used) |
+| NCAAB | ncaa-basketball-logo-png-transparent.png | NCAAB |
+| NCAAF | football-ncaa.png | NCAAF |
 
 ---
 
-## Proposed Enhancements
+## Implementation Steps
 
-### 1. Live Game Visual Treatment
+### 1. Copy Logo Files to Project Assets
 
-**Current**: Small "LIVE" badge in header
-**Proposed**: Full card enhancement for live games
+Copy the uploaded league logos from `user-uploads://` to `src/assets/leagues/` folder:
 
-- Amber/gold glowing border for live games (using existing `border-glow` utility)
-- Larger, more prominent live badge with improved pulse animation
-- Period and clock displayed more prominently
-- Subtle background gradient to make live games pop
+```
+src/assets/leagues/
+  nfl.png
+  nba.png
+  mlb.png
+  nhl.png
+  ncaab.png
+  ncaaf.png
+  mls.png  (for future use)
+```
 
-### 2. Score Display Improvements
+### 2. Create League Logo Mapping
 
-**Current**: Score inline with team name, only when live
-**Proposed**: Dedicated score column with better hierarchy
+Add a new file or extend `src/types/games.ts` to include logo imports:
 
-```text
+```typescript
+// src/components/games/LeagueLogo.tsx
+import nflLogo from "@/assets/leagues/nfl.png";
+import nbaLogo from "@/assets/leagues/nba.png";
+import mlbLogo from "@/assets/leagues/mlb.png";
+import nhlLogo from "@/assets/leagues/nhl.png";
+import ncaabLogo from "@/assets/leagues/ncaab.png";
+import ncaafLogo from "@/assets/leagues/ncaaf.png";
+
+export const LEAGUE_LOGOS: Record<string, string> = {
+  NFL: nflLogo,
+  NBA: nbaLogo,
+  MLB: mlbLogo,
+  NHL: nhlLogo,
+  NCAAB: ncaabLogo,
+  NCAAF: ncaafLogo,
+};
+```
+
+### 3. Create Reusable LeagueLogo Component
+
+Create a component similar to TeamLogo for league logos:
+
+```typescript
+interface LeagueLogoProps {
+  leagueId: string;
+  size?: number;
+  className?: string;
+  showName?: boolean; // optionally show name next to logo
+}
+
+export const LeagueLogo = ({ leagueId, size = 20, className, showName = false }) => {
+  const logoSrc = LEAGUE_LOGOS[leagueId];
+  
+  if (!logoSrc) {
+    // Fallback to text badge if no logo
+    return <span>{leagueId}</span>;
+  }
+  
+  return (
+    <div className="flex items-center gap-1.5">
+      <img src={logoSrc} alt={leagueId} style={{ height: size }} className="object-contain" />
+      {showName && <span>{leagueId}</span>}
+    </div>
+  );
+};
+```
+
+### 4. Update GamesFilters Component
+
+Modify `src/components/games/GamesFilters.tsx` to display league logos in:
+
+**A. League Dropdown Menu Items** (lines 133-148):
+```tsx
+{LEAGUES.map((league) => (
+  <label key={league.id} className="flex items-center gap-2 cursor-pointer">
+    <Checkbox ... />
+    <LeagueLogo leagueId={league.id} size={18} />
+    <span className="text-sm">{league.name}</span>
+  </label>
+))}
+```
+
+**B. Active Filter Badges** (lines 283-293):
+```tsx
+{filters.leagueID.map((id) => (
+  <Badge key={id} variant="secondary" className="gap-1.5 cursor-pointer ...">
+    <LeagueLogo leagueId={id} size={14} />
+    {LEAGUES.find((l) => l.id === id)?.name}
+    <X className="w-3 h-3" />
+  </Badge>
+))}
+```
+
+### 5. Update GameCard Component
+
+Modify `src/components/games/GameCard.tsx` to show league logo in header (line 97-99):
+
+**Current:**
+```tsx
+<Badge variant="secondary" className="text-xs font-medium uppercase tracking-wide">
+  {game.leagueID}
+</Badge>
+```
+
+**Updated:**
+```tsx
+<Badge variant="secondary" className="gap-1.5 text-xs font-medium uppercase tracking-wide pr-2">
+  <LeagueLogo leagueId={game.leagueID} size={16} />
+  {game.leagueID}
+</Badge>
+```
+
+---
+
+## Files to Create/Modify
+
+| File | Action |
+|------|--------|
+| `src/assets/leagues/*.png` | Create - copy uploaded logos |
+| `src/components/games/LeagueLogo.tsx` | Create - new component with logo mapping |
+| `src/components/games/GamesFilters.tsx` | Modify - add logos to dropdown and badges |
+| `src/components/games/GameCard.tsx` | Modify - add logo to header badge |
+
+---
+
+## Visual Preview
+
+**Dropdown with logos:**
+```
+┌─────────────────────────────────┐
+│ Select Leagues                  │
+├─────────────────────────────────┤
+│ [x] [NFL logo] NFL              │
+│ [ ] [NBA logo] NBA              │
+│ [ ] [MLB logo] MLB              │
+│ [x] [NHL logo] NHL              │
+│ [ ] [NCAAB logo] NCAAB          │
+│ [ ] [NCAAF logo] NCAAF          │
+└─────────────────────────────────┘
+```
+
+**Game card header with logo:**
+```
 ┌─────────────────────────────────────────────────────────────┐
-│  NFL                                    LIVE • Q3 8:42      │
-├─────────────────────────────────────────────────────────────┤
-│  [Logo] Kansas City Chiefs        24        +150    -3.5   │
-│  [Logo] Buffalo Bills             21        -180    +3.5   │
-├─────────────────────────────────────────────────────────────┤
-│  Total: O 47.5 (-110)  |  U 47.5 (-110)                    │
-└─────────────────────────────────────────────────────────────┘
+│  [NFL logo] NFL                            Today 7:30 PM    │
 ```
 
-- Score in a dedicated column between team name and odds
-- Larger font (text-2xl) with bold weight
-- Leading team's score highlighted with primary color
-- Score column hidden for non-live games (cleaner layout)
-
-### 3. Improved Spacing and Hierarchy
-
-**Team Rows**:
-- Increase vertical spacing between away/home rows (space-y-4 instead of space-y-3)
-- Add subtle separator line between teams
-- Increase logo size from 32px to 40px for better visibility
-
-**Card Sections**:
-- Clearer section dividers with consistent padding
-- Header section with improved league badge styling
-- Odds section with better alignment and grouping
-
-### 4. Live vs Upcoming Visual Distinction
-
-| State | Border | Background | Status Display |
-|-------|--------|------------|----------------|
-| Live | Amber glow border | Subtle gradient overlay | Large badge + period/clock |
-| Starting Soon (<1hr) | Subtle amber border | Standard | "Starting in 45m" |
-| Upcoming | Standard border | Standard | Date/time |
-
-### 5. Card Header Improvements
-
-**Current**: League ID + status on opposite ends
-**Proposed**: More informative header
-
-- League shown as styled badge with sport icon
-- For live: Large prominent "LIVE" indicator with game state
-- For upcoming: Relative time ("Today 7:30 PM" or "Tomorrow 2:00 PM")
-
----
-
-## Technical Implementation
-
-### Files to Modify
-
-**`src/components/games/GameCard.tsx`**
-- Add conditional styling for live games (border-glow class)
-- Restructure team rows with dedicated score column
-- Improve live badge styling and size
-- Add "starting soon" logic and display
-- Increase logo and text sizes
-
-**`src/components/games/GameCardSkeleton.tsx`**
-- Update skeleton to match new layout structure
-- Add score column placeholder
-
-**`src/index.css`**
-- Add new utility for "starting soon" border state
-- Add subtle gradient for live card background
-
-**`src/pages/Games.tsx`**
-- Sort games to show live games first
-- Add section headers for "Live Now" vs "Upcoming"
-
-### New Visual Utilities
-
-```css
-.live-card-glow {
-  @apply border-primary/50 shadow-[0_0_30px_rgba(245,158,11,0.25)];
-  background: linear-gradient(135deg, rgba(245,158,11,0.05) 0%, transparent 50%);
-}
-
-.starting-soon-border {
-  @apply border-amber-500/30;
-}
+**Active filter badges:**
+```
+[NFL logo] NFL  ✕    [NHL logo] NHL  ✕
 ```
 
 ---
 
-## Score Display Logic
+## Technical Notes
 
-```typescript
-// In GameCard.tsx
-const isLive = game.status.started && !game.status.ended;
-const hasScore = isLive && game.score;
-const isWinning = (score: number, opponent: number) => score > opponent;
-
-// Highlight winning team's score
-<span className={cn(
-  "text-2xl font-bold tabular-nums",
-  isWinning(game.score.home, game.score.away) && "text-primary"
-)}>
-  {game.score.home}
-</span>
-```
-
----
-
-## Game Sorting and Grouping
-
-Games will be sorted with live games first, then by start time:
-
-```typescript
-const sortedGames = useMemo(() => {
-  return [...filteredGames].sort((a, b) => {
-    const aLive = a.status.started && !a.status.ended;
-    const bLive = b.status.started && !b.status.ended;
-    
-    // Live games first
-    if (aLive && !bLive) return -1;
-    if (!aLive && bLive) return 1;
-    
-    // Then by start time
-    return new Date(a.status.startsAt).getTime() - new Date(b.status.startsAt).getTime();
-  });
-}, [filteredGames]);
-```
-
-Optional section headers can visually separate "Live Now" from "Upcoming".
-
----
-
-## Visual Mockup
-
-```text
-┌─ LIVE GAME ─────────────────────────────────────────────────┐
-│  ████████████████████████████████████  (amber glow border)  │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │  [NFL Badge]                    🔴 LIVE • Q4 2:35       │ │
-│ │─────────────────────────────────────────────────────────│ │
-│ │  [Logo] Chiefs              28     │  -180  │  -3.5    │ │
-│ │  ─────────────────────────────────────────────────────  │ │
-│ │  [Logo] Bills               24     │  +150  │  +3.5    │ │
-│ │─────────────────────────────────────────────────────────│ │
-│ │  Total                      O 52.5 (-110)  U 52.5 (-110)│ │
-│ │─────────────────────────────────────────────────────────│ │
-│ │               [ 🔔 Create Alert ]                       │ │
-│ └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-
-┌─ UPCOMING GAME ─────────────────────────────────────────────┐
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │  [NBA Badge]                    Today 7:30 PM           │ │
-│ │─────────────────────────────────────────────────────────│ │
-│ │  [Logo] Lakers                     │  -150  │  -4.5    │ │
-│ │  ─────────────────────────────────────────────────────  │ │
-│ │  [Logo] Celtics                    │  +130  │  +4.5    │ │
-│ │─────────────────────────────────────────────────────────│ │
-│ │  Total                      O 225.5 (-110) U 225.5 (-110)│ │
-│ └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Summary of Changes
-
-| Enhancement | Component | Effort |
-|-------------|-----------|--------|
-| Live card glow border + gradient | GameCard, index.css | Low |
-| Larger, prominent live badge | GameCard | Low |
-| Dedicated score column (live only) | GameCard | Medium |
-| Winning team score highlight | GameCard | Low |
-| Increased spacing and logo sizes | GameCard | Low |
-| Sort live games to top | Games.tsx | Low |
-| "Starting soon" indicator | GameCard | Low |
-| Update skeleton to match | GameCardSkeleton | Low |
-
-**Total Estimated Effort**: Medium - mostly styling adjustments with some layout restructuring in GameCard.
+- Using ES6 imports for league logos ensures proper bundling and optimization
+- The `object-contain` CSS class preserves aspect ratio for different logo shapes
+- Size prop allows flexible sizing across different use cases (dropdown vs badge vs card)
+- Fallback to text-only display if logo is missing for any league
