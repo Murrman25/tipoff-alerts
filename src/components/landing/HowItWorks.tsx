@@ -364,14 +364,14 @@ const NotificationsPreview = () => {
           {showIphone ? (
             /* iPhone with Push Notification - Clean minimal screen */
             <div className="w-[280px] h-[460px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2.5rem] p-3 shadow-2xl border border-zinc-700 relative">
-              {/* Dynamic Island */}
+              {/* Dynamic Island - iPhone signature */}
               <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-10" />
               
               {/* Screen - Solid dark background */}
               <div className="bg-zinc-950 rounded-[2rem] h-full flex flex-col overflow-hidden">
                 {/* Lock Screen Content */}
                 <div className="flex-1 flex flex-col pt-14 px-4">
-                  {/* Time Display Only */}
+                  {/* Time Display - iOS style thin font */}
                   <div className="text-center mb-8">
                     <p className="text-6xl font-extralight text-white tracking-tight">9:41</p>
                   </div>
@@ -401,17 +401,20 @@ const NotificationsPreview = () => {
                 </div>
               </div>
               
-              {/* Home Indicator */}
+              {/* Home Indicator - iOS signature */}
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/40 rounded-full" />
             </div>
           ) : (
             /* Android with Green SMS Bubble - Clean minimal screen */
-            <div className="w-[280px] h-[460px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2rem] p-2 shadow-2xl border border-zinc-700 relative flex flex-col">
+            <div className="w-[280px] h-[460px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[1.75rem] p-2 shadow-2xl border border-zinc-700 relative flex flex-col">
+              {/* Camera Punch Hole - Android signature */}
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-950 rounded-full z-10 border border-zinc-800" />
+              
               {/* Lock Screen - Solid dark background */}
-              <div className="flex-1 bg-zinc-950 rounded-2xl mx-0.5 flex flex-col overflow-hidden">
-                {/* Clock Only */}
-                <div className="text-center pt-14">
-                  <p className="text-5xl font-light text-white tracking-wide">9:41</p>
+              <div className="flex-1 bg-zinc-950 rounded-[1.5rem] mx-0.5 flex flex-col overflow-hidden">
+                {/* Clock - Android style */}
+                <div className="text-center pt-12">
+                  <p className="text-5xl font-normal text-white tracking-wide">9:41</p>
                 </div>
                 
                 {/* SMS Notification Area */}
@@ -426,6 +429,13 @@ const NotificationsPreview = () => {
                     </div>
                   )}
                 </div>
+              </div>
+              
+              {/* Navigation Bar - Android signature */}
+              <div className="flex items-center justify-center gap-10 py-2">
+                <div className="w-0 h-0 border-r-[5px] border-r-white/30 border-y-[4px] border-y-transparent" />
+                <div className="w-4 h-4 rounded-full border-2 border-white/30" />
+                <div className="w-4 h-4 border-2 border-white/30 rounded-sm" />
               </div>
             </div>
           )}
