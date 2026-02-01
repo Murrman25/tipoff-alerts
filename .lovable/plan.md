@@ -1,101 +1,92 @@
 
-# Fix Notification Mockups - Consistent Size and Realistic Animation
+
+# Clean Up Notification Mockups
 
 ## Overview
-Refactor the `NotificationsPreview` component to create realistic, consistently-sized phone mockups that show an empty screen first, then animate the notification sliding in.
+Simplify the Get Notified bento box to show just the phones without background boxes, clean minimal screens, and a realistic green SMS bubble for Android.
 
-## Technical Changes
+## Changes
 
-### 1. Set Fixed Container Height
-Create a wrapper with fixed dimensions so the bento box never changes size:
-- Fixed outer container: `w-[280px] h-[480px]`
-- Both devices will fit within this consistent frame
-
-### 2. Separate Animation States
-Instead of fading between devices, use a 3-phase animation cycle:
-1. **Phase 1 (0-1s)**: Empty lock screen (no notification visible)
-2. **Phase 2 (1-4s)**: Notification slides in from top and stays visible
-3. **Phase 3 (4-4.3s)**: Fade out, switch device type
-4. Repeat with next notification
-
-### 3. Standardize Device Frames
-Make both iPhone and Android the same overall height with consistent styling:
-
-**iPhone Frame:**
-- Width: 280px
-- Total height: ~460px (including frame padding)
-- Rounded corners: 2.5rem
-- Dynamic Island notch
-- Screen content: Lock screen wallpaper + time
-
-**Android Frame:**
-- Width: 280px
-- Total height: ~460px (matching iPhone)
-- Rounded corners: 2rem
-- Status bar with signal/battery icons
-- Screen content: Lock screen with clock
-
-### 4. New Animation Flow
-
-```text
-Timeline (per device cycle):
- 
-0s        1s                    4s      4.3s
-|---------|---------------------|-------|
-  Empty      Notification         Fade
-  Screen     Slides In &          Out
-             Stays Visible
-```
-
-**State Variables:**
-- `currentIndex`: Which notification to show (0-3)
-- `showIphone`: Toggle between iPhone/Android
-- `showNotification`: Controls when notification appears
-- `isFadingOut`: Controls the fade-out transition
-
-### 5. Updated useEffect Logic
-
-```tsx
-useEffect(() => {
-  let notificationTimer: NodeJS.Timeout;
-  let cycleTimer: NodeJS.Timeout;
-  
-  // Show notification after 1 second
-  notificationTimer = setTimeout(() => {
-    setShowNotification(true);
-  }, 1000);
-  
-  // After 4 seconds, fade out and switch
-  cycleTimer = setTimeout(() => {
-    setIsFadingOut(true);
-    
-    setTimeout(() => {
-      setShowNotification(false);
-      setCurrentIndex((prev) => (prev + 1) % notifications.length);
-      setShowIphone((prev) => !prev);
-      setIsFadingOut(false);
-    }, 300);
-  }, 4000);
-  
-  return () => {
-    clearTimeout(notificationTimer);
-    clearTimeout(cycleTimer);
-  };
-}, [currentIndex, showIphone]);
-```
-
-### 6. Notification Visibility
-- When `showNotification` is false: notification div is hidden or off-screen
-- When `showNotification` becomes true: notification slides in with `animate-notification-slide-in`
-
-### 7. File Changes
+### 1. Remove Bento Box Background for Step 3
+Modify the main `HowItWorks` component to conditionally remove the card styling for the "Get Notified" step.
 
 **File: `src/components/landing/HowItWorks.tsx`**
-- Lines 314-438: Complete rewrite of `NotificationsPreview` component
+- Lines 591-597: Add conditional styling to remove `bg-card border border-border` for step 3
 
-## Summary
-This creates a polished, realistic notification demo:
-- Both devices are the exact same size (no layout shift)
-- Users see an empty lock screen first
-- Notification animates in naturally after 1 second
-- Smooth transitions between iPhone and Android
+```tsx
+{/* Preview Container - no box for notifications */}
+<div className={cn(
+  "p-6 md:p-8 rounded-2xl",
+  step.number !== 3 && "bg-card border border-border card-hover",
+  index % 2 === 1 && "lg:order-1"
+)}>
+  {step.preview}
+</div>
+```
+
+### 2. Simplify iPhone Lock Screen
+Remove decorative elements from the iPhone screen - just show time and notification.
+
+**Current elements to remove:**
+- The gradient wallpaper shapes (keep solid dark background)
+- The date text (keep just time)
+- Bottom flashlight/camera controls
+
+**New iPhone screen styling:**
+- Solid dark background: `bg-zinc-950`
+- Keep time centered at top
+- Keep notification area
+- Remove bottom controls
+
+### 3. Simplify Android Lock Screen
+Same approach - minimal dark screen with just the notification.
+
+**Current elements to remove:**
+- Status bar icons (signal bars, battery)
+- Date text (keep just time)
+- Lock icon at bottom
+- Navigation bar at bottom
+
+**New Android screen styling:**
+- Solid dark background
+- Simple time display
+- Clean notification area
+
+### 4. Green SMS Bubble
+Replace the current Android notification card with a realistic green SMS bubble, matching the reference image.
+
+**New SMS styling:**
+```tsx
+{showNotification && (
+  <div className="flex justify-end px-4 animate-notification-slide-in">
+    <div 
+      className="max-w-[85%] bg-[#34C759] rounded-2xl rounded-br-sm px-4 py-2.5 shadow-lg"
+    >
+      <p className="text-[15px] text-white leading-snug">
+        Alert: {notif.team} {notif.event}. Tap to view live odds.
+      </p>
+    </div>
+  </div>
+)}
+```
+
+**Key styling details from reference:**
+- Background color: `#34C759` (Apple green)
+- Rounded corners with smaller bottom-right: `rounded-2xl rounded-br-sm`
+- Right-aligned (outgoing message style)
+- White text
+- Subtle shadow
+- No header/app chrome
+
+### 5. Summary of Changes
+
+| Element | Before | After |
+|---------|--------|-------|
+| Bento box background | Card with border | Transparent |
+| iPhone screen | Gradient wallpaper, date, controls | Solid dark, time only |
+| Android screen | Status bar, date, lock icon, nav bar | Solid dark, time only |
+| SMS notification | Gray card with header | Green bubble, right-aligned |
+
+### 6. Files Modified
+- `src/components/landing/HowItWorks.tsx` (lines 356-490 for NotificationsPreview, lines 591-597 for container)
+
