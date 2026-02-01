@@ -1,227 +1,216 @@
 
-# Fix: Auto-Select Game When Navigating from Games Page
 
-## Problem Summary
+# Homepage Visual Clarity and Flow Improvement Plan
 
-When clicking "Create Alert" on a game card, the user is navigated to `/alerts/create?eventID=xxx`, but:
-1. The game dropdown shows "Select a game" instead of the pre-selected game
-2. The Team Selector is disabled showing "Select event first"
-3. The user cannot proceed to set conditions
+## Current State Analysis
 
-## Root Cause
+The homepage currently has:
+- **Hero Section**: Good - clear headline, CTAs, and video modal
+- **GamesSection**: 2 bento boxes (Games Dashboard + All Major Sports)
+- **AlertsSection**: 4 bento boxes (Alert Builder, Quick Alert, Real-Time Updates, Notifications)
+- **Pricing**: 3 pricing tiers
+- **Footer**: Standard layout
 
-The `CreateAlert` page correctly reads the `eventID` from the URL and sets it in `condition.eventID`, but:
-- `selectedGame` state is initialized as `null` and never populated
-- `AlertEventSelector` fetches only 5 games that may not include the pre-selected game
-- Without `selectedGame`, the `AlertTeamSelector` remains disabled
+**Issues identified:**
+- Too many bento boxes (6 total across 2 sections) create visual noise
+- No clear narrative flow connecting the sections
+- AlertsSection has 4 boxes competing for attention
+- The user journey (Browse → Create → Get Notified) is not explicitly communicated
+- Inconsistent content density between sections
 
-## Solution Architecture
+---
+
+## Proposed Flow Structure
+
+Reorganize the homepage to tell a clear 3-step story:
 
 ```text
-                     ┌─────────────────────────────────┐
-                     │    Navigate with ?eventID=xxx   │
-                     └───────────────┬─────────────────┘
-                                     │
-                     ┌───────────────▼─────────────────┐
-                     │     CreateAlert detects         │
-                     │     preSelectedEventID          │
-                     └───────────────┬─────────────────┘
-                                     │
-          ┌──────────────────────────▼──────────────────────────┐
-          │         AlertEventSelector receives eventID         │
-          │         and fetches that specific game              │
-          └──────────────────────────┬──────────────────────────┘
-                                     │
-          ┌──────────────────────────▼──────────────────────────┐
-          │      On data load, find game and call onChange()    │
-          │      to populate selectedGame in parent             │
-          └──────────────────────────┬──────────────────────────┘
-                                     │
-          ┌──────────────────────────▼──────────────────────────┐
-          │        AlertTeamSelector receives game prop         │
-          │        and enables team selection                   │
-          └─────────────────────────────────────────────────────┘
++------------------+
+|      HERO        |
+|  "Get Tipped Off"|
++------------------+
+        |
+        v
++------------------+
+|  STEP 1: BROWSE  |
+|   Games Section  |
+|  [1 Large Bento] |
++------------------+
+        |
+        v
++------------------+
+| STEP 2: CREATE   |
+|   Alerts Section |
+|  [1 Large Bento] |
++------------------+
+        |
+        v
++------------------+
+|  STEP 3: NOTIFY  |
+| Notifications    |
+|  [1 Large Bento] |
++------------------+
+        |
+        v
++------------------+
+|     PRICING      |
++------------------+
+        |
+        v
++------------------+
+|      FOOTER      |
++------------------+
 ```
 
 ---
 
-## Implementation Steps
+## Detailed Implementation
 
-### Step 1: Update Edge Function to Support eventID Lookup
+### 1. Create New Unified "How It Works" Section
 
-**File:** `supabase/functions/sports-events/index.ts`
+**File:** Create a new component that houses all 3 steps with clear step indicators
 
-Add support for fetching a specific event by ID:
+**Structure:**
+- Step badges (1, 2, 3) with connecting lines between sections
+- Each step has a headline, description, and ONE impactful bento preview
+- Horizontal layout on desktop, vertical on mobile
 
-**Changes:**
-- Accept `eventID` query parameter
-- When provided, pass it to the API to fetch that specific event
-- This allows fetching a single game regardless of other filters
+### 2. Step 1: Browse Games (Consolidate GamesSection)
 
-```typescript
-const eventID = url.searchParams.get('eventID');
+**Current:** 2 bento boxes (Games Dashboard + All Major Sports)
+**New:** 1 consolidated bento with:
+- Interactive game dashboard preview (keep existing animation)
+- Sport tabs (NBA, NFL, MLB, NHL)
+- Live game cards with animated odds changes
+- Stats overlay (500+ events, 15+ sportsbooks, sub-second refresh)
 
-// If specific eventID requested, fetch just that event
-if (eventID) {
-  apiUrl.searchParams.set('eventID', eventID);
-} else {
-  // Existing logic for list queries...
-}
-```
+### 3. Step 2: Create Alerts (Consolidate AlertsSection)
 
-### Step 2: Create useGameById Hook
+**Current:** 4 bento boxes (Alert Builder, Quick Alert, Real-Time, Notifications)
+**New:** 1 consolidated bento with:
+- Visual IF/AND/THEN alert builder (keep existing design)
+- One-click quick alert button preview
+- Template chips at bottom
 
-**File:** `src/hooks/useGameById.ts` (new file)
+### 4. Step 3: Get Notified (New dedicated section)
 
-A focused hook to fetch a single game by ID:
-
-```typescript
-export function useGameById(eventID: string | null) {
-  return useQuery({
-    queryKey: ['game', eventID],
-    queryFn: async (): Promise<GameEvent | null> => {
-      if (!eventID) return null;
-      
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/sports-events?eventID=${eventID}`
-      );
-      
-      const result = await response.json();
-      
-      // Transform and return the single game
-      const game = result.data?.[0];
-      if (!game) return null;
-      
-      return {
-        ...game,
-        teams: {
-          home: {
-            ...game.teams.home,
-            name: game.teams.home.names?.long || game.teams.home.teamID,
-            abbreviation: game.teams.home.names?.short
-          },
-          away: {
-            ...game.teams.away,
-            name: game.teams.away.names?.long || game.teams.away.teamID,
-            abbreviation: game.teams.away.names?.short
-          }
-        }
-      };
-    },
-    enabled: !!eventID,
-  });
-}
-```
-
-### Step 3: Update AlertEventSelector Component
-
-**File:** `src/components/alerts/AlertEventSelector.tsx`
-
-Add logic to:
-1. Accept the pre-selected eventID
-2. Fetch that specific game using `useGameById`
-3. Auto-select and notify parent when data loads
-4. Include pre-selected game in dropdown even if not in filtered list
-
-**New Props:**
-```typescript
-interface AlertEventSelectorProps {
-  value: string | null;
-  onChange: (value: string | null, game: GameEvent | null) => void;
-  preSelectedEventID?: string | null;  // New prop
-}
-```
-
-**Key Logic:**
-```typescript
-// Fetch specific game if pre-selected
-const { data: preSelectedGame } = useGameById(preSelectedEventID);
-
-// Effect to auto-select when pre-selected game loads
-useEffect(() => {
-  if (preSelectedEventID && preSelectedGame && !hasAutoSelected) {
-    onChange(preSelectedEventID, preSelectedGame);
-    setHasAutoSelected(true);
-  }
-}, [preSelectedGame, preSelectedEventID]);
-
-// Combine pre-selected game with list (if not already present)
-const allGames = useMemo(() => {
-  const gameList = [...(games || [])];
-  if (preSelectedGame && !gameList.find(g => g.eventID === preSelectedGame.eventID)) {
-    gameList.unshift(preSelectedGame);
-  }
-  return gameList;
-}, [games, preSelectedGame]);
-```
-
-### Step 4: Update CreateAlert Page
-
-**File:** `src/pages/CreateAlert.tsx`
-
-Pass the pre-selected event ID to the selector:
-
-```typescript
-<AlertEventSelector
-  value={condition.eventID}
-  onChange={handleGameSelect}
-  preSelectedEventID={preSelectedEventID}  // Add this prop
-/>
-```
+**Current:** Notifications is buried as 1 of 4 boxes
+**New:** Promoted to its own step with:
+- Animated notification feed (keep existing animation)
+- Multi-channel indicators (Push, Email, SMS icons)
+- "Never miss a move" messaging
 
 ---
 
 ## File Changes Summary
 
-| File | Action | Changes |
-|------|--------|---------|
-| `supabase/functions/sports-events/index.ts` | Update | Add `eventID` parameter support for single-event lookup |
-| `src/hooks/useGameById.ts` | Create | New hook to fetch a single game by ID |
-| `src/components/alerts/AlertEventSelector.tsx` | Update | Add pre-selection logic with useEffect auto-select |
-| `src/pages/CreateAlert.tsx` | Update | Pass `preSelectedEventID` prop to AlertEventSelector |
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/landing/HowItWorks.tsx` | Create | New unified 3-step section component |
+| `src/components/landing/GamesSection.tsx` | Refactor | Consolidate to single powerful bento box |
+| `src/components/landing/AlertsSection.tsx` | Refactor | Consolidate to single alert builder bento |
+| `src/components/landing/NotificationsSection.tsx` | Create | New dedicated step 3 section |
+| `src/components/landing/index.ts` | Update | Export new components |
+| `src/pages/Index.tsx` | Update | Replace separate sections with HowItWorks |
+| `tailwind.config.ts` | Update | Add new animation for step connector |
+| `src/index.css` | Update | Add step number and connector styles |
+
+---
+
+## Visual Design Details
+
+### Step Indicators
+- Circular numbered badges (1, 2, 3) with amber gradient
+- Vertical connecting line between steps on mobile
+- Horizontal flow on desktop with arrow indicators
+
+### Bento Box Enhancements
+- Larger cards (full width on mobile, 2-column split on desktop)
+- Increased padding and breathing room
+- Subtle amber glow on hover
+- Clear visual hierarchy: Step number → Title → Description → Interactive Preview
+
+### Spacing Improvements
+- Increase section padding from `py-24` to `py-32`
+- Add more margin between step headline and bento content
+- Consistent 24px internal gaps
 
 ---
 
 ## Technical Details
 
-### Edge Function Changes
+### New HowItWorks Component Structure
 
 ```typescript
-// In sports-events/index.ts
-const eventID = url.searchParams.get('eventID');
-
-if (eventID) {
-  // Fetch specific event - no league restriction needed
-  apiUrl.searchParams.set('eventID', eventID);
-} else {
-  // Existing list query logic
-  if (leagueID) {
-    apiUrl.searchParams.set('leagueID', leagueID);
-  } else {
-    apiUrl.searchParams.set('leagueID', 'NBA,NFL,MLB,NHL,NCAAB,NCAAF');
-  }
-  apiUrl.searchParams.set('startsAtFrom', today.toISOString());
-  apiUrl.searchParams.set('limit', limit);
-}
+// src/components/landing/HowItWorks.tsx
+const steps = [
+  {
+    number: 1,
+    title: "Browse Games",
+    description: "Real-time odds across NFL, NBA, NHL, MLB...",
+    preview: <GamesDashboardPreview />,  // Consolidated preview
+  },
+  {
+    number: 2,
+    title: "Create Alerts",
+    description: "Build custom conditions with IF/THEN logic...",
+    preview: <AlertBuilderPreview />,  // Enhanced alert builder
+  },
+  {
+    number: 3,
+    title: "Get Notified",
+    description: "Instant alerts the moment your criteria...",
+    preview: <NotificationsPreview />,  // Promoted notifications
+  },
+];
 ```
 
-### AlertEventSelector Auto-Select Flow
+### Consolidated Games Preview
+Merge "Games Dashboard" and "All Major Sports" into one:
+- Interactive tabs remain
+- Add sport chips and stats below the game cards
+- Single cohesive visual
 
-1. Component receives `preSelectedEventID` prop
-2. `useGameById` hook fetches the specific game
-3. `useEffect` detects when game data is loaded
-4. Calls `onChange(eventID, game)` to update parent state
-5. Parent's `handleGameSelect` sets both `condition.eventID` and `selectedGame`
-6. `AlertTeamSelector` now receives valid `game` prop and enables selection
+### Consolidated Alerts Preview
+Merge "Alert Builder" and "Quick Alert":
+- Keep IF/AND/THEN visual builder
+- Add quick-alert button alongside
+- Keep template chips
+
+### Promoted Notifications
+Elevate from small box to full step:
+- Larger animated notification stream
+- Add channel icons (Push, Email, SMS)
+- Emphasize speed ("< 1 second delivery")
+
+---
+
+## Updated Index.tsx Structure
+
+```typescript
+const Index = () => {
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="pt-16">
+        <Hero />
+        <HowItWorks />  {/* New unified 3-step flow */}
+        <Pricing />
+      </main>
+      <Footer />
+    </div>
+  );
+};
+```
 
 ---
 
 ## Testing Checklist
 
 After implementation:
-1. Click "Create Alert" on a game card from Games page
-2. Verify the game auto-selects in the dropdown
-3. Verify Team Selector shows Home/Away options with correct team names
-4. Verify user can complete the full alert creation flow
-5. Test changing the game after auto-selection works
-6. Test direct URL navigation to `/alerts/create?eventID=xxx`
+1. Verify all 3 steps render correctly with step numbers
+2. Confirm animations (odds flash, notification slide) still work
+3. Check responsive behavior on mobile
+4. Verify scroll-to-section navigation still works
+5. Confirm visual hierarchy is clear and focused
+
