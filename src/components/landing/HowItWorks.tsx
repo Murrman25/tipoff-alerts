@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { LineChart, Target, Bell, ChevronDown, ArrowUp, ArrowDown, Mail, Smartphone, MessageSquare } from "lucide-react";
+import { useState, useEffect, Fragment } from "react";
+import { ChevronDown, ArrowUp, ArrowDown, Bell, Mail, Smartphone, MessageSquare } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { cn } from "@/lib/utils";
@@ -405,6 +405,24 @@ const NotificationsPreview = () => {
 };
 
 // ==========================================
+// STEP CONNECTOR COMPONENT
+// ==========================================
+const StepConnector = () => (
+  <div className="flex justify-center py-6 md:py-10">
+    <div className="relative w-1 h-20 md:h-28">
+      {/* Gradient line */}
+      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-primary via-primary/50 to-transparent" />
+      {/* Animated pulse overlay */}
+      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-primary via-primary/50 to-transparent animate-pulse opacity-60" />
+      {/* Arrow indicator */}
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
+        <ChevronDown className="w-6 h-6 text-primary animate-bounce" />
+      </div>
+    </div>
+  </div>
+);
+
+// ==========================================
 // STEP DATA
 // ==========================================
 const steps = [
@@ -412,21 +430,18 @@ const steps = [
     number: 1,
     title: "Browse Games",
     description: "Real-time odds across NFL, NBA, NHL, MLB and more. Live scores, spreads, and moneylines updated every second.",
-    icon: LineChart,
     preview: <GamesDashboardPreview />,
   },
   {
     number: 2,
     title: "Create Alerts",
     description: "Build custom conditions with IF/THEN logic. Set thresholds, combine rules, and choose exactly when you want to be notified.",
-    icon: Target,
     preview: <AlertBuilderPreview />,
   },
   {
     number: 3,
     title: "Get Notified",
     description: "Instant alerts the moment your criteria are met. Never miss a move with push, email, and SMS delivery.",
-    icon: Bell,
     preview: <NotificationsPreview />,
   },
 ];
@@ -461,7 +476,7 @@ export const HowItWorks = () => {
         </div>
 
         {/* 3-Step Flow */}
-        <div className="space-y-16 md:space-y-24">
+        <div className="space-y-4">
           {steps.map((step, index) => {
             const StepContent = () => {
               const { ref, isVisible } = useScrollAnimation();
@@ -489,14 +504,10 @@ export const HowItWorks = () => {
                       <div className="h-px flex-1 bg-gradient-to-r from-primary/50 to-transparent" />
                     </div>
                     
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <step.icon className="w-6 h-6 text-primary" />
-                      </div>
-                      <h3 className="text-2xl md:text-3xl font-bold tracking-tight">
-                        {step.title}
-                      </h3>
-                    </div>
+                    {/* Title - no icon box */}
+                    <h3 className="text-2xl md:text-3xl font-bold tracking-tight">
+                      {step.title}
+                    </h3>
                     
                     <p className="text-muted-foreground text-lg leading-relaxed">
                       {step.description}
@@ -514,7 +525,13 @@ export const HowItWorks = () => {
               );
             };
             
-            return <StepContent key={step.number} />;
+            return (
+              <Fragment key={step.number}>
+                <StepContent />
+                {/* Connector between steps (not after last step) */}
+                {index < steps.length - 1 && <StepConnector />}
+              </Fragment>
+            );
           })}
         </div>
       </div>
