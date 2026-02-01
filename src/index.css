@@ -129,6 +129,17 @@
     @apply transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_25px_rgba(245,158,11,0.2)];
   }
 
+  /* Live game card glow effect */
+  .live-card-glow {
+    @apply border-primary/50 shadow-[0_0_30px_rgba(245,158,11,0.25)];
+    background: linear-gradient(135deg, hsl(38 92% 50% / 0.08) 0%, transparent 50%);
+  }
+
+  /* Starting soon subtle border */
+  .starting-soon-border {
+    @apply border-primary/30;
+  }
+
   /* Scroll-triggered animations */
   .animate-on-scroll {
     opacity: 0;

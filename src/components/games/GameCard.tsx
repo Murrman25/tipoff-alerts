@@ -2,9 +2,10 @@ import { Link } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { GameEvent, LEAGUES, BookmakerID } from "@/types/games";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, differenceInMinutes, isToday, isTomorrow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { TeamLogo } from "@/components/TeamLogo";
+import { Badge } from "@/components/ui/badge";
 
 // Helper to safely get team name with fallbacks
 const getTeamName = (team: any): string => {
@@ -14,6 +15,33 @@ const getTeamName = (team: any): string => {
 const formatOdds = (odds: string) => {
   const num = parseInt(odds);
   return num > 0 ? `+${num}` : `${num}`;
+};
+
+// Format relative time for upcoming games
+const formatGameTime = (startsAt: string): string => {
+  const date = new Date(startsAt);
+  const timeStr = format(date, "h:mm a");
+  
+  if (isToday(date)) {
+    return `Today ${timeStr}`;
+  }
+  if (isTomorrow(date)) {
+    return `Tomorrow ${timeStr}`;
+  }
+  return format(date, "MMM d, h:mm a");
+};
+
+// Check if game is starting soon (within 60 minutes)
+const isStartingSoon = (startsAt: string): boolean => {
+  const now = new Date();
+  const start = new Date(startsAt);
+  const minutes = differenceInMinutes(start, now);
+  return minutes > 0 && minutes <= 60;
+};
+
+// Get minutes until start
+const getMinutesUntilStart = (startsAt: string): number => {
+  return differenceInMinutes(new Date(startsAt), new Date());
 };
 
 interface GameCardProps {
@@ -26,7 +54,12 @@ export const GameCard = ({
   preferredBookmaker = "draftkings",
 }: GameCardProps) => {
   const isLive = game.status.started && !game.status.ended;
-  const league = LEAGUES.find((l) => l.id === game.leagueID);
+  const hasScore = isLive && game.score;
+  const startingSoon = !isLive && isStartingSoon(game.status.startsAt);
+  const minutesUntil = startingSoon ? getMinutesUntilStart(game.status.startsAt) : 0;
+  
+  // Helper to determine if a team is winning
+  const isWinning = (teamScore: number, opponentScore: number) => teamScore > opponentScore;
 
   // Extract odds for display
   const homeMLKey = `points-home-game-ml-home`;
@@ -49,49 +82,66 @@ export const GameCard = ({
   const over = getOddsValue(overKey, preferredBookmaker);
   const under = getOddsValue(underKey, preferredBookmaker);
 
+  // Card styling based on state
+  const cardClasses = cn(
+    "p-5 rounded-xl bg-card border border-border transition-all duration-300",
+    isLive && "live-card-glow",
+    startingSoon && "starting-soon-border",
+    !isLive && !startingSoon && "card-hover"
+  );
+
   return (
-    <div className="p-4 rounded-xl bg-card border border-border card-hover">
+    <div className={cardClasses}>
       {/* Header with league and status */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {game.leagueID}
-          </span>
-        </div>
+      <div className="flex items-center justify-between mb-5">
+        <Badge variant="secondary" className="text-xs font-medium uppercase tracking-wide">
+          {game.leagueID}
+        </Badge>
+        
         {isLive ? (
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            <Badge className="bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse mr-1.5" />
               LIVE
-            </span>
-            <span className="text-xs text-muted-foreground">
+            </Badge>
+            <span className="text-sm font-medium text-muted-foreground">
               {game.status.period} {game.status.clock}
             </span>
           </div>
+        ) : startingSoon ? (
+          <Badge variant="outline" className="text-primary border-primary/30">
+            Starting in {minutesUntil}m
+          </Badge>
         ) : (
-          <span className="text-xs text-muted-foreground">
-            {format(new Date(game.status.startsAt), "MMM d, h:mm a")}
+          <span className="text-sm text-muted-foreground">
+            {formatGameTime(game.status.startsAt)}
           </span>
         )}
       </div>
 
       {/* Teams section */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {/* Away team row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <TeamLogo
               logoUrl={game.teams.away.logoUrl}
               teamName={getTeamName(game.teams.away)}
-              size={32}
+              size={40}
             />
-            <span className="font-medium truncate">{getTeamName(game.teams.away)}</span>
-            {isLive && game.score && (
-              <span className="text-lg font-bold ml-auto mr-4">
-                {game.score.away}
-              </span>
-            )}
+            <span className="font-medium truncate text-base">{getTeamName(game.teams.away)}</span>
           </div>
+          
+          {/* Score column - only visible for live games */}
+          {hasScore && (
+            <span className={cn(
+              "text-2xl font-bold tabular-nums min-w-[40px] text-center mx-4",
+              isWinning(game.score!.away, game.score!.home) && "text-primary"
+            )}>
+              {game.score!.away}
+            </span>
+          )}
+          
           <div className="flex items-center gap-2">
             {/* Spread */}
             {awaySpread?.available && (
@@ -122,21 +172,30 @@ export const GameCard = ({
           </div>
         </div>
 
+        {/* Separator between teams */}
+        <div className="border-t border-border/30" />
+
         {/* Home team row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <TeamLogo
               logoUrl={game.teams.home.logoUrl}
               teamName={getTeamName(game.teams.home)}
-              size={32}
+              size={40}
             />
-            <span className="font-medium truncate">{getTeamName(game.teams.home)}</span>
-            {isLive && game.score && (
-              <span className="text-lg font-bold ml-auto mr-4">
-                {game.score.home}
-              </span>
-            )}
+            <span className="font-medium truncate text-base">{getTeamName(game.teams.home)}</span>
           </div>
+          
+          {/* Score column - only visible for live games */}
+          {hasScore && (
+            <span className={cn(
+              "text-2xl font-bold tabular-nums min-w-[40px] text-center mx-4",
+              isWinning(game.score!.home, game.score!.away) && "text-primary"
+            )}>
+              {game.score!.home}
+            </span>
+          )}
+          
           <div className="flex items-center gap-2">
             {/* Spread */}
             {homeSpread?.available && (
@@ -170,11 +229,11 @@ export const GameCard = ({
 
       {/* Over/Under row */}
       {(over?.available || under?.available) && (
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
-          <span className="text-xs text-muted-foreground">Total</span>
+        <div className="flex items-center justify-between mt-5 pt-4 border-t border-border/50">
+          <span className="text-sm text-muted-foreground font-medium">Total</span>
           <div className="flex items-center gap-2">
             {over?.available && (
-              <div className="px-3 py-1 rounded-lg bg-secondary text-center">
+              <div className="px-3 py-1.5 rounded-lg bg-secondary text-center">
                 <span className="text-xs text-muted-foreground block">
                   O {over.overUnder}
                 </span>
@@ -184,7 +243,7 @@ export const GameCard = ({
               </div>
             )}
             {under?.available && (
-              <div className="px-3 py-1 rounded-lg bg-secondary text-center">
+              <div className="px-3 py-1.5 rounded-lg bg-secondary text-center">
                 <span className="text-xs text-muted-foreground block">
                   U {under.overUnder}
                 </span>
@@ -198,7 +257,7 @@ export const GameCard = ({
       )}
 
       {/* Create Alert Button */}
-      <div className="mt-4 pt-3 border-t border-border/50">
+      <div className="mt-5 pt-4 border-t border-border/50">
         <Link to={`/alerts/create?eventID=${game.eventID}`}>
           <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground">
             <Bell className="w-4 h-4 mr-2" />

@@ -26,15 +26,31 @@ const Games = () => {
   const filteredGames = useMemo(() => {
     if (!games) return [];
     
-    if (!filters.searchQuery) return games;
+    let result = games;
     
-    const query = filters.searchQuery.toLowerCase();
-    return games.filter((game) => {
-      const homeName = game.teams.home.name || game.teams.home.teamID || '';
-      const awayName = game.teams.away.name || game.teams.away.teamID || '';
-      const matchesHome = homeName.toLowerCase().includes(query);
-      const matchesAway = awayName.toLowerCase().includes(query);
-      return matchesHome || matchesAway;
+    // Apply search filter
+    if (filters.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      result = result.filter((game) => {
+        const homeName = game.teams.home.name || game.teams.home.teamID || '';
+        const awayName = game.teams.away.name || game.teams.away.teamID || '';
+        const matchesHome = homeName.toLowerCase().includes(query);
+        const matchesAway = awayName.toLowerCase().includes(query);
+        return matchesHome || matchesAway;
+      });
+    }
+    
+    // Sort: live games first, then by start time
+    return result.sort((a, b) => {
+      const aLive = a.status.started && !a.status.ended;
+      const bLive = b.status.started && !b.status.ended;
+      
+      // Live games first
+      if (aLive && !bLive) return -1;
+      if (!aLive && bLive) return 1;
+      
+      // Then by start time
+      return new Date(a.status.startsAt).getTime() - new Date(b.status.startsAt).getTime();
     });
   }, [games, filters.searchQuery]);
 
