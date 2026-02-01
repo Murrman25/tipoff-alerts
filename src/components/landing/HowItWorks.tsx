@@ -409,15 +409,15 @@ const NotificationsPreview = () => {
 // ==========================================
 const StepConnector = () => (
   <div className="flex justify-center py-8 md:py-12">
-    <div className="relative w-1.5 h-24 md:h-32">
-      {/* Solid glowing line */}
-      <div className="absolute inset-0 rounded-full bg-primary shadow-[0_0_15px_rgba(245,158,11,0.5)]" />
-      {/* Animated pulse overlay for glow effect */}
-      <div className="absolute inset-0 rounded-full bg-primary animate-pulse shadow-[0_0_25px_rgba(245,158,11,0.6)]" />
+    <div className="relative w-1 h-20 md:h-28">
+      {/* Subtle glowing line - muted amber to match dark retro theme */}
+      <div className="absolute inset-0 rounded-full bg-primary/70 shadow-[0_0_8px_rgba(245,158,11,0.25)]" />
+      {/* Soft animated pulse */}
+      <div className="absolute inset-0 rounded-full bg-primary/50 animate-pulse opacity-40" />
       {/* Arrow indicator */}
-      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
-        <div className="p-1.5 rounded-full bg-primary shadow-[0_0_15px_rgba(245,158,11,0.5)]">
-          <ChevronDown className="w-5 h-5 text-primary-foreground" />
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
+        <div className="p-1 rounded-full bg-primary/80 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+          <ChevronDown className="w-4 h-4 text-primary-foreground" />
         </div>
       </div>
     </div>
