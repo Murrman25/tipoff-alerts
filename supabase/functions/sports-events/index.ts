@@ -135,13 +135,32 @@ Deno.serve(async (req) => {
 
       console.log(`Found ${teamsMap.size} team mappings for ${teamIds.size} unique teams`);
 
-      // Enrich each event with logo URLs
+      // Enrich each event with logo URLs and normalize score data
       data.data = data.data.map((event: any) => {
         const homeTeamData = teamsMap.get(event.teams?.home?.teamID);
         const awayTeamData = teamsMap.get(event.teams?.away?.teamID);
 
+        // Extract and normalize score from results or status
+        let score = null;
+        if (event.results) {
+          const homePoints = event.results.home?.points;
+          const awayPoints = event.results.away?.points;
+          if (homePoints !== undefined && awayPoints !== undefined) {
+            score = { home: homePoints, away: awayPoints };
+          }
+        }
+        // Fallback: some APIs put live scores in status
+        if (!score && event.status?.score) {
+          score = event.status.score;
+        }
+
+        if (score) {
+          console.log(`Event ${event.eventID}: Score extracted - Home: ${score.home}, Away: ${score.away}`);
+        }
+
         return {
           ...event,
+          score, // normalized score object
           teams: {
             home: {
               ...event.teams.home,
