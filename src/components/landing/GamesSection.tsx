@@ -108,17 +108,21 @@ const GamesDashboardPreview = () => {
     <div className="mt-4 space-y-3">
       <Tabs value={activeSport} onValueChange={setActiveSport}>
         <TabsList className="bg-secondary/50 border border-border h-9">
-          <TabsTrigger value="nba" className="text-xs h-7 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <LeagueLogo leagueId="NBA" size={14} />
+          <TabsTrigger value="nba" className="text-xs h-7 gap-1.5 px-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <LeagueLogo leagueId="NBA" size={16} />
             NBA
           </TabsTrigger>
-          <TabsTrigger value="nfl" className="text-xs h-7 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <LeagueLogo leagueId="NFL" size={14} />
+          <TabsTrigger value="nfl" className="text-xs h-7 gap-1.5 px-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <LeagueLogo leagueId="NFL" size={16} />
             NFL
           </TabsTrigger>
-          <TabsTrigger value="mlb" className="text-xs h-7 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <LeagueLogo leagueId="MLB" size={14} />
+          <TabsTrigger value="mlb" className="text-xs h-7 gap-1.5 px-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <LeagueLogo leagueId="MLB" size={16} />
             MLB
+          </TabsTrigger>
+          <TabsTrigger value="nhl" className="text-xs h-7 gap-1.5 px-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <LeagueLogo leagueId="NHL" size={16} />
+            NHL
           </TabsTrigger>
         </TabsList>
       </Tabs>
