@@ -1,4 +1,4 @@
-import { Navbar, Hero, GamesSection, AlertsSection, Pricing, Footer } from "@/components/landing";
+import { Navbar, Hero, HowItWorks, Pricing, Footer } from "@/components/landing";
 
 const Index = () => {
   return (
@@ -6,8 +6,7 @@ const Index = () => {
       <Navbar />
       <main className="pt-16">
         <Hero />
-        <GamesSection />
-        <AlertsSection />
+        <HowItWorks />
         <Pricing />
       </main>
       <Footer />
