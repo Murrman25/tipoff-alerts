@@ -312,93 +312,126 @@ const AlertBuilderPreview = () => {
 // STEP 3: GET NOTIFIED - Consolidated Preview
 // ==========================================
 const NotificationsPreview = () => {
-  const allNotifications = [
-    { team: "Warriors", logo: WarriorsLogo, event: "ML hit -110" },
-    { team: "Bulls", logo: BullsLogo, event: "spread moved to -4.5" },
-    { team: "Rangers", logo: RangersLogo, event: "total dropped to 8.0" },
-    { team: "Celtics", logo: CelticsLogo, event: "ML reached +100" },
-    { team: "Vikings", logo: VikingsLogo, event: "spread moved to -3" },
-    { team: "Nuggets", logo: NuggetsLogo, event: "total climbed to 220.5" },
+  const notifications = [
+    { team: "Warriors", logo: WarriorsLogo, event: "ML hit -110", time: "Just now" },
+    { team: "Bulls", logo: BullsLogo, event: "spread moved to -4.5", time: "2m ago" },
+    { team: "Rangers", logo: RangersLogo, event: "total dropped to 8.0", time: "5m ago" },
+    { team: "Celtics", logo: CelticsLogo, event: "ML reached +100", time: "8m ago" },
   ];
 
-  const [visibleIndices, setVisibleIndices] = useState([0, 1, 2]);
-  const [animatingNew, setAnimatingNew] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showIphone, setShowIphone] = useState(true);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setAnimatingNew(true);
-      setVisibleIndices((prev) => {
-        const nextIdx = (prev[0] + 1) % allNotifications.length;
-        return [nextIdx, prev[0], prev[1]];
-      });
-      setTimeout(() => setAnimatingNew(false), 400);
-    }, 3000);
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % notifications.length);
+        setShowIphone((prev) => !prev);
+        setIsAnimating(false);
+      }, 300);
+    }, 3500);
     return () => clearInterval(interval);
   }, []);
 
-  const getTimeLabel = (index: number) => {
-    if (index === 0) return "Just now";
-    if (index === 1) return "3s ago";
-    return "6s ago";
-  };
+  const notif = notifications[currentIndex];
 
   return (
-    <div className="space-y-4">
-      {/* Notification Feed */}
-      <div className="space-y-2 overflow-hidden">
-        {visibleIndices.map((notifIdx, displayIdx) => {
-          const notif = allNotifications[notifIdx];
-          const isNew = displayIdx === 0;
-          
-          return (
-            <div
-              key={`${notifIdx}-${displayIdx}`}
-              className={cn(
-                "p-4 rounded-lg border transition-all duration-300",
-                isNew 
-                  ? "bg-primary/10 border-primary/30" 
-                  : "bg-secondary/50 border-border",
-                isNew && animatingNew && "animate-notification-slide-in",
-                displayIdx === 2 && "opacity-50"
-              )}
-            >
-              <div className="flex items-center gap-2 text-sm">
-                {isNew && (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary text-primary-foreground">
-                    NEW
-                  </span>
-                )}
-                <img src={notif.logo} alt={notif.team} className="w-5 h-5 object-contain" />
-                <Bell className={cn("w-4 h-4", isNew ? "text-primary" : "text-muted-foreground")} />
-                <span className="font-medium">{notif.team}</span>
-                <span className="text-muted-foreground">{notif.event}</span>
+    <div className="flex justify-center items-center py-4">
+      {/* Device Frame */}
+      <div className={cn(
+        "relative transition-all duration-300",
+        isAnimating && "opacity-0 scale-95"
+      )}>
+        {showIphone ? (
+          /* iPhone Push Notification */
+          <div className="w-[280px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2.5rem] p-3 shadow-2xl border border-zinc-700">
+            {/* Notch */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full" />
+            
+            {/* Screen */}
+            <div className="bg-gradient-to-br from-blue-900/40 via-purple-900/30 to-pink-900/20 rounded-[2rem] pt-10 pb-6 px-3 min-h-[380px]">
+              {/* Time */}
+              <div className="text-center mb-8">
+                <p className="text-5xl font-light text-white/90">9:41</p>
+                <p className="text-sm text-white/60 mt-1">Saturday, February 1</p>
               </div>
-              <div className="text-xs text-muted-foreground mt-1.5 ml-6">{getTimeLabel(displayIdx)}</div>
+              
+              {/* Push Notification */}
+              <div className="bg-white/20 backdrop-blur-xl rounded-2xl p-3 border border-white/10 animate-notification-slide-in">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
+                    <Bell className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-white/90">TIPOFFHQ</p>
+                      <p className="text-[10px] text-white/50">now</p>
+                    </div>
+                    <p className="text-sm font-medium text-white mt-0.5">🚨 Alert Triggered</p>
+                    <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
+                      {notif.team} {notif.event}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Multi-channel Indicators */}
-      <div className="pt-4 border-t border-border/50">
-        <p className="text-xs text-muted-foreground mb-3">Delivery Channels:</p>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
-            <Smartphone className="w-4 h-4 text-primary" />
-            <span className="text-sm">Push</span>
+            
+            {/* Home Indicator */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/30 rounded-full" />
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
-            <Mail className="w-4 h-4 text-primary" />
-            <span className="text-sm">Email</span>
+        ) : (
+          /* Android SMS */
+          <div className="w-[280px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[1.5rem] p-2 shadow-2xl border border-zinc-700">
+            {/* Status Bar */}
+            <div className="flex items-center justify-between px-4 py-2 text-white/70 text-xs">
+              <span>9:41</span>
+              <div className="flex items-center gap-1">
+                <div className="flex gap-0.5">
+                  <div className="w-1 h-2 bg-white/70 rounded-sm" />
+                  <div className="w-1 h-3 bg-white/70 rounded-sm" />
+                  <div className="w-1 h-4 bg-white/70 rounded-sm" />
+                  <div className="w-1 h-3 bg-white/40 rounded-sm" />
+                </div>
+                <span className="ml-1">78%</span>
+              </div>
+            </div>
+            
+            {/* Messages App Header */}
+            <div className="bg-zinc-900 rounded-t-xl px-4 py-3 border-b border-zinc-700/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">T</span>
+                </div>
+                <div>
+                  <p className="text-white font-medium text-sm">TIPOFFHQ</p>
+                  <p className="text-white/50 text-xs">Text message</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Message Thread */}
+            <div className="bg-zinc-900/80 min-h-[280px] px-3 py-4">
+              {/* SMS Bubble */}
+              <div className="flex justify-start animate-notification-slide-in">
+                <div className="max-w-[85%] bg-zinc-700 rounded-2xl rounded-tl-sm px-4 py-3">
+                  <p className="text-white text-sm leading-relaxed">
+                    🚨 TIPOFFHQ Alert: {notif.team} {notif.event}. Tap to view live odds.
+                  </p>
+                  <p className="text-white/40 text-[10px] mt-2 text-right">{notif.time}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Navigation Bar */}
+            <div className="flex items-center justify-center gap-12 py-2 bg-zinc-900 rounded-b-xl">
+              <div className="w-4 h-4 border-2 border-white/30 rounded-sm" />
+              <div className="w-4 h-4 rounded-full border-2 border-white/30" />
+              <div className="w-0 h-0 border-l-[6px] border-l-white/30 border-y-[5px] border-y-transparent" />
+            </div>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border">
-            <MessageSquare className="w-4 h-4 text-primary" />
-            <span className="text-sm">SMS</span>
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground mt-3">
-          ⚡ Delivered in under <span className="text-primary font-semibold">1 second</span>
-        </p>
+        )}
       </div>
     </div>
   );
