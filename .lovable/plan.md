@@ -1,216 +1,170 @@
 
 
-# Homepage Visual Clarity and Flow Improvement Plan
+# Visual Flow Improvement: Step Numbers Only + Connected Bento Boxes
 
-## Current State Analysis
+## Summary
 
-The homepage currently has:
-- **Hero Section**: Good - clear headline, CTAs, and video modal
-- **GamesSection**: 2 bento boxes (Games Dashboard + All Major Sports)
-- **AlertsSection**: 4 bento boxes (Alert Builder, Quick Alert, Real-Time Updates, Notifications)
-- **Pricing**: 3 pricing tiers
-- **Footer**: Standard layout
-
-**Issues identified:**
-- Too many bento boxes (6 total across 2 sections) create visual noise
-- No clear narrative flow connecting the sections
-- AlertsSection has 4 boxes competing for attention
-- The user journey (Browse → Create → Get Notified) is not explicitly communicated
-- Inconsistent content density between sections
+Remove the icon boxes next to step titles and add elegant visual connectors between the three bento boxes to create a clear flow from Browse → Create → Notify.
 
 ---
 
-## Proposed Flow Structure
+## Current State
 
-Reorganize the homepage to tell a clear 3-step story:
+Each step currently has:
+1. A numbered amber circle badge (keep)
+2. An icon box (LineChart, Target, Bell) next to the title (remove)
+3. A bento box preview
+
+The steps are visually independent with no connector elements.
+
+---
+
+## Changes Overview
+
+### 1. Remove Icon Boxes
+
+Delete the icon wrapper div next to each step title:
+
+```tsx
+// REMOVE this block (lines 492-495):
+<div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+  <step.icon className="w-6 h-6 text-primary" />
+</div>
+```
+
+Also remove the `icon` property from the steps array and the import of unused Lucide icons.
+
+### 2. Add Vertical Flow Connectors
+
+Add animated connecting lines between steps to visually show the flow:
 
 ```text
-+------------------+
-|      HERO        |
-|  "Get Tipped Off"|
-+------------------+
-        |
-        v
-+------------------+
-|  STEP 1: BROWSE  |
-|   Games Section  |
-|  [1 Large Bento] |
-+------------------+
-        |
-        v
-+------------------+
-| STEP 2: CREATE   |
-|   Alerts Section |
-|  [1 Large Bento] |
-+------------------+
-        |
-        v
-+------------------+
-|  STEP 3: NOTIFY  |
-| Notifications    |
-|  [1 Large Bento] |
-+------------------+
-        |
-        v
-+------------------+
-|     PRICING      |
-+------------------+
-        |
-        v
-+------------------+
-|      FOOTER      |
-+------------------+
+  ┌─────────────────────┐
+  │   STEP 1: BROWSE    │
+  │   [Bento Preview]   │
+  └─────────────────────┘
+           │
+           │  ← Animated gradient line
+           ▼
+  ┌─────────────────────┐
+  │   STEP 2: CREATE    │
+  │   [Bento Preview]   │
+  └─────────────────────┘
+           │
+           │  ← Animated gradient line
+           ▼
+  ┌─────────────────────┐
+  │   STEP 3: NOTIFY    │
+  │   [Bento Preview]   │
+  └─────────────────────┘
 ```
 
 ---
 
-## Detailed Implementation
+## Implementation Details
 
-### 1. Create New Unified "How It Works" Section
+### File: `src/components/landing/HowItWorks.tsx`
 
-**File:** Create a new component that houses all 3 steps with clear step indicators
+**Remove imports:**
+```tsx
+// Remove: LineChart, Target, Bell from lucide-react import
+```
 
-**Structure:**
-- Step badges (1, 2, 3) with connecting lines between sections
-- Each step has a headline, description, and ONE impactful bento preview
-- Horizontal layout on desktop, vertical on mobile
+**Update steps array:**
+```tsx
+const steps = [
+  {
+    number: 1,
+    title: "Browse Games",
+    description: "...",
+    preview: <GamesDashboardPreview />,
+    // Remove icon property
+  },
+  // ... same for steps 2 and 3
+];
+```
 
-### 2. Step 1: Browse Games (Consolidate GamesSection)
+**Add connector component between steps:**
+```tsx
+const StepConnector = () => (
+  <div className="flex justify-center py-4 md:py-8">
+    <div className="relative w-px h-16 md:h-24">
+      {/* Gradient line */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary via-primary/50 to-transparent" />
+      {/* Animated pulse */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary via-primary/50 to-transparent animate-pulse opacity-50" />
+      {/* Arrow indicator */}
+      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
+        <ChevronDown className="w-5 h-5 text-primary animate-bounce" />
+      </div>
+    </div>
+  </div>
+);
+```
 
-**Current:** 2 bento boxes (Games Dashboard + All Major Sports)
-**New:** 1 consolidated bento with:
-- Interactive game dashboard preview (keep existing animation)
-- Sport tabs (NBA, NFL, MLB, NHL)
-- Live game cards with animated odds changes
-- Stats overlay (500+ events, 15+ sportsbooks, sub-second refresh)
+**Update layout rendering:**
+```tsx
+{steps.map((step, index) => (
+  <React.Fragment key={step.number}>
+    <StepContent step={step} index={index} />
+    {/* Add connector after steps 1 and 2 (not after the last step) */}
+    {index < steps.length - 1 && <StepConnector />}
+  </React.Fragment>
+))}
+```
 
-### 3. Step 2: Create Alerts (Consolidate AlertsSection)
+**Remove icon display from StepContent:**
+```tsx
+// Before:
+<div className="flex items-center gap-3">
+  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+    <step.icon className="w-6 h-6 text-primary" />
+  </div>
+  <h3 className="text-2xl md:text-3xl font-bold tracking-tight">
+    {step.title}
+  </h3>
+</div>
 
-**Current:** 4 bento boxes (Alert Builder, Quick Alert, Real-Time, Notifications)
-**New:** 1 consolidated bento with:
-- Visual IF/AND/THEN alert builder (keep existing design)
-- One-click quick alert button preview
-- Template chips at bottom
+// After:
+<h3 className="text-2xl md:text-3xl font-bold tracking-tight">
+  {step.title}
+</h3>
+```
 
-### 4. Step 3: Get Notified (New dedicated section)
+### File: `tailwind.config.ts`
 
-**Current:** Notifications is buried as 1 of 4 boxes
-**New:** Promoted to its own step with:
-- Animated notification feed (keep existing animation)
-- Multi-channel indicators (Push, Email, SMS icons)
-- "Never miss a move" messaging
+Add a subtle flow animation for the connector line:
+
+```typescript
+keyframes: {
+  // Existing animations...
+  "flow-down": {
+    "0%": { backgroundPosition: "0% 0%" },
+    "100%": { backgroundPosition: "0% 100%" },
+  },
+},
+animation: {
+  // Existing animations...
+  "flow-down": "flow-down 2s ease-in-out infinite",
+},
+```
 
 ---
 
 ## File Changes Summary
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/landing/HowItWorks.tsx` | Create | New unified 3-step section component |
-| `src/components/landing/GamesSection.tsx` | Refactor | Consolidate to single powerful bento box |
-| `src/components/landing/AlertsSection.tsx` | Refactor | Consolidate to single alert builder bento |
-| `src/components/landing/NotificationsSection.tsx` | Create | New dedicated step 3 section |
-| `src/components/landing/index.ts` | Update | Export new components |
-| `src/pages/Index.tsx` | Update | Replace separate sections with HowItWorks |
-| `tailwind.config.ts` | Update | Add new animation for step connector |
-| `src/index.css` | Update | Add step number and connector styles |
+| File | Action | Changes |
+|------|--------|---------|
+| `src/components/landing/HowItWorks.tsx` | Update | Remove icons, add StepConnector component, update layout |
+| `tailwind.config.ts` | Update | Add flow-down animation keyframe |
 
 ---
 
-## Visual Design Details
+## Visual Result
 
-### Step Indicators
-- Circular numbered badges (1, 2, 3) with amber gradient
-- Vertical connecting line between steps on mobile
-- Horizontal flow on desktop with arrow indicators
-
-### Bento Box Enhancements
-- Larger cards (full width on mobile, 2-column split on desktop)
-- Increased padding and breathing room
-- Subtle amber glow on hover
-- Clear visual hierarchy: Step number → Title → Description → Interactive Preview
-
-### Spacing Improvements
-- Increase section padding from `py-24` to `py-32`
-- Add more margin between step headline and bento content
-- Consistent 24px internal gaps
-
----
-
-## Technical Details
-
-### New HowItWorks Component Structure
-
-```typescript
-// src/components/landing/HowItWorks.tsx
-const steps = [
-  {
-    number: 1,
-    title: "Browse Games",
-    description: "Real-time odds across NFL, NBA, NHL, MLB...",
-    preview: <GamesDashboardPreview />,  // Consolidated preview
-  },
-  {
-    number: 2,
-    title: "Create Alerts",
-    description: "Build custom conditions with IF/THEN logic...",
-    preview: <AlertBuilderPreview />,  // Enhanced alert builder
-  },
-  {
-    number: 3,
-    title: "Get Notified",
-    description: "Instant alerts the moment your criteria...",
-    preview: <NotificationsPreview />,  // Promoted notifications
-  },
-];
-```
-
-### Consolidated Games Preview
-Merge "Games Dashboard" and "All Major Sports" into one:
-- Interactive tabs remain
-- Add sport chips and stats below the game cards
-- Single cohesive visual
-
-### Consolidated Alerts Preview
-Merge "Alert Builder" and "Quick Alert":
-- Keep IF/AND/THEN visual builder
-- Add quick-alert button alongside
-- Keep template chips
-
-### Promoted Notifications
-Elevate from small box to full step:
-- Larger animated notification stream
-- Add channel icons (Push, Email, SMS)
-- Emphasize speed ("< 1 second delivery")
-
----
-
-## Updated Index.tsx Structure
-
-```typescript
-const Index = () => {
-  return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className="pt-16">
-        <Hero />
-        <HowItWorks />  {/* New unified 3-step flow */}
-        <Pricing />
-      </main>
-      <Footer />
-    </div>
-  );
-};
-```
-
----
-
-## Testing Checklist
-
-After implementation:
-1. Verify all 3 steps render correctly with step numbers
-2. Confirm animations (odds flash, notification slide) still work
-3. Check responsive behavior on mobile
-4. Verify scroll-to-section navigation still works
-5. Confirm visual hierarchy is clear and focused
+- Clean step badges (1, 2, 3) with amber gradient
+- No icon boxes - just the step number and title
+- Animated vertical connectors between each bento box
+- Clear directional flow with subtle chevron arrows
+- Maintains alternating left/right layout on desktop
 
