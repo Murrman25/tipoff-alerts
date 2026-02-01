@@ -13,6 +13,17 @@ export interface Team {
   name?: string;
   abbreviation?: string;
   logo?: string;
+  /** Enriched logo URL from team registry (added by edge function) */
+  logoUrl?: string;
+  /** Canonical team data from registry (added by edge function) */
+  canonical?: {
+    id: string;
+    displayName: string;
+    shortName?: string;
+    city?: string;
+    league: string;
+    sport: string;
+  };
 }
 
 export interface EventStatus {
