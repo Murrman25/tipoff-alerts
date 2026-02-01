@@ -408,15 +408,17 @@ const NotificationsPreview = () => {
 // STEP CONNECTOR COMPONENT
 // ==========================================
 const StepConnector = () => (
-  <div className="flex justify-center py-6 md:py-10">
-    <div className="relative w-1 h-20 md:h-28">
-      {/* Gradient line */}
-      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-primary via-primary/50 to-transparent" />
-      {/* Animated pulse overlay */}
-      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-primary via-primary/50 to-transparent animate-pulse opacity-60" />
+  <div className="flex justify-center py-8 md:py-12">
+    <div className="relative w-1.5 h-24 md:h-32">
+      {/* Solid glowing line */}
+      <div className="absolute inset-0 rounded-full bg-primary shadow-[0_0_15px_rgba(245,158,11,0.5)]" />
+      {/* Animated pulse overlay for glow effect */}
+      <div className="absolute inset-0 rounded-full bg-primary animate-pulse shadow-[0_0_25px_rgba(245,158,11,0.6)]" />
       {/* Arrow indicator */}
-      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
-        <ChevronDown className="w-6 h-6 text-primary animate-bounce" />
+      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
+        <div className="p-1.5 rounded-full bg-primary shadow-[0_0_15px_rgba(245,158,11,0.5)]">
+          <ChevronDown className="w-5 h-5 text-primary-foreground" />
+        </div>
       </div>
     </div>
   </div>
@@ -496,18 +498,15 @@ export const HowItWorks = () => {
                     "space-y-6",
                     index % 2 === 1 && "lg:order-2"
                   )}>
-                    {/* Step Badge */}
+                    {/* Step Badge + Title together */}
                     <div className="flex items-center gap-4">
-                      <div className="step-number w-12 h-12 rounded-full bg-amber-gradient flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg">
+                      <div className="step-number w-12 h-12 rounded-full bg-amber-gradient flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg flex-shrink-0">
                         {step.number}
                       </div>
-                      <div className="h-px flex-1 bg-gradient-to-r from-primary/50 to-transparent" />
+                      <h3 className="text-2xl md:text-3xl font-bold tracking-tight">
+                        {step.title}
+                      </h3>
                     </div>
-                    
-                    {/* Title - no icon box */}
-                    <h3 className="text-2xl md:text-3xl font-bold tracking-tight">
-                      {step.title}
-                    </h3>
                     
                     <p className="text-muted-foreground text-lg leading-relaxed">
                       {step.description}
