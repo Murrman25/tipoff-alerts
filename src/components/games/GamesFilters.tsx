@@ -21,6 +21,7 @@ import {
   BetTypeID,
 } from "@/types/games";
 import { cn } from "@/lib/utils";
+import { LeagueLogo } from "./LeagueLogo";
 
 interface GamesFiltersProps {
   filters: FiltersType;
@@ -142,6 +143,7 @@ export const GamesFilters = ({
                       toggleArrayFilter("leagueID", league.id)
                     }
                   />
+                  <LeagueLogo leagueId={league.id} size={18} />
                   <span className="text-sm">{league.name}</span>
                 </label>
               ))}
@@ -284,9 +286,10 @@ export const GamesFilters = ({
             <Badge
               key={id}
               variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-secondary/80"
+              className="gap-1.5 cursor-pointer hover:bg-secondary/80"
               onClick={() => toggleArrayFilter("leagueID", id)}
             >
+              <LeagueLogo leagueId={id} size={14} />
               {LEAGUES.find((l) => l.id === id)?.name}
               <X className="w-3 h-3" />
             </Badge>

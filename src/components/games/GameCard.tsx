@@ -6,6 +6,7 @@ import { format, differenceInMinutes, isToday, isTomorrow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { TeamLogo } from "@/components/TeamLogo";
 import { Badge } from "@/components/ui/badge";
+import { LeagueLogo } from "./LeagueLogo";
 
 // Helper to safely get team name with fallbacks
 const getTeamName = (team: any): string => {
@@ -94,7 +95,8 @@ export const GameCard = ({
     <div className={cardClasses}>
       {/* Header with league and status */}
       <div className="flex items-center justify-between mb-5">
-        <Badge variant="secondary" className="text-xs font-medium uppercase tracking-wide">
+        <Badge variant="secondary" className="gap-1.5 text-xs font-medium uppercase tracking-wide pr-2">
+          <LeagueLogo leagueId={game.leagueID} size={16} />
           {game.leagueID}
         </Badge>
         
