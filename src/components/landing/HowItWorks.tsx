@@ -321,117 +321,170 @@ const NotificationsPreview = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showIphone, setShowIphone] = useState(true);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
+    // Reset notification visibility on device/notification change
+    setShowNotification(false);
+    
+    // Show notification after 1 second
+    const notificationTimer = setTimeout(() => {
+      setShowNotification(true);
+    }, 1000);
+    
+    // After 4 seconds, fade out and switch
+    const cycleTimer = setTimeout(() => {
+      setIsFadingOut(true);
+      
       setTimeout(() => {
+        setShowNotification(false);
         setCurrentIndex((prev) => (prev + 1) % notifications.length);
         setShowIphone((prev) => !prev);
-        setIsAnimating(false);
+        setIsFadingOut(false);
       }, 300);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, []);
+    }, 4000);
+    
+    return () => {
+      clearTimeout(notificationTimer);
+      clearTimeout(cycleTimer);
+    };
+  }, [currentIndex, showIphone]);
 
   const notif = notifications[currentIndex];
 
   return (
-    <div className="flex justify-center items-center py-4">
-      {/* Device Frame */}
-      <div className={cn(
-        "relative transition-all duration-300",
-        isAnimating && "opacity-0 scale-95"
-      )}>
-        {showIphone ? (
-          /* iPhone Push Notification */
-          <div className="w-[280px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2.5rem] p-3 shadow-2xl border border-zinc-700">
-            {/* Notch */}
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full" />
-            
-            {/* Screen */}
-            <div className="bg-gradient-to-br from-blue-900/40 via-purple-900/30 to-pink-900/20 rounded-[2rem] pt-10 pb-6 px-3 min-h-[380px]">
-              {/* Time */}
-              <div className="text-center mb-8">
-                <p className="text-5xl font-light text-white/90">9:41</p>
-                <p className="text-sm text-white/60 mt-1">Saturday, February 1</p>
+    <div className="flex justify-center items-center">
+      {/* Fixed-size container to prevent layout shift */}
+      <div className="w-[280px] h-[480px] flex items-center justify-center">
+        <div className={cn(
+          "transition-all duration-300",
+          isFadingOut && "opacity-0 scale-95"
+        )}>
+          {showIphone ? (
+            /* iPhone with Push Notification */
+            <div className="w-[280px] h-[460px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2.5rem] p-3 shadow-2xl border border-zinc-700 relative">
+              {/* Dynamic Island */}
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-10" />
+              
+              {/* Screen */}
+              <div className="bg-gradient-to-br from-indigo-900/60 via-purple-900/40 to-pink-900/30 rounded-[2rem] h-full flex flex-col overflow-hidden">
+                {/* Lock Screen Content */}
+                <div className="flex-1 flex flex-col pt-14 px-4">
+                  {/* Time Display */}
+                  <div className="text-center mb-6">
+                    <p className="text-6xl font-extralight text-white tracking-tight">9:41</p>
+                    <p className="text-base text-white/60 mt-1 font-light">Saturday, February 1</p>
+                  </div>
+                  
+                  {/* Push Notification Area */}
+                  <div className="flex-1 flex flex-col justify-start pt-4">
+                    {showNotification && (
+                      <div className="bg-white/15 backdrop-blur-xl rounded-2xl p-3.5 border border-white/10 animate-notification-slide-in shadow-lg">
+                        <div className="flex items-start gap-3">
+                          <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-md">
+                            <Bell className="w-5 h-5 text-primary-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <p className="text-xs font-semibold text-white/90 uppercase tracking-wide">TIPOFFHQ</p>
+                              <p className="text-[10px] text-white/50">now</p>
+                            </div>
+                            <p className="text-sm font-semibold text-white">🚨 Alert Triggered</p>
+                            <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
+                              {notif.team} {notif.event}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Bottom Controls */}
+                <div className="flex items-center justify-between px-8 pb-8">
+                  <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur flex items-center justify-center">
+                    <div className="w-6 h-6 rounded border-2 border-white/60" />
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur flex items-center justify-center">
+                    <div className="w-5 h-5 rounded-full border-2 border-white/60" />
+                  </div>
+                </div>
               </div>
               
-              {/* Push Notification */}
-              <div className="bg-white/20 backdrop-blur-xl rounded-2xl p-3 border border-white/10 animate-notification-slide-in">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
-                    <Bell className="w-5 h-5 text-primary-foreground" />
+              {/* Home Indicator */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/40 rounded-full" />
+            </div>
+          ) : (
+            /* Android with SMS */
+            <div className="w-[280px] h-[460px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2rem] p-2 shadow-2xl border border-zinc-700 relative flex flex-col">
+              {/* Status Bar */}
+              <div className="flex items-center justify-between px-5 py-2 text-white/70 text-xs">
+                <span className="font-medium">9:41</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-0.5 items-end">
+                    <div className="w-1 h-1.5 bg-white/60 rounded-sm" />
+                    <div className="w-1 h-2.5 bg-white/60 rounded-sm" />
+                    <div className="w-1 h-3.5 bg-white/60 rounded-sm" />
+                    <div className="w-1 h-2.5 bg-white/40 rounded-sm" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-white/90">TIPOFFHQ</p>
-                      <p className="text-[10px] text-white/50">now</p>
+                  <div className="flex items-center gap-0.5">
+                    <div className="w-5 h-2.5 rounded-sm border border-white/50 relative">
+                      <div className="absolute inset-0.5 right-1 bg-white/60 rounded-[1px]" />
                     </div>
-                    <p className="text-sm font-medium text-white mt-0.5">🚨 Alert Triggered</p>
-                    <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
-                      {notif.team} {notif.event}
-                    </p>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            {/* Home Indicator */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/30 rounded-full" />
-          </div>
-        ) : (
-          /* Android SMS */
-          <div className="w-[280px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[1.5rem] p-2 shadow-2xl border border-zinc-700">
-            {/* Status Bar */}
-            <div className="flex items-center justify-between px-4 py-2 text-white/70 text-xs">
-              <span>9:41</span>
-              <div className="flex items-center gap-1">
-                <div className="flex gap-0.5">
-                  <div className="w-1 h-2 bg-white/70 rounded-sm" />
-                  <div className="w-1 h-3 bg-white/70 rounded-sm" />
-                  <div className="w-1 h-4 bg-white/70 rounded-sm" />
-                  <div className="w-1 h-3 bg-white/40 rounded-sm" />
+              
+              {/* Lock Screen */}
+              <div className="flex-1 bg-gradient-to-br from-slate-800/80 via-slate-900/90 to-zinc-900 rounded-2xl mx-0.5 flex flex-col overflow-hidden">
+                {/* Clock */}
+                <div className="text-center pt-12 pb-6">
+                  <p className="text-5xl font-light text-white tracking-wide">9:41</p>
+                  <p className="text-sm text-white/50 mt-2">Sat, Feb 1</p>
                 </div>
-                <span className="ml-1">78%</span>
-              </div>
-            </div>
-            
-            {/* Messages App Header */}
-            <div className="bg-zinc-900 rounded-t-xl px-4 py-3 border-b border-zinc-700/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">T</span>
+                
+                {/* Notification Area */}
+                <div className="flex-1 px-3 pt-4">
+                  {showNotification && (
+                    <div className="bg-zinc-800/90 backdrop-blur rounded-2xl overflow-hidden border border-zinc-700/50 animate-notification-slide-in shadow-lg">
+                      {/* App Header */}
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-700/30">
+                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <MessageSquare className="w-3 h-3 text-primary-foreground" />
+                        </div>
+                        <span className="text-xs font-medium text-white/80">Messages</span>
+                        <span className="text-[10px] text-white/40 ml-auto">now</span>
+                      </div>
+                      
+                      {/* Message Content */}
+                      <div className="p-3">
+                        <p className="text-xs font-semibold text-white/90 mb-1">TIPOFFHQ</p>
+                        <p className="text-sm text-white/70 leading-relaxed">
+                          🚨 Alert: {notif.team} {notif.event}. Tap to view live odds.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <p className="text-white font-medium text-sm">TIPOFFHQ</p>
-                  <p className="text-white/50 text-xs">Text message</p>
-                </div>
-              </div>
-            </div>
-            
-            {/* Message Thread */}
-            <div className="bg-zinc-900/80 min-h-[280px] px-3 py-4">
-              {/* SMS Bubble */}
-              <div className="flex justify-start animate-notification-slide-in">
-                <div className="max-w-[85%] bg-zinc-700 rounded-2xl rounded-tl-sm px-4 py-3">
-                  <p className="text-white text-sm leading-relaxed">
-                    🚨 TIPOFFHQ Alert: {notif.team} {notif.event}. Tap to view live odds.
-                  </p>
-                  <p className="text-white/40 text-[10px] mt-2 text-right">{notif.time}</p>
+                
+                {/* Lock Icon */}
+                <div className="flex justify-center pb-8">
+                  <div className="w-8 h-8 rounded-full border-2 border-white/20 flex items-center justify-center">
+                    <div className="w-2 h-3 border-2 border-white/30 rounded-sm" />
+                  </div>
                 </div>
               </div>
+              
+              {/* Navigation Bar */}
+              <div className="flex items-center justify-center gap-12 py-2">
+                <div className="w-4 h-4 border-2 border-white/30 rounded-sm" />
+                <div className="w-4 h-4 rounded-full border-2 border-white/30" />
+                <div className="w-0 h-0 border-l-[6px] border-l-white/30 border-y-[5px] border-y-transparent" />
+              </div>
             </div>
-            
-            {/* Navigation Bar */}
-            <div className="flex items-center justify-center gap-12 py-2 bg-zinc-900 rounded-b-xl">
-              <div className="w-4 h-4 border-2 border-white/30 rounded-sm" />
-              <div className="w-4 h-4 rounded-full border-2 border-white/30" />
-              <div className="w-0 h-0 border-l-[6px] border-l-white/30 border-y-[5px] border-y-transparent" />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
