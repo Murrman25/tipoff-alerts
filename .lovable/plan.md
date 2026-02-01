@@ -1,184 +1,98 @@
 
-# Add League Logo Images to Filters and Game Cards
+# Fix Live Game Scores Display
 
-## Summary
-Update the league dropdown in GamesFilters and the league badge in GameCard to display official league logos alongside (or in place of) the text-only league names. The user has uploaded 7 league logos: NFL, NBA, MLB, NHL, MLS, NCAAB, and NCAAF.
-
----
-
-## Uploaded League Logos
-
-| League | Uploaded File | Mapped ID |
-|--------|---------------|-----------|
-| NFL | Property_1_NFL_Logo.png | NFL |
-| NBA | Property_1_NBA_Logo.png | NBA |
-| MLB | Property_1_MLB_Logo.png | MLB |
-| NHL | Property_1_NHL_Logo.png | NHL |
-| MLS | Property_1_MLS.png | (not currently used) |
-| NCAAB | ncaa-basketball-logo-png-transparent.png | NCAAB |
-| NCAAF | football-ncaa.png | NCAAF |
+## Problem Summary
+Live game scores are not displaying because of a mismatch between the API response structure and what the frontend expects. The SportsGameOdds API returns scores in a `results` object, but the frontend expects them in a `score` object.
 
 ---
 
-## Implementation Steps
+## Current State
 
-### 1. Copy Logo Files to Project Assets
-
-Copy the uploaded league logos from `user-uploads://` to `src/assets/leagues/` folder:
-
-```
-src/assets/leagues/
-  nfl.png
-  nba.png
-  mlb.png
-  nhl.png
-  ncaab.png
-  ncaaf.png
-  mls.png  (for future use)
-```
-
-### 2. Create League Logo Mapping
-
-Add a new file or extend `src/types/games.ts` to include logo imports:
-
+**GameCard expects:**
 ```typescript
-// src/components/games/LeagueLogo.tsx
-import nflLogo from "@/assets/leagues/nfl.png";
-import nbaLogo from "@/assets/leagues/nba.png";
-import mlbLogo from "@/assets/leagues/mlb.png";
-import nhlLogo from "@/assets/leagues/nhl.png";
-import ncaabLogo from "@/assets/leagues/ncaab.png";
-import ncaafLogo from "@/assets/leagues/ncaaf.png";
-
-export const LEAGUE_LOGOS: Record<string, string> = {
-  NFL: nflLogo,
-  NBA: nbaLogo,
-  MLB: mlbLogo,
-  NHL: nhlLogo,
-  NCAAB: ncaabLogo,
-  NCAAF: ncaafLogo,
-};
+game.score?.home  // number
+game.score?.away  // number
 ```
 
-### 3. Create Reusable LeagueLogo Component
-
-Create a component similar to TeamLogo for league logos:
-
+**API returns:**
 ```typescript
-interface LeagueLogoProps {
-  leagueId: string;
-  size?: number;
-  className?: string;
-  showName?: boolean; // optionally show name next to logo
+game.results: {
+  home: { points: number },
+  away: { points: number }
 }
+// OR for live games:
+game.status: {
+  score?: { home: number, away: number }
+}
+```
 
-export const LeagueLogo = ({ leagueId, size = 20, className, showName = false }) => {
-  const logoSrc = LEAGUE_LOGOS[leagueId];
+---
+
+## Solution: Transform Score Data in Edge Function
+
+### Step 1: Update Edge Function to Map Score Data
+
+Modify `supabase/functions/sports-events/index.ts` to extract and normalize score data:
+
+```typescript
+// Inside the event enrichment loop
+data.data = data.data.map((event: any) => {
+  // ... existing team enrichment ...
   
-  if (!logoSrc) {
-    // Fallback to text badge if no logo
-    return <span>{leagueId}</span>;
+  // Extract score from results or status
+  let score = null;
+  if (event.results) {
+    const homePoints = event.results.home?.points;
+    const awayPoints = event.results.away?.points;
+    if (homePoints !== undefined && awayPoints !== undefined) {
+      score = { home: homePoints, away: awayPoints };
+    }
   }
-  
-  return (
-    <div className="flex items-center gap-1.5">
-      <img src={logoSrc} alt={leagueId} style={{ height: size }} className="object-contain" />
-      {showName && <span>{leagueId}</span>}
-    </div>
-  );
-};
+  // Some APIs put live scores in status
+  if (!score && event.status?.score) {
+    score = event.status.score;
+  }
+
+  return {
+    ...event,
+    score, // normalized score object
+    teams: { ... }
+  };
+});
 ```
 
-### 4. Update GamesFilters Component
+### Step 2: Update TypeScript Types
 
-Modify `src/components/games/GamesFilters.tsx` to display league logos in:
+Ensure `src/types/games.ts` includes proper score typing in GameEvent (already exists).
 
-**A. League Dropdown Menu Items** (lines 133-148):
-```tsx
-{LEAGUES.map((league) => (
-  <label key={league.id} className="flex items-center gap-2 cursor-pointer">
-    <Checkbox ... />
-    <LeagueLogo leagueId={league.id} size={18} />
-    <span className="text-sm">{league.name}</span>
-  </label>
-))}
-```
+### Step 3: Verify Mock Data Continues Working
 
-**B. Active Filter Badges** (lines 283-293):
-```tsx
-{filters.leagueID.map((id) => (
-  <Badge key={id} variant="secondary" className="gap-1.5 cursor-pointer ...">
-    <LeagueLogo leagueId={id} size={14} />
-    {LEAGUES.find((l) => l.id === id)?.name}
-    <X className="w-3 h-3" />
-  </Badge>
-))}
-```
-
-### 5. Update GameCard Component
-
-Modify `src/components/games/GameCard.tsx` to show league logo in header (line 97-99):
-
-**Current:**
-```tsx
-<Badge variant="secondary" className="text-xs font-medium uppercase tracking-wide">
-  {game.leagueID}
-</Badge>
-```
-
-**Updated:**
-```tsx
-<Badge variant="secondary" className="gap-1.5 text-xs font-medium uppercase tracking-wide pr-2">
-  <LeagueLogo leagueId={game.leagueID} size={16} />
-  {game.leagueID}
-</Badge>
-```
+The mock live game in `useGames.ts` already has the correct format and should continue working. This change ensures real API data also works.
 
 ---
 
-## Files to Create/Modify
+## Files to Modify
 
-| File | Action |
+| File | Change |
 |------|--------|
-| `src/assets/leagues/*.png` | Create - copy uploaded logos |
-| `src/components/games/LeagueLogo.tsx` | Create - new component with logo mapping |
-| `src/components/games/GamesFilters.tsx` | Modify - add logos to dropdown and badges |
-| `src/components/games/GameCard.tsx` | Modify - add logo to header badge |
+| `supabase/functions/sports-events/index.ts` | Add score extraction from `results` object |
 
 ---
 
-## Visual Preview
+## Testing Strategy
 
-**Dropdown with logos:**
-```
-┌─────────────────────────────────┐
-│ Select Leagues                  │
-├─────────────────────────────────┤
-│ [x] [NFL logo] NFL              │
-│ [ ] [NBA logo] NBA              │
-│ [ ] [MLB logo] MLB              │
-│ [x] [NHL logo] NHL              │
-│ [ ] [NCAAB logo] NCAAB          │
-│ [ ] [NCAAF logo] NCAAF          │
-└─────────────────────────────────┘
-```
-
-**Game card header with logo:**
-```
-┌─────────────────────────────────────────────────────────────┐
-│  [NFL logo] NFL                            Today 7:30 PM    │
-```
-
-**Active filter badges:**
-```
-[NFL logo] NFL  ✕    [NHL logo] NHL  ✕
-```
+1. Deploy updated edge function
+2. Check if mock live game (Warriors vs Celtics) still displays scores
+3. When real live games are available, verify scores appear
+4. Add console logging to debug score extraction
 
 ---
 
-## Technical Notes
+## Additional Consideration
 
-- Using ES6 imports for league logos ensures proper bundling and optimization
-- The `object-contain` CSS class preserves aspect ratio for different logo shapes
-- Size prop allows flexible sizing across different use cases (dropdown vs badge vs card)
-- Fallback to text-only display if logo is missing for any league
+The current API query may not be fetching truly live games. The games returned have `status.live: false`. To get live games, we may need to:
+
+1. Add a `live=true` filter parameter to the API request
+2. Or query without the `startsAtFrom` date filter to include in-progress games
+
+This can be investigated as a follow-up if scores still don't appear after the data mapping fix.
