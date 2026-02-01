@@ -91,6 +91,54 @@ export type Database = {
         }
         Relationships: []
       }
+      teams: {
+        Row: {
+          city: string | null
+          created_at: string | null
+          display_name: string
+          espn_id: string | null
+          id: string
+          league: string
+          logo_filename: string | null
+          odds_api_id: string | null
+          short_name: string | null
+          sport: string
+          sportradar_id: string | null
+          sportsgameodds_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string | null
+          display_name: string
+          espn_id?: string | null
+          id: string
+          league: string
+          logo_filename?: string | null
+          odds_api_id?: string | null
+          short_name?: string | null
+          sport: string
+          sportradar_id?: string | null
+          sportsgameodds_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string | null
+          display_name?: string
+          espn_id?: string | null
+          id?: string
+          league?: string
+          logo_filename?: string | null
+          odds_api_id?: string | null
+          short_name?: string | null
+          sport?: string
+          sportradar_id?: string | null
+          sportsgameodds_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_notification_settings: {
         Row: {
           created_at: string

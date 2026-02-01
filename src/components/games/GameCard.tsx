@@ -4,36 +4,11 @@ import { GameEvent, LEAGUES, BookmakerID } from "@/types/games";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-
-// Team logos mapping - in real app, these would come from the API
-import BullsLogo from "@/assets/teams/bulls.png";
-import WarriorsLogo from "@/assets/teams/warriors.png";
-import NuggetsLogo from "@/assets/teams/nuggets.png";
-import CelticsLogo from "@/assets/teams/celtics.png";
-import VikingsLogo from "@/assets/teams/vikings.png";
-import CommandersLogo from "@/assets/teams/commanders.png";
-import RangersLogo from "@/assets/teams/rangers.png";
-import GiantsLogo from "@/assets/teams/giants.png";
-
-const teamLogos: Record<string, string> = {
-  bulls: BullsLogo,
-  warriors: WarriorsLogo,
-  nuggets: NuggetsLogo,
-  celtics: CelticsLogo,
-  vikings: VikingsLogo,
-  commanders: CommandersLogo,
-  rangers: RangersLogo,
-  giants: GiantsLogo,
-};
-
-const getTeamLogo = (teamID: string): string => {
-  const normalized = teamID.toLowerCase().replace(/[^a-z]/g, "");
-  return teamLogos[normalized] || "/placeholder.svg";
-};
+import { TeamLogo } from "@/components/TeamLogo";
 
 // Helper to safely get team name with fallbacks
 const getTeamName = (team: any): string => {
-  return team?.name || team?.names?.long || team?.names?.medium || team?.teamID || 'Unknown Team';
+  return team?.canonical?.displayName || team?.name || team?.names?.long || team?.names?.medium || team?.teamID || 'Unknown Team';
 };
 
 const formatOdds = (odds: string) => {
@@ -105,10 +80,10 @@ export const GameCard = ({
         {/* Away team row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <img
-              src={getTeamLogo(game.teams.away.teamID)}
-              alt={getTeamName(game.teams.away)}
-              className="w-8 h-8 object-contain"
+            <TeamLogo
+              logoUrl={game.teams.away.logoUrl}
+              teamName={getTeamName(game.teams.away)}
+              size={32}
             />
             <span className="font-medium truncate">{getTeamName(game.teams.away)}</span>
             {isLive && game.score && (
@@ -150,10 +125,10 @@ export const GameCard = ({
         {/* Home team row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <img
-              src={getTeamLogo(game.teams.home.teamID)}
-              alt={getTeamName(game.teams.home)}
-              className="w-8 h-8 object-contain"
+            <TeamLogo
+              logoUrl={game.teams.home.logoUrl}
+              teamName={getTeamName(game.teams.home)}
+              size={32}
             />
             <span className="font-medium truncate">{getTeamName(game.teams.home)}</span>
             {isLive && game.score && (
