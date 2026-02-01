@@ -362,19 +362,18 @@ const NotificationsPreview = () => {
           isFadingOut && "opacity-0 scale-95"
         )}>
           {showIphone ? (
-            /* iPhone with Push Notification */
+            /* iPhone with Push Notification - Clean minimal screen */
             <div className="w-[280px] h-[460px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2.5rem] p-3 shadow-2xl border border-zinc-700 relative">
               {/* Dynamic Island */}
               <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-10" />
               
-              {/* Screen */}
-              <div className="bg-gradient-to-br from-indigo-900/60 via-purple-900/40 to-pink-900/30 rounded-[2rem] h-full flex flex-col overflow-hidden">
+              {/* Screen - Solid dark background */}
+              <div className="bg-zinc-950 rounded-[2rem] h-full flex flex-col overflow-hidden">
                 {/* Lock Screen Content */}
                 <div className="flex-1 flex flex-col pt-14 px-4">
-                  {/* Time Display */}
-                  <div className="text-center mb-6">
+                  {/* Time Display Only */}
+                  <div className="text-center mb-8">
                     <p className="text-6xl font-extralight text-white tracking-tight">9:41</p>
-                    <p className="text-base text-white/60 mt-1 font-light">Saturday, February 1</p>
                   </div>
                   
                   {/* Push Notification Area */}
@@ -400,87 +399,33 @@ const NotificationsPreview = () => {
                     )}
                   </div>
                 </div>
-                
-                {/* Bottom Controls */}
-                <div className="flex items-center justify-between px-8 pb-8">
-                  <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur flex items-center justify-center">
-                    <div className="w-6 h-6 rounded border-2 border-white/60" />
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur flex items-center justify-center">
-                    <div className="w-5 h-5 rounded-full border-2 border-white/60" />
-                  </div>
-                </div>
               </div>
               
               {/* Home Indicator */}
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/40 rounded-full" />
             </div>
           ) : (
-            /* Android with SMS */
+            /* Android with Green SMS Bubble - Clean minimal screen */
             <div className="w-[280px] h-[460px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2rem] p-2 shadow-2xl border border-zinc-700 relative flex flex-col">
-              {/* Status Bar */}
-              <div className="flex items-center justify-between px-5 py-2 text-white/70 text-xs">
-                <span className="font-medium">9:41</span>
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-0.5 items-end">
-                    <div className="w-1 h-1.5 bg-white/60 rounded-sm" />
-                    <div className="w-1 h-2.5 bg-white/60 rounded-sm" />
-                    <div className="w-1 h-3.5 bg-white/60 rounded-sm" />
-                    <div className="w-1 h-2.5 bg-white/40 rounded-sm" />
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <div className="w-5 h-2.5 rounded-sm border border-white/50 relative">
-                      <div className="absolute inset-0.5 right-1 bg-white/60 rounded-[1px]" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Lock Screen */}
-              <div className="flex-1 bg-gradient-to-br from-slate-800/80 via-slate-900/90 to-zinc-900 rounded-2xl mx-0.5 flex flex-col overflow-hidden">
-                {/* Clock */}
-                <div className="text-center pt-12 pb-6">
+              {/* Lock Screen - Solid dark background */}
+              <div className="flex-1 bg-zinc-950 rounded-2xl mx-0.5 flex flex-col overflow-hidden">
+                {/* Clock Only */}
+                <div className="text-center pt-14">
                   <p className="text-5xl font-light text-white tracking-wide">9:41</p>
-                  <p className="text-sm text-white/50 mt-2">Sat, Feb 1</p>
                 </div>
                 
-                {/* Notification Area */}
-                <div className="flex-1 px-3 pt-4">
+                {/* SMS Notification Area */}
+                <div className="flex-1 px-3 pt-8">
                   {showNotification && (
-                    <div className="bg-zinc-800/90 backdrop-blur rounded-2xl overflow-hidden border border-zinc-700/50 animate-notification-slide-in shadow-lg">
-                      {/* App Header */}
-                      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-700/30">
-                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                          <MessageSquare className="w-3 h-3 text-primary-foreground" />
-                        </div>
-                        <span className="text-xs font-medium text-white/80">Messages</span>
-                        <span className="text-[10px] text-white/40 ml-auto">now</span>
-                      </div>
-                      
-                      {/* Message Content */}
-                      <div className="p-3">
-                        <p className="text-xs font-semibold text-white/90 mb-1">TIPOFFHQ</p>
-                        <p className="text-sm text-white/70 leading-relaxed">
+                    <div className="flex justify-end animate-notification-slide-in">
+                      <div className="max-w-[85%] bg-[#34C759] rounded-2xl rounded-br-sm px-4 py-2.5 shadow-lg">
+                        <p className="text-[15px] text-white leading-snug">
                           🚨 Alert: {notif.team} {notif.event}. Tap to view live odds.
                         </p>
                       </div>
                     </div>
                   )}
                 </div>
-                
-                {/* Lock Icon */}
-                <div className="flex justify-center pb-8">
-                  <div className="w-8 h-8 rounded-full border-2 border-white/20 flex items-center justify-center">
-                    <div className="w-2 h-3 border-2 border-white/30 rounded-sm" />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Navigation Bar */}
-              <div className="flex items-center justify-center gap-12 py-2">
-                <div className="w-4 h-4 border-2 border-white/30 rounded-sm" />
-                <div className="w-4 h-4 rounded-full border-2 border-white/30" />
-                <div className="w-0 h-0 border-l-[6px] border-l-white/30 border-y-[5px] border-y-transparent" />
               </div>
             </div>
           )}
@@ -588,9 +533,10 @@ export const HowItWorks = () => {
                     </p>
                   </div>
 
-                  {/* Preview Bento Box */}
+                  {/* Preview Bento Box - no background for notifications step */}
                   <div className={cn(
-                    "p-6 md:p-8 rounded-2xl bg-card border border-border card-hover",
+                    "p-6 md:p-8 rounded-2xl",
+                    step.number !== 3 && "bg-card border border-border card-hover",
                     index % 2 === 1 && "lg:order-1"
                   )}>
                     {step.preview}
