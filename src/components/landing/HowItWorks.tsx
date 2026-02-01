@@ -372,12 +372,12 @@ const NotificationsPreview = () => {
                 {/* Lock Screen Content */}
                 <div className="flex-1 flex flex-col pt-14 px-4">
                   {/* Time Display - iOS style thin font */}
-                  <div className="text-center mb-8">
+                  <div className="text-center">
                     <p className="text-6xl font-extralight text-white tracking-tight">9:41</p>
                   </div>
                   
-                  {/* Push Notification Area */}
-                  <div className="flex-1 flex flex-col justify-start pt-4">
+                  {/* Push Notification Area - Bottom positioned */}
+                  <div className="flex-1 flex flex-col justify-end pb-8">
                     {showNotification && (
                       <div className="bg-white/15 backdrop-blur-xl rounded-2xl p-3.5 border border-white/10 animate-notification-slide-in shadow-lg">
                         <div className="flex items-start gap-3">
@@ -417,8 +417,8 @@ const NotificationsPreview = () => {
                   <p className="text-5xl font-normal text-white tracking-wide">9:41</p>
                 </div>
                 
-                {/* SMS Notification Area */}
-                <div className="flex-1 px-3 pt-8">
+                {/* SMS Notification Area - Bottom positioned */}
+                <div className="flex-1 px-3 flex flex-col justify-end pb-6">
                   {showNotification && (
                     <div className="flex justify-end animate-notification-slide-in">
                       <div className="max-w-[85%] bg-[#34C759] rounded-2xl rounded-br-sm px-4 py-2.5 shadow-lg">
