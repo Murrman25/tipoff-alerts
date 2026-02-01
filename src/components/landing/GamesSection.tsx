@@ -3,6 +3,7 @@ import { LineChart, Trophy, ArrowUp, ArrowDown } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { cn } from "@/lib/utils";
+import { LeagueLogo } from "@/components/games/LeagueLogo";
 
 // Team logos
 import BullsLogo from "@/assets/teams/bulls.png";
@@ -106,10 +107,19 @@ const GamesDashboardPreview = () => {
   return (
     <div className="mt-4 space-y-3">
       <Tabs value={activeSport} onValueChange={setActiveSport}>
-        <TabsList className="bg-secondary/50 border border-border h-8">
-          <TabsTrigger value="nba" className="text-xs h-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">NBA</TabsTrigger>
-          <TabsTrigger value="nfl" className="text-xs h-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">NFL</TabsTrigger>
-          <TabsTrigger value="mlb" className="text-xs h-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">MLB</TabsTrigger>
+        <TabsList className="bg-secondary/50 border border-border h-9">
+          <TabsTrigger value="nba" className="text-xs h-7 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <LeagueLogo leagueId="NBA" size={14} />
+            NBA
+          </TabsTrigger>
+          <TabsTrigger value="nfl" className="text-xs h-7 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <LeagueLogo leagueId="NFL" size={14} />
+            NFL
+          </TabsTrigger>
+          <TabsTrigger value="mlb" className="text-xs h-7 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <LeagueLogo leagueId="MLB" size={14} />
+            MLB
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -234,14 +244,15 @@ const AllSportsPreview = () => {
         {sports.map((sport) => (
           <span
             key={sport.name}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer hover:border-primary/50 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer hover:border-primary/50 ${
               sport.count > 0
                 ? "bg-secondary border-border"
                 : "bg-secondary/30 border-border/50 text-muted-foreground"
             }`}
           >
+            <LeagueLogo leagueId={sport.name} size={14} />
             {sport.name}
-            <span className="ml-1.5 text-primary">●{sport.count}</span>
+            <span className="text-primary">●{sport.count}</span>
           </span>
         ))}
       </div>
