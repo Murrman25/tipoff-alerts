@@ -408,13 +408,8 @@ const NotificationsPreview = () => {
 // STEP CONNECTOR COMPONENT
 // ==========================================
 const StepConnector = () => (
-  <div className="flex justify-center py-8 md:py-12">
-    <div className="relative w-1 h-16 md:h-24">
-      {/* Subtle glowing line - muted amber to match dark retro theme */}
-      <div className="absolute inset-0 rounded-full bg-primary/70 shadow-[0_0_8px_rgba(245,158,11,0.25)]" />
-      {/* Soft animated pulse */}
-      <div className="absolute inset-0 rounded-full bg-primary/50 animate-pulse opacity-40" />
-    </div>
+  <div className="flex justify-center py-4">
+    <div className="w-0.5 h-8 rounded-full bg-primary/40" />
   </div>
 );
 
