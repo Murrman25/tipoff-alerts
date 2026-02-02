@@ -13,6 +13,7 @@ interface StepProps {
   isOpen: boolean;
   isComplete: boolean;
   summary?: string;
+  summaryContent?: ReactNode;
   onToggle: () => void;
   children: ReactNode;
 }
@@ -23,6 +24,7 @@ export const AlertStep = ({
   isOpen,
   isComplete,
   summary,
+  summaryContent,
   onToggle,
   children,
 }: StepProps) => {
@@ -64,10 +66,14 @@ export const AlertStep = ({
               >
                 {title}
               </span>
-              {summary && !isOpen && (
-                <span className="text-xs text-muted-foreground mt-0.5">
-                  {summary}
-                </span>
+              {(summaryContent || summary) && !isOpen && (
+                <div className="mt-0.5">
+                  {summaryContent || (
+                    <span className="text-xs text-muted-foreground">
+                      {summary}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           </div>
