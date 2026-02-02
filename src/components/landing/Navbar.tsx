@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Zap, Menu, ChevronDown, User, LogOut, Bell, Settings } from "lucide-react";
+import { Zap, Menu, ChevronDown, LogOut, Bell } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import logo from "@/assets/logo.png";
 
 export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -44,11 +45,8 @@ export const Navbar = () => {
       <div className="container px-4 md:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-gradient flex items-center justify-center">
-              <Zap className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">TipOff</span>
+          <Link to="/" className="flex items-center">
+            <img src={logo} alt="TipOffHQ" className="h-8 w-auto" />
           </Link>
 
           {/* Desktop nav */}
