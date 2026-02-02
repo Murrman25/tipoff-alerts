@@ -1,217 +1,146 @@
 
 
-# Create Alert Page Redesign
+# Auto-Collapse Steps with Visual Summaries
 
 ## Overview
 
-Transform the current "Create Alert" flow into a cleaner, more intuitive experience with better visual hierarchy, league logos for filtering, team logos in game selection, and a more obvious rule configuration UI.
+Implement auto-collapse behavior when a step is completed, and enhance the collapsed summaries with team logos and visual icons for a more intuitive at-a-glance view.
 
 ---
 
-## Current Pain Points
+## Current Behavior
 
-| Issue | Details |
-|-------|---------|
-| **Game selection is text-heavy** | No team logos, relies on text abbreviations only |
-| **League filter chips are plain** | Text-only buttons, no visual league identification |
-| **Rule selection is confusing** | Dropdown with tier badges is cluttered |
-| **Visual hierarchy is flat** | All steps look similar, hard to scan |
-| **Too many UI elements at once** | Overwhelming for first-time users |
+| Behavior | Current | Desired |
+|----------|---------|---------|
+| **When game is selected** | Step 2 opens, Step 1 stays open | Step 1 collapses, Step 2 opens |
+| **When conditions are set** | User clicks "Continue" | Auto-collapse Step 2, open Step 3 |
+| **Collapsed Step 1 summary** | Text only: "BKN @ DET" | Team logos + text: [BKN logo] @ [DET logo] |
+| **Collapsed Step 2 summary** | Text only: "SP • +3.5" | Rule icon + market + team logo |
+| **Collapsed Step 3 summary** | Text: "email, push" | Channel icons: [Mail] [Bell] |
 
 ---
 
-## Design Improvements
+## Changes
 
-### 1. Game Selection (Step 1) - Visual Upgrade
+### 1. Auto-Collapse Logic in `CreateAlert.tsx`
 
-**League Filter Pills with Logos:**
-- Replace text-only filter buttons with league logo pills
-- Use the existing `LeagueLogo` component for visual consistency with Games page
-- Show logo + abbreviated name (e.g., [NBA logo] NBA)
+**When a game is selected:**
+- Close Step 1
+- Open Step 2
 
-**Game List with Team Logos:**
-- Add team logos to each game option in the dropdown
-- Format: `[Away Logo] Team @ [Home Logo] Team`
-- Include live indicator with amber pulsing dot
-- Show game time more prominently
+**When all condition fields are complete (team + threshold if needed):**
+- Close Step 2
+- Open Step 3
 
-```text
-Current:                      Redesigned:
-----------------------        ----------------------
-| NBA | BKN @ DET  LIVE |    | [BKN] Brooklyn Nets  |
-----------------------        |  @                   |
-                              | [DET] Detroit Pistons|
-                              | ● LIVE               |
-                              ----------------------
+**When notifications are set:**
+- Keep Step 3 collapsed (form is complete)
+
+```typescript
+// Modify handleGameSelect
+const handleGameSelect = (eventID: string | null, game: GameEvent | null) => {
+  updateCondition("eventID", eventID);
+  setSelectedGame(game);
+  if (eventID) {
+    // Auto-collapse step 1, open step 2
+    setOpenSteps(new Set([2]));
+  }
+};
+
+// Add useEffect to watch for step 2 completion
+useEffect(() => {
+  if (isStep2Complete && openSteps.has(2)) {
+    // Auto-advance to step 3
+    setOpenSteps(new Set([3]));
+  }
+}, [isStep2Complete]);
 ```
 
-### 2. Rule Type Selection - Card-Based Layout
+### 2. Enhanced `AlertStep` Component for Visual Summaries
 
-**Replace dropdown with visual cards:**
-- Grid of selectable cards (2 columns on mobile, 3 on desktop)
-- Each card shows: Icon + Name + Brief description
-- Locked tiers show a subtle lock icon instead of badges
-- Selected state with amber border glow
+Add new prop `summaryContent` that accepts a ReactNode for rich summaries (logos, icons):
 
-```text
-┌─────────────────┐  ┌─────────────────┐
-│ 📈 Threshold At │  │ 📊 Value Change │
-│ Reaches a value │  │ Any movement    │
-│ ○ Selected      │  │ PRO 🔒          │
-└─────────────────┘  └─────────────────┘
+```typescript
+interface StepProps {
+  // ... existing props
+  summaryContent?: ReactNode;  // New: for logos/icons
+}
 ```
 
-### 3. Market Type - Segmented Control
+The component will render `summaryContent` when collapsed if provided, otherwise fall back to the text `summary`.
 
-**Replace dropdown with toggle buttons:**
-- Three-button segmented control: ML | SP | O/U
-- Immediately visible, no click required
-- Clear selection state with primary color
+### 3. Rich Summary Components
 
-### 4. Team Selection - Visual Cards
+**Step 1 - Game Summary (with logos):**
+```tsx
+const Step1Summary = ({ game }: { game: GameEvent }) => (
+  <div className="flex items-center gap-2">
+    <TeamLogo logoUrl={game.teams.away.logoUrl} teamName="Away" size={18} />
+    <span className="text-xs text-muted-foreground">@</span>
+    <TeamLogo logoUrl={game.teams.home.logoUrl} teamName="Home" size={18} />
+    <span className="text-xs">{awayAbbr} @ {homeAbbr}</span>
+  </div>
+);
+```
 
-**Side-by-side team cards instead of dropdown:**
-- Two clickable cards showing team logo + name + "HOME/AWAY" label
-- Selected card gets amber border
-- Disabled state when no game selected (grayed out placeholders)
+**Step 2 - Condition Summary (with icons):**
+```tsx
+const Step2Summary = ({ condition, game }: Props) => (
+  <div className="flex items-center gap-2">
+    <RuleTypeIcon type={condition.ruleType} size={14} />
+    <span className="text-xs">{marketType.toUpperCase()}</span>
+    <TeamLogo ... size={16} />
+    {threshold && <span className="text-xs font-mono">{threshold}</span>}
+  </div>
+);
+```
 
-### 5. Overall Layout Refinements
-
-**Card redesign:**
-- Remove outer card wrapper, use more spacious layout
-- Increase step header tap targets on mobile
-- Add subtle dividers between steps
-- Progress indicator at top showing completion
-
-**Better step summaries:**
-- Show team logos in collapsed step 1 summary
-- Show rule type icon in collapsed step 2 summary
-
----
-
-## Component Changes
-
-| Component | Change Type | Details |
-|-----------|-------------|---------|
-| `AlertEventSelector` | Major refactor | Add league logos to filter, team logos to game list |
-| `AlertRuleTypeSelector` | Redesign | Card grid instead of dropdown |
-| `AlertMarketSelector` | Redesign | Segmented toggle control |
-| `AlertTeamSelector` | Redesign | Side-by-side team cards |
-| `CreateAlertStepper` | Enhance | Better visual hierarchy, progress bar |
-| `CreateAlert` (page) | Update | Remove outer card, adjust layout |
-| `QuickAlertPanel` | Simplify | Move below step 1 as contextual hints |
-
----
-
-## New Component: GameSelectCard
-
-Create a dedicated game selection card component that shows:
-- Both team logos side by side
-- Team names
-- League badge with logo
-- Game time or LIVE indicator
-- Subtle hover/selected states
-
-This replaces the current dropdown approach with a more visual picker.
-
----
-
-## Visual Mockup
-
-```text
-┌─────────────────────────────────────────────────┐
-│  ← Back            Create Alert           (?)   │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  ─────────○─────────○─────────○  Progress       │
-│                                                 │
-│  ┌───────────────────────────────────────────┐  │
-│  │ 1  Select Game                    ✓       │  │
-│  ├───────────────────────────────────────────┤  │
-│  │                                           │  │
-│  │  [NBA] [NHL] [NFL] [MLB] [NCAAB] [MLS]   │  │
-│  │                                           │  │
-│  │  🔍 Search teams...                       │  │
-│  │                                           │  │
-│  │  ┌─────────────────────────────────────┐  │  │
-│  │  │  [Logo] BKN  @  [Logo] DET          │  │  │
-│  │  │  Brooklyn Nets vs Detroit Pistons   │  │  │
-│  │  │  ● LIVE - Q3 5:42                   │  │  │
-│  │  └─────────────────────────────────────┘  │  │
-│  │                                           │  │
-│  │  ┌─────────────────────────────────────┐  │  │
-│  │  │  [Logo] LAL  @  [Logo] GSW          │  │  │
-│  │  │  Lakers vs Warriors                 │  │  │
-│  │  │  Starts in 2 hours                  │  │  │
-│  │  └─────────────────────────────────────┘  │  │
-│  │                                           │  │
-│  └───────────────────────────────────────────┘  │
-│                                                 │
-│  ┌───────────────────────────────────────────┐  │
-│  │ 2  Set Condition                          │  │
-│  ├───────────────────────────────────────────┤  │
-│  │                                           │  │
-│  │  ALERT TYPE                               │  │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐ │  │
-│  │  │Threshold │  │Threshold │  │  Value   │ │  │
-│  │  │   At     │  │  Cross   │  │  Change  │ │  │
-│  │  └──────────┘  └──────────┘  └──────────┘ │  │
-│  │                                           │  │
-│  │  MARKET          │   TEAM                 │  │
-│  │  [ ML | SP | OU ]│  [BKN Card][DET Card]  │  │
-│  │                                           │  │
-│  │  THRESHOLD         DIRECTION              │  │
-│  │  ┌──────────┐      ┌──────────────────┐   │  │
-│  │  │  +3.5    │      │ At or above  ▼   │   │  │
-│  │  └──────────┘      └──────────────────┘   │  │
-│  │                                           │  │
-│  └───────────────────────────────────────────┘  │
-│                                                 │
-│  ┌───────────────────────────────────────────┐  │
-│  │ 3  Notify Me                    ✓         │  │
-│  └───────────────────────────────────────────┘  │
-│                                                 │
-│  ┌───────────────────────────────────────────┐  │
-│  │           ⚡ Create Alert                  │  │
-│  └───────────────────────────────────────────┘  │
-│                                                 │
-└─────────────────────────────────────────────────┘
+**Step 3 - Notification Summary (with channel icons):**
+```tsx
+const Step3Summary = ({ channels }: { channels: NotificationChannel[] }) => (
+  <div className="flex items-center gap-1.5">
+    {channels.includes('email') && <Mail size={14} />}
+    {channels.includes('push') && <Bell size={14} />}
+    {channels.includes('sms') && <MessageSquare size={14} />}
+  </div>
+);
 ```
 
 ---
 
-## Technical Implementation
+## Files to Modify
 
-### Files to Create:
-- `src/components/alerts/GameSelectCard.tsx` - New visual game picker card
-- `src/components/alerts/RuleTypeCard.tsx` - Card-based rule selector
-- `src/components/alerts/MarketToggle.tsx` - Segmented control for markets
-- `src/components/alerts/TeamSelectCards.tsx` - Side-by-side team cards
-
-### Files to Modify:
-- `src/components/alerts/AlertEventSelector.tsx` - Use league logos, new game cards
-- `src/components/alerts/AlertRuleTypeSelector.tsx` - Use card grid layout
-- `src/components/alerts/AlertMarketSelector.tsx` - Use segmented toggle
-- `src/components/alerts/AlertTeamSelector.tsx` - Use card-based selection
-- `src/components/alerts/CreateAlertStepper.tsx` - Add progress bar, improve styling
-- `src/pages/CreateAlert.tsx` - Layout refinements, remove outer card
-- `src/components/alerts/index.ts` - Export new components
+| File | Changes |
+|------|---------|
+| `src/pages/CreateAlert.tsx` | Add auto-collapse logic, create summary components with logos |
+| `src/components/alerts/CreateAlertStepper.tsx` | Add `summaryContent` prop support to `AlertStep` |
 
 ---
 
-## Accessibility Considerations
+## User Experience Flow
 
-- All interactive elements maintain keyboard navigation
-- Card selections are focusable with visible focus rings
-- ARIA labels for team logos and icons
-- Touch targets minimum 44x44px on mobile
+```text
+1. User arrives at Create Alert page
+   └── Step 1 is open (Select Game)
+
+2. User selects a game
+   └── Step 1 auto-collapses (shows team logos in summary)
+   └── Step 2 opens (Set Condition)
+
+3. User completes all condition fields (team + threshold)
+   └── Step 2 auto-collapses (shows rule icon + market + team)
+   └── Step 3 opens (Notify Me)
+
+4. User reviews notifications (already selected by default)
+   └── Step 3 can be collapsed manually
+   └── Create Alert button is enabled
+```
 
 ---
 
-## Mobile Optimizations
+## Accessibility
 
-- Rule type cards stack 2 columns on mobile
-- Team cards stack vertically on very small screens
-- League filter pills scroll horizontally with visual overflow hint
-- Sticky create button at bottom on mobile
+- Collapsed steps remain keyboard-focusable
+- Screen readers announce step title + summary text
+- Logo images have proper alt text
+- Auto-collapse can be overridden by manually re-opening any step
 
