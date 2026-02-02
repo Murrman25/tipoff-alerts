@@ -49,7 +49,7 @@ const CreateAlert = () => {
     marketType: "sp",
     teamSide: null,
     threshold: null,
-    direction: "at_or_above",
+    direction: null,
     timeWindow: "both",
   });
   const [selectedGame, setSelectedGame] = useState<GameEvent | null>(null);
@@ -87,15 +87,12 @@ const CreateAlert = () => {
         updated.teamSide = null;
         updated.threshold = null;
         updated.marketType = "sp";
-        updated.direction = prev.ruleType === "threshold_cross" ? "crosses_above" : "at_or_above";
+        updated.direction = null;
       }
       
+      // When rule type changes, reset direction so user must explicitly select
       if (key === "ruleType") {
-        if (value === "threshold_cross") {
-          updated.direction = "crosses_above";
-        } else if (value === "threshold_at") {
-          updated.direction = "at_or_above";
-        }
+        updated.direction = null;
       }
       
       return updated;
@@ -125,11 +122,15 @@ const CreateAlert = () => {
     condition.ruleType === "threshold_cross" ||
     condition.ruleType === "percentage_move";
 
+  // Direction is required when threshold is needed - selecting direction triggers auto-collapse
+  const needsDirection = needsThreshold;
+
   // Step completion checks
   const isStep1Complete = condition.eventID !== null;
-  const isStep2Complete = isStep1Complete && condition.teamSide !== null && (
-    !needsThreshold || condition.threshold !== null
-  );
+  const isStep2Complete = isStep1Complete && 
+    condition.teamSide !== null && 
+    (!needsThreshold || condition.threshold !== null) &&
+    (!needsDirection || condition.direction !== null);
   const isStep3Complete = notificationChannels.length > 0;
 
   // Track previous step 2 completion state for auto-collapse
@@ -227,6 +228,10 @@ const CreateAlert = () => {
     condition.teamSide !== null &&
     notificationChannels.length > 0 &&
     (condition.threshold !== null ||
+      condition.ruleType === "value_change" ||
+      condition.ruleType === "arbitrage" ||
+      condition.ruleType === "best_available") &&
+    (condition.direction !== null ||
       condition.ruleType === "value_change" ||
       condition.ruleType === "arbitrage" ||
       condition.ruleType === "best_available");

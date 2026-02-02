@@ -25,7 +25,7 @@ export interface AlertCondition {
   marketType: MarketType;
   teamSide: 'home' | 'away' | null;
   threshold: number | null;
-  direction: DirectionType;
+  direction: DirectionType | null;
   timeWindow: TimeWindow;
 }
 
