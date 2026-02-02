@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Zap, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Toggle } from "@/components/ui/toggle";
 import {
   Tooltip,
@@ -127,6 +126,7 @@ const CreateAlert = () => {
   const isStep2Complete = isStep1Complete && condition.teamSide !== null && (
     !needsThreshold || condition.threshold !== null
   );
+  const isStep3Complete = notificationChannels.length > 0;
 
   // Generate step summaries
   const getStep1Summary = () => {
@@ -248,6 +248,13 @@ const CreateAlert = () => {
     }, 500);
   };
 
+  // Steps for progress bar
+  const stepProgress = [
+    { isComplete: isStep1Complete },
+    { isComplete: isStep2Complete },
+    { isComplete: isStep3Complete },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -287,149 +294,147 @@ const CreateAlert = () => {
 
       {/* Main Content */}
       <main className="container px-4 md:px-6 py-6 max-w-2xl mx-auto">
-        <Card className="bg-card border-border">
-          <CardContent className="p-4 sm:p-5 space-y-4 sm:space-y-5">
-            {/* Quick Alert Panel */}
-            <QuickAlertPanel
-              selectedTemplate={selectedTemplate}
-              onSelectTemplate={handleTemplateSelect}
-            />
+        <div className="space-y-6">
+          {/* Quick Alert Panel */}
+          <QuickAlertPanel
+            selectedTemplate={selectedTemplate}
+            onSelectTemplate={handleTemplateSelect}
+          />
 
-            {/* Stepper Form */}
-            <CreateAlertStepper>
-              {/* Step 1: Select Game */}
-              <AlertStep
-                stepNumber={1}
-                title="Select Game"
-                isOpen={openSteps.has(1)}
-                isComplete={isStep1Complete}
-                summary={getStep1Summary()}
-                onToggle={() => toggleStep(1)}
-              >
-                <AlertEventSelector
-                  value={condition.eventID}
-                  onChange={handleGameSelect}
-                  preSelectedEventID={preSelectedEventID}
-                />
-              </AlertStep>
+          {/* Stepper Form */}
+          <CreateAlertStepper steps={stepProgress}>
+            {/* Step 1: Select Game */}
+            <AlertStep
+              stepNumber={1}
+              title="Select Game"
+              isOpen={openSteps.has(1)}
+              isComplete={isStep1Complete}
+              summary={getStep1Summary()}
+              onToggle={() => toggleStep(1)}
+            >
+              <AlertEventSelector
+                value={condition.eventID}
+                onChange={handleGameSelect}
+                preSelectedEventID={preSelectedEventID}
+              />
+            </AlertStep>
 
-              {/* Step 2: Set Condition */}
-              <AlertStep
-                stepNumber={2}
-                title="Set Condition"
-                isOpen={openSteps.has(2)}
-                isComplete={isStep2Complete}
-                summary={getStep2Summary()}
-                onToggle={() => toggleStep(2)}
-              >
-                <div className="space-y-4">
-                  {/* Rule Type */}
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1">
-                      <AlertRuleTypeSelector
-                        value={condition.ruleType}
-                        onChange={(v) => updateCondition("ruleType", v)}
-                        userTier="pro"
-                      />
-                    </div>
-                    <AlertFieldHelp fieldKey="ruleType" showHelp={showHelp} className="mt-7" />
-                  </div>
-
-                  {/* Market + Team Row */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1">
-                        <AlertMarketSelector
-                          value={condition.marketType}
-                          onChange={(v) => updateCondition("marketType", v)}
-                        />
-                      </div>
-                      <AlertFieldHelp fieldKey="marketType" showHelp={showHelp} className="mt-7" />
-                    </div>
-                    <AlertTeamSelector
-                      game={selectedGame}
-                      value={condition.teamSide}
-                      onChange={(v) => updateCondition("teamSide", v)}
+            {/* Step 2: Set Condition */}
+            <AlertStep
+              stepNumber={2}
+              title="Set Condition"
+              isOpen={openSteps.has(2)}
+              isComplete={isStep2Complete}
+              summary={getStep2Summary()}
+              onToggle={() => toggleStep(2)}
+            >
+              <div className="space-y-5">
+                {/* Rule Type */}
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <AlertRuleTypeSelector
+                      value={condition.ruleType}
+                      onChange={(v) => updateCondition("ruleType", v)}
+                      userTier="pro"
                     />
                   </div>
+                  <AlertFieldHelp fieldKey="ruleType" showHelp={showHelp} className="mt-7" />
+                </div>
 
-                  {/* Threshold and Direction */}
-                  {needsThreshold && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1">
-                          <AlertThresholdInput
-                            value={condition.threshold}
-                            onChange={(v) => updateCondition("threshold", v)}
-                            marketType={condition.marketType}
-                          />
-                        </div>
-                        <AlertFieldHelp fieldKey="threshold" showHelp={showHelp} className="mt-7" />
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1">
-                          <AlertDirectionSelector
-                            value={condition.direction}
-                            onChange={(v) => updateCondition("direction", v)}
-                            ruleType={condition.ruleType}
-                          />
-                        </div>
-                        <AlertFieldHelp fieldKey="direction" showHelp={showHelp} className="mt-7" />
-                      </div>
+                {/* Market + Team Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1">
+                      <AlertMarketSelector
+                        value={condition.marketType}
+                        onChange={(v) => updateCondition("marketType", v)}
+                      />
                     </div>
-                  )}
+                    <AlertFieldHelp fieldKey="marketType" showHelp={showHelp} className="mt-7" />
+                  </div>
+                  <AlertTeamSelector
+                    game={selectedGame}
+                    value={condition.teamSide}
+                    onChange={(v) => updateCondition("teamSide", v)}
+                  />
+                </div>
 
-                  {/* Time Window */}
-                  {condition.ruleType !== "arbitrage" && (
+                {/* Threshold and Direction */}
+                {needsThreshold && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex items-start gap-2">
                       <div className="flex-1">
-                        <AlertTimeWindow
-                          value={condition.timeWindow}
-                          onChange={(v) => updateCondition("timeWindow", v)}
+                        <AlertThresholdInput
+                          value={condition.threshold}
+                          onChange={(v) => updateCondition("threshold", v)}
+                          marketType={condition.marketType}
                         />
                       </div>
-                      <AlertFieldHelp fieldKey="timeWindow" showHelp={showHelp} className="mt-7" />
+                      <AlertFieldHelp fieldKey="threshold" showHelp={showHelp} className="mt-7" />
                     </div>
-                  )}
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <AlertDirectionSelector
+                          value={condition.direction}
+                          onChange={(v) => updateCondition("direction", v)}
+                          ruleType={condition.ruleType}
+                        />
+                      </div>
+                      <AlertFieldHelp fieldKey="direction" showHelp={showHelp} className="mt-7" />
+                    </div>
+                  </div>
+                )}
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openStep(3)}
-                    className="w-full"
-                  >
-                    Continue to Notifications
-                  </Button>
-                </div>
-              </AlertStep>
+                {/* Time Window */}
+                {condition.ruleType !== "arbitrage" && (
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1">
+                      <AlertTimeWindow
+                        value={condition.timeWindow}
+                        onChange={(v) => updateCondition("timeWindow", v)}
+                      />
+                    </div>
+                    <AlertFieldHelp fieldKey="timeWindow" showHelp={showHelp} className="mt-7" />
+                  </div>
+                )}
 
-              {/* Step 3: Notify Me */}
-              <AlertStep
-                stepNumber={3}
-                title="Notify Me"
-                isOpen={openSteps.has(3)}
-                isComplete={notificationChannels.length > 0}
-                summary={notificationChannels.length > 0 ? notificationChannels.join(", ") : undefined}
-                onToggle={() => toggleStep(3)}
-              >
-                <AlertNotificationChannels
-                  selectedChannels={notificationChannels}
-                  onChange={setNotificationChannels}
-                />
-              </AlertStep>
-            </CreateAlertStepper>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openStep(3)}
+                  className="w-full"
+                >
+                  Continue to Notifications
+                </Button>
+              </div>
+            </AlertStep>
 
-            {/* Create Button */}
-            <Button
-              onClick={handleCreateAlert}
-              disabled={!isFormValid || isSaving}
-              className="w-full bg-amber-gradient text-primary-foreground hover:opacity-90 h-12 text-base font-medium"
+            {/* Step 3: Notify Me */}
+            <AlertStep
+              stepNumber={3}
+              title="Notify Me"
+              isOpen={openSteps.has(3)}
+              isComplete={isStep3Complete}
+              summary={notificationChannels.length > 0 ? notificationChannels.join(", ") : undefined}
+              onToggle={() => toggleStep(3)}
             >
-              <Zap className="w-5 h-5 mr-2" />
-              {isSaving ? "Creating..." : user ? "Create Alert" : "Sign in to Create Alert"}
-            </Button>
-          </CardContent>
-        </Card>
+              <AlertNotificationChannels
+                selectedChannels={notificationChannels}
+                onChange={setNotificationChannels}
+              />
+            </AlertStep>
+          </CreateAlertStepper>
+
+          {/* Create Button */}
+          <Button
+            onClick={handleCreateAlert}
+            disabled={!isFormValid || isSaving}
+            className="w-full bg-amber-gradient text-primary-foreground hover:opacity-90 h-12 text-base font-medium"
+          >
+            <Zap className="w-5 h-5 mr-2" />
+            {isSaving ? "Creating..." : user ? "Create Alert" : "Sign in to Create Alert"}
+          </Button>
+        </div>
       </main>
 
       {/* Auth Modal */}
