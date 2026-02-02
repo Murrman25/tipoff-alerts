@@ -39,7 +39,7 @@ export const AlertStep = ({
             isOpen
               ? "bg-secondary/80 border border-border"
               : isComplete
-              ? "bg-primary/5 hover:bg-primary/10 border border-primary/20"
+              ? "bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/30 shadow-[0_0_12px_-3px_rgba(16,185,129,0.3)]"
               : "bg-secondary/30 hover:bg-secondary/50 border border-transparent"
           )}
         >
@@ -49,7 +49,7 @@ export const AlertStep = ({
                 "flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold",
                 "transition-all duration-200",
                 isComplete
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-emerald-500 text-white"
                   : isOpen
                   ? "bg-primary/20 text-primary border border-primary/30"
                   : "bg-muted text-muted-foreground"
@@ -61,7 +61,7 @@ export const AlertStep = ({
               <span
                 className={cn(
                   "text-sm font-medium transition-colors duration-200",
-                  isComplete ? "text-primary" : isOpen ? "text-foreground" : "text-muted-foreground"
+                  isComplete ? "text-emerald-500" : isOpen ? "text-foreground" : "text-muted-foreground"
                 )}
               >
                 {title}
