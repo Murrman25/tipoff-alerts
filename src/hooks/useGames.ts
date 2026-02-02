@@ -11,38 +11,66 @@ export function useGames(filters: GamesFilters) {
   return useQuery({
     queryKey: ['games', filters.leagueID, filters.oddsAvailable],
     queryFn: async (): Promise<GameEvent[]> => {
-      // Build query parameters
-      const params = new URLSearchParams();
+      // Fetch both live games and upcoming games, then merge
+      const baseParams = new URLSearchParams();
       
       if (filters.leagueID.length > 0) {
-        params.set('leagueID', filters.leagueID.join(','));
+        baseParams.set('leagueID', filters.leagueID.join(','));
       }
       
       if (filters.oddsAvailable) {
-        params.set('oddsAvailable', 'true');
+        baseParams.set('oddsAvailable', 'true');
+      }
+
+      // Fetch live games first
+      const liveParams = new URLSearchParams(baseParams);
+      liveParams.set('live', 'true');
+      liveParams.set('limit', '10');
+
+      // Fetch upcoming games
+      const upcomingParams = new URLSearchParams(baseParams);
+      upcomingParams.set('limit', '10');
+
+      const [liveResponse, upcomingResponse] = await Promise.all([
+        fetch(
+          `https://wxcezmqaknhftwnpkanu.supabase.co/functions/v1/sports-events?${liveParams.toString()}`,
+          {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          }
+        ),
+        fetch(
+          `https://wxcezmqaknhftwnpkanu.supabase.co/functions/v1/sports-events?${upcomingParams.toString()}`,
+          {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          }
+        ),
+      ]);
+
+      // Parse responses
+      const liveData: SportsEventsResponse = liveResponse.ok 
+        ? await liveResponse.json() 
+        : { data: [] };
+      
+      if (!upcomingResponse.ok) {
+        const errorData = await upcomingResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch games: ${upcomingResponse.status}`);
       }
       
-      params.set('limit', '5');
+      const upcomingData: SportsEventsResponse = await upcomingResponse.json();
+      
+      // Merge: live games first, then upcoming (deduplicated)
+      const liveEventIds = new Set((liveData.data || []).map(e => e.eventID));
+      const mergedData = [
+        ...(liveData.data || []),
+        ...(upcomingData.data || []).filter(e => !liveEventIds.has(e.eventID))
+      ];
 
-      const response = await fetch(
-        `https://wxcezmqaknhftwnpkanu.supabase.co/functions/v1/sports-events?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to fetch games: ${response.status}`);
-      }
-
-      const result: SportsEventsResponse = await response.json();
+      console.log(`Fetched ${liveData.data?.length || 0} live games, ${upcomingData.data?.length || 0} upcoming games`);
       
       // Filter and transform the data
-      const transformedData = (result.data || [])
+      const transformedData = mergedData
         .filter((event: any) => {
           // Only show upcoming/live events, not ended/cancelled
           return !event.status?.ended && !event.status?.cancelled;
@@ -67,89 +95,7 @@ export function useGames(filters: GamesFilters) {
           }
         }));
 
-      // Add mock live game for testing live game styling
-      const mockLiveGame: GameEvent = {
-        eventID: 'mock-live-game-1',
-        sportID: 'BASKETBALL',
-        leagueID: 'NBA',
-        teams: {
-          home: {
-            teamID: 'WARRIORS_NBA',
-            name: 'Golden State Warriors',
-            names: { long: 'Golden State Warriors', medium: 'Warriors', short: 'GSW' },
-            logoUrl: 'https://wxcezmqaknhftwnpkanu.supabase.co/storage/v1/object/public/team-logos/nba/Warriors.png',
-            canonical: {
-              id: 'warriors_nba',
-              displayName: 'Golden State Warriors',
-              shortName: 'Warriors',
-              city: 'San Francisco',
-              league: 'NBA',
-              sport: 'BASKETBALL'
-            }
-          },
-          away: {
-            teamID: 'CELTICS_NBA',
-            name: 'Boston Celtics',
-            names: { long: 'Boston Celtics', medium: 'Celtics', short: 'BOS' },
-            logoUrl: 'https://wxcezmqaknhftwnpkanu.supabase.co/storage/v1/object/public/team-logos/nba/Celtics.png',
-            canonical: {
-              id: 'celtics_nba',
-              displayName: 'Boston Celtics',
-              shortName: 'Celtics',
-              city: 'Boston',
-              league: 'NBA',
-              sport: 'BASKETBALL'
-            }
-          }
-        },
-        status: {
-          startsAt: new Date().toISOString(),
-          started: true,
-          ended: false,
-          finalized: false,
-          live: true,
-          period: 'Q3',
-          clock: '4:32'
-        },
-        score: {
-          home: 78,
-          away: 72
-        },
-        odds: {
-          'points-home-game-ml-home': {
-            byBookmaker: {
-              draftkings: { odds: '-145', available: true }
-            }
-          },
-          'points-away-game-ml-away': {
-            byBookmaker: {
-              draftkings: { odds: '+125', available: true }
-            }
-          },
-          'points-home-game-sp-home': {
-            byBookmaker: {
-              draftkings: { odds: '-110', spread: '-3.5', available: true }
-            }
-          },
-          'points-away-game-sp-away': {
-            byBookmaker: {
-              draftkings: { odds: '-110', spread: '+3.5', available: true }
-            }
-          },
-          'points-all-game-ou-over': {
-            byBookmaker: {
-              draftkings: { odds: '-110', overUnder: '224.5', available: true }
-            }
-          },
-          'points-all-game-ou-under': {
-            byBookmaker: {
-              draftkings: { odds: '-110', overUnder: '224.5', available: true }
-            }
-          }
-        }
-      };
-
-      return [mockLiveGame, ...transformedData];
+      return transformedData;
     },
     staleTime: 30 * 1000, // 30 seconds
     refetchInterval: 60 * 1000, // Auto-refresh every 1 minute
