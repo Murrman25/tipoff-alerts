@@ -148,16 +148,36 @@ Deno.serve(async (req) => {
         const homeTeamData = teamsMap.get(event.teams?.home?.teamID);
         const awayTeamData = teamsMap.get(event.teams?.away?.teamID);
 
-        // Extract and normalize score from results or status
+        // Extract and normalize score - check multiple locations
         let score = null;
-        if (event.results) {
+
+        // Primary: scores object at event level (per API documentation)
+        if (event.scores) {
+          const homeScore = event.scores.home;
+          const awayScore = event.scores.away;
+          if (homeScore !== undefined && awayScore !== undefined) {
+            score = { home: homeScore, away: awayScore };
+          }
+        }
+
+        // Fallback: scores nested in teams object (seen in live response)
+        if (!score && event.teams?.home?.score !== undefined && event.teams?.away?.score !== undefined) {
+          score = { 
+            home: event.teams.home.score, 
+            away: event.teams.away.score 
+          };
+        }
+
+        // Fallback: results object (for completed games)
+        if (!score && event.results) {
           const homePoints = event.results.home?.points;
           const awayPoints = event.results.away?.points;
           if (homePoints !== undefined && awayPoints !== undefined) {
             score = { home: homePoints, away: awayPoints };
           }
         }
-        // Fallback: some APIs put live scores in status
+
+        // Final fallback: status.score
         if (!score && event.status?.score) {
           score = event.status.score;
         }
