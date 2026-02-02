@@ -1,171 +1,108 @@
 
 
-# Smarter Auto-Collapse Logic for Set Condition Step
+# Add Alert Summary When All Steps Complete
 
-## Problem Analysis
+## Overview
 
-The current auto-collapse logic triggers too early because:
+Add a concise, human-readable summary that appears only when all three steps are completed, giving users a final confirmation of what they're about to create before hitting the button.
 
-1. **Direction is auto-filled** - When rule type changes, direction is automatically set (e.g., `threshold_at` → `at_or_above`)
-2. **Threshold completion is too simple** - Any non-null value (even `1` when typing `150`) marks the step complete
-3. **No "confirmation" action** - There's no deliberate final action to signal "I'm done configuring"
+---
 
-### Current Flow (Broken)
-```
-User types "1" in threshold field
-  ↓
-threshold becomes 1 (not null)
-  ↓
-isStep2Complete = true (team selected ✓, threshold not null ✓)
-  ↓
-Step auto-collapses immediately 💥
+## Implementation Options
+
+| Option | Description | Pros | Cons |
+|--------|-------------|------|------|
+| **A. Inline above button** | Summary appears directly above "Create Alert" button | Simple, natural placement, no extra UI complexity | Can feel cramped on mobile |
+| **B. Animated slide-in card** | Summary slides in with animation when complete | Eye-catching, celebrates completion | More complex, could feel distracting |
+| **C. Replace button area** | Transform the button section to include summary | Clean transition, unified CTA area | Requires more layout restructuring |
+
+**Recommended: Option A (Inline above button)** - simplest, most natural, and mobile-friendly.
+
+---
+
+## Proposed Design
+
+**When all 3 steps complete, show:**
+
+```text
+┌─────────────────────────────────────────────────┐
+│  ✓ Ready to create                              │
+│                                                 │
+│  "Alert me when Lakers spread reaches +3.5      │
+│   or better, via email"                         │
+│                                                 │
+│  ┌─────────────────────────────────────────┐    │
+│  │  ⚡ Create Alert                         │    │
+│  └─────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Proposed Solution
+## Technical Approach
 
-**Don't auto-fill direction** - Make selecting a direction the deliberate final action that triggers auto-collapse.
+### Update Existing AlertSummary Component
 
-### New Flow
+The existing `AlertSummary` component already has summary generation logic. We'll enhance it to:
+
+1. Accept `notificationChannels` as a prop to include them in the summary
+2. Accept `selectedGame` prop instead of using `mockGames` lookup
+3. Add conditional rendering based on `isAllComplete` prop
+4. Style with green accents to match the completed step theme
+
+### Key Changes to AlertSummary
+
+```typescript
+interface AlertSummaryProps {
+  condition: AlertCondition;
+  selectedGame: GameEvent | null;
+  notificationChannels: NotificationChannel[];
+  isVisible: boolean;  // Only show when all steps complete
+}
 ```
-User selects team → ✓
-User types threshold → ✓  
-User selects direction → ✓ (TRIGGERS AUTO-COLLAPSE)
-```
 
-### Benefits
-- Direction selection is a dropdown click - intentional action
-- User can't accidentally trigger collapse by typing
-- Clearer UX: "Pick direction when you're ready to proceed"
+### Summary Text Generation
+
+Improve the `generateSummary` function to produce concise, readable text:
+
+**Examples by rule type:**
+- **Threshold At**: "Alert me when Lakers spread reaches +3.5 or better"
+- **Threshold Cross**: "Alert me when Celtics moneyline crosses below -150"
+- **Value Change**: "Alert me when any Bulls spread movement occurs"
+- **Arbitrage**: "Alert me when an arbitrage opportunity is detected"
+- **Best Available**: "Alert me when Warriors has the best moneyline"
+
+**Notification suffix:**
+- Single channel: "via email"
+- Multiple channels: "via email and push"
+
+### Integration in CreateAlert
+
+Add the summary component between the stepper and the Create button:
+
+```tsx
+{/* Alert Summary - only when complete */}
+{isFormValid && (
+  <AlertSummary
+    condition={condition}
+    selectedGame={selectedGame}
+    notificationChannels={notificationChannels}
+    isVisible={true}
+  />
+)}
+
+{/* Create Button */}
+<Button ...>
+```
 
 ---
 
-## Technical Changes
+## Visual Design
 
-### 1. Stop Auto-Filling Direction
-
-**File: `src/pages/CreateAlert.tsx`**
-
-Remove auto-fill of direction when `ruleType` changes:
-
-```typescript
-// BEFORE (lines 93-98)
-if (key === "ruleType") {
-  if (value === "threshold_cross") {
-    updated.direction = "crosses_above";
-  } else if (value === "threshold_at") {
-    updated.direction = "at_or_above";
-  }
-}
-
-// AFTER
-if (key === "ruleType") {
-  // Reset direction to null when rule type changes
-  // User must explicitly select direction
-  updated.direction = null;
-}
-```
-
-Also remove direction auto-fill on game change (line 90):
-```typescript
-// BEFORE
-updated.direction = prev.ruleType === "threshold_cross" ? "crosses_above" : "at_or_above";
-
-// AFTER
-updated.direction = null;
-```
-
-### 2. Update Type to Allow Null Direction
-
-**File: `src/types/alerts.ts`**
-
-Update `AlertCondition` interface:
-```typescript
-interface AlertCondition {
-  // ...existing fields
-  direction: DirectionType | null;  // Allow null for "not yet selected"
-}
-```
-
-### 3. Update Completion Check
-
-**File: `src/pages/CreateAlert.tsx`**
-
-Add direction to completion requirements:
-```typescript
-// BEFORE
-const isStep2Complete = isStep1Complete && condition.teamSide !== null && (
-  !needsThreshold || condition.threshold !== null
-);
-
-// AFTER
-const needsDirection = needsThreshold; // Direction required when threshold is needed
-
-const isStep2Complete = isStep1Complete && 
-  condition.teamSide !== null && 
-  (!needsThreshold || condition.threshold !== null) &&
-  (!needsDirection || condition.direction !== null);
-```
-
-### 4. Update Direction Selector for Null State
-
-**File: `src/components/alerts/AlertDirectionSelector.tsx`**
-
-Handle `null` value and show placeholder:
-```typescript
-interface AlertDirectionSelectorProps {
-  value: DirectionType | null;  // Allow null
-  onChange: (value: DirectionType) => void;
-  ruleType: RuleType;
-}
-
-// In the Select component:
-<Select 
-  value={value ?? ""} 
-  onValueChange={(v) => onChange(v as DirectionType)}
->
-  <SelectTrigger>
-    <SelectValue placeholder="Select direction" />
-  </SelectTrigger>
-  ...
-</Select>
-```
-
-### 5. Update Initial State
-
-**File: `src/pages/CreateAlert.tsx`**
-
-Change initial direction to null:
-```typescript
-const [condition, setCondition] = useState<AlertCondition>({
-  ruleType: "threshold_at",
-  eventID: preSelectedEventID || null,
-  marketType: "sp",
-  teamSide: null,
-  threshold: null,
-  direction: null,  // Changed from "at_or_above"
-  timeWindow: "both",
-});
-```
-
-### 6. Update Form Validation
-
-Ensure `isFormValid` accounts for null direction:
-```typescript
-const isFormValid =
-  condition.eventID !== null &&
-  condition.teamSide !== null &&
-  notificationChannels.length > 0 &&
-  (condition.threshold !== null ||
-    condition.ruleType === "value_change" ||
-    condition.ruleType === "arbitrage" ||
-    condition.ruleType === "best_available") &&
-  (condition.direction !== null ||
-    condition.ruleType === "value_change" ||
-    condition.ruleType === "arbitrage" ||
-    condition.ruleType === "best_available");
-```
+- **Container**: Green-tinted background (`bg-emerald-500/5`) with green border to match completed steps
+- **Header**: Small "Ready to create" label with checkmark
+- **Summary text**: Regular weight, quoted text style
+- **Animation**: Fade-in when appearing (`animate-in fade-in`)
 
 ---
 
@@ -173,29 +110,14 @@ const isFormValid =
 
 | File | Changes |
 |------|---------|
-| `src/types/alerts.ts` | Allow `direction: DirectionType \| null` |
-| `src/pages/CreateAlert.tsx` | Remove direction auto-fill, update completion check, update initial state |
-| `src/components/alerts/AlertDirectionSelector.tsx` | Handle null value with placeholder |
+| `src/components/alerts/AlertSummary.tsx` | Update props, improve summary generation, add notification channels, update styling |
+| `src/pages/CreateAlert.tsx` | Import and render AlertSummary conditionally when `isFormValid` is true |
 
 ---
 
-## User Experience
+## Mobile Considerations
 
-| Step | Action | Result |
-|------|--------|--------|
-| 1 | Select team | Team card highlighted |
-| 2 | Enter threshold | Value appears in input |
-| 3 | Select direction | **Step auto-collapses**, Step 3 opens |
-
-The direction dropdown acts as the "confirm and proceed" action - it's impossible to accidentally trigger by typing.
-
----
-
-## Edge Cases
-
-| Scenario | Behavior |
-|----------|----------|
-| Rule types that don't need threshold | Direction still required for completion |
-| Value Change / Arbitrage rule types | No threshold or direction needed, complete with just team |
-| User changes rule type mid-flow | Direction resets to null, must re-select |
+- Summary text wraps naturally on narrow screens
+- Padding kept minimal (p-3 vs p-4) on mobile
+- No fixed heights that could cause overflow
 
