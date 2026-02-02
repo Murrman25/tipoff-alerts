@@ -8,7 +8,7 @@ import {
 import { DirectionType, DIRECTION_OPTIONS, RuleType } from "@/types/alerts";
 
 interface AlertDirectionSelectorProps {
-  value: DirectionType;
+  value: DirectionType | null;
   onChange: (value: DirectionType) => void;
   ruleType: RuleType;
 }
@@ -43,7 +43,7 @@ export const AlertDirectionSelector = ({
       <label className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
         Direction
       </label>
-      <Select value={value} onValueChange={(v) => onChange(v as DirectionType)}>
+      <Select value={value ?? ""} onValueChange={(v) => onChange(v as DirectionType)}>
         <SelectTrigger className="bg-secondary/50 border-border h-11">
           <SelectValue placeholder="Select direction" />
         </SelectTrigger>
