@@ -1,19 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 import { LEAGUES, LeagueID, GameEvent } from "@/types/games";
 import { useGames } from "@/hooks/useGames";
 import { useGameById } from "@/hooks/useGameById";
+import { LeagueLogo } from "@/components/games/LeagueLogo";
+import { GameSelectCard } from "./GameSelectCard";
 import { cn } from "@/lib/utils";
 
 interface AlertEventSelectorProps {
@@ -87,28 +80,14 @@ export const AlertEventSelector = ({
 
   const isLoadingAny = isLoading || isLoadingPreSelected;
 
-  const formatEventLabel = (game: GameEvent) => {
-    const awayAbbr = game.teams.away.abbreviation || game.teams.away.name?.slice(0, 3).toUpperCase() || 'AWY';
-    const homeAbbr = game.teams.home.abbreviation || game.teams.home.name?.slice(0, 3).toUpperCase() || 'HME';
-    return `${awayAbbr} @ ${homeAbbr}`;
-  };
-
-  const getTimeLabel = (game: GameEvent) => {
-    if (game.status.started && !game.status.ended) {
-      return "LIVE";
-    }
-    const startTime = new Date(game.status.startsAt);
-    return formatDistanceToNow(startTime, { addSuffix: true });
-  };
-
   const handleSelect = (eventID: string) => {
     const selectedGame = filteredGames.find(g => g.eventID === eventID) || null;
-    onChange(eventID || null, selectedGame);
+    onChange(eventID, selectedGame);
   };
 
   return (
-    <div className="space-y-3 flex-1">
-      {/* League Filter Chips */}
+    <div className="space-y-4 flex-1">
+      {/* League Filter Pills with Logos */}
       <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
         {leagueFilters.map((league) => (
           <Button
@@ -118,13 +97,16 @@ export const AlertEventSelector = ({
             size="sm"
             onClick={() => setSelectedLeague(league.id)}
             className={cn(
-              "h-8 sm:h-7 px-3 sm:px-2.5 text-xs font-medium rounded-md transition-all shrink-0",
+              "h-9 px-3 text-xs font-medium rounded-lg transition-all shrink-0 gap-1.5",
               selectedLeague === league.id
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
             )}
           >
-            {league.label}
+            {league.id !== "all" && (
+              <LeagueLogo leagueId={league.id} size={14} />
+            )}
+            <span>{league.id === "all" ? "All" : league.id}</span>
           </Button>
         ))}
       </div>
@@ -141,52 +123,34 @@ export const AlertEventSelector = ({
         />
       </div>
 
-      {/* Game Dropdown */}
-      <Select value={value || ""} onValueChange={handleSelect}>
-        <SelectTrigger className="bg-secondary/50 border-border h-11">
-          <SelectValue placeholder={isLoadingAny ? "Loading games..." : "Select a game"} />
-        </SelectTrigger>
-        <SelectContent className="bg-card border-border max-h-[300px]">
-          {isLoadingAny ? (
-            <div className="py-4 px-3 text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Loading games...
-            </div>
-          ) : filteredGames.length === 0 ? (
-            <div className="py-4 px-3 text-sm text-muted-foreground text-center">
-              No games found
-            </div>
-          ) : (
-            filteredGames.map((game) => (
-              <SelectItem
-                key={game.eventID}
-                value={game.eventID}
-                className="py-3"
-              >
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant="outline"
-                    className="text-xs border-border shrink-0"
-                  >
-                    {game.leagueID}
-                  </Badge>
-                  <span className="font-medium">{formatEventLabel(game)}</span>
-                  <span
-                    className={cn(
-                      "text-xs ml-auto",
-                      game.status.started && !game.status.ended
-                        ? "text-green-500 font-semibold"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {getTimeLabel(game)}
-                  </span>
-                </div>
-              </SelectItem>
-            ))
-          )}
-        </SelectContent>
-      </Select>
+      {/* Game Cards */}
+      <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin">
+        {isLoadingAny ? (
+          <div className="py-8 text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading games...
+          </div>
+        ) : filteredGames.length === 0 ? (
+          <div className="py-8 text-sm text-muted-foreground text-center">
+            No games found
+          </div>
+        ) : (
+          filteredGames.slice(0, 10).map((game) => (
+            <GameSelectCard
+              key={game.eventID}
+              game={game}
+              isSelected={value === game.eventID}
+              onSelect={() => handleSelect(game.eventID)}
+            />
+          ))
+        )}
+      </div>
+
+      {filteredGames.length > 10 && (
+        <p className="text-xs text-muted-foreground text-center">
+          Showing 10 of {filteredGames.length} games. Use search to find more.
+        </p>
+      )}
     </div>
   );
 };
