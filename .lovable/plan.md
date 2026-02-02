@@ -1,73 +1,65 @@
 
-# Fix Live Game Scores Display
 
-## Problem Summary
-Live game scores are not displaying because of a mismatch between the API response structure and what the frontend expects. The SportsGameOdds API returns scores in a `results` object, but the frontend expects them in a `score` object.
+# Fix Live Game Scores - Use `live=true` Parameter
 
----
+## Problem Identified
 
-## Current State
+The current implementation has two issues:
 
-**GameCard expects:**
-```typescript
-game.score?.home  // number
-game.score?.away  // number
-```
+1. **No `live=true` filter**: The API query doesn't filter for currently live games, so it returns mostly upcoming or ended games
+2. **Empty results**: Games returned show `"results": {}` and `"score": null` because they're not live
 
-**API returns:**
-```typescript
-game.results: {
-  home: { points: number },
-  away: { points: number }
-}
-// OR for live games:
-game.status: {
-  score?: { home: number, away: number }
-}
-```
+The edge function score extraction logic is correct (`results.home?.points`), but we're not fetching the right games.
 
 ---
 
-## Solution: Transform Score Data in Edge Function
-
-### Step 1: Update Edge Function to Map Score Data
-
-Modify `supabase/functions/sports-events/index.ts` to extract and normalize score data:
+## Current API Query
 
 ```typescript
-// Inside the event enrichment loop
-data.data = data.data.map((event: any) => {
-  // ... existing team enrichment ...
-  
-  // Extract score from results or status
-  let score = null;
-  if (event.results) {
-    const homePoints = event.results.home?.points;
-    const awayPoints = event.results.away?.points;
-    if (homePoints !== undefined && awayPoints !== undefined) {
-      score = { home: homePoints, away: awayPoints };
-    }
-  }
-  // Some APIs put live scores in status
-  if (!score && event.status?.score) {
-    score = event.status.score;
-  }
-
-  return {
-    ...event,
-    score, // normalized score object
-    teams: { ... }
-  };
-});
+// Current: fetches upcoming games from today onwards
+apiUrl.searchParams.set('startsAtFrom', today.toISOString());
 ```
 
-### Step 2: Update TypeScript Types
+This returns games that start today or later, but doesn't prioritize live games.
 
-Ensure `src/types/games.ts` includes proper score typing in GameEvent (already exists).
+---
 
-### Step 3: Verify Mock Data Continues Working
+## Solution
 
-The mock live game in `useGames.ts` already has the correct format and should continue working. This change ensures real API data also works.
+Modify `supabase/functions/sports-events/index.ts` to:
+
+1. Add a `live` filter parameter from the frontend
+2. When `live=true`, fetch only currently in-progress games with active scores
+3. Remove the `startsAtFrom` filter when fetching live games (live games started in the past)
+
+### Changes to Edge Function
+
+```typescript
+// Parse new parameter
+const live = url.searchParams.get('live');
+
+// When fetching live games
+if (live === 'true') {
+  apiUrl.searchParams.set('live', 'true');
+  // Don't use startsAtFrom for live games - they already started
+} else {
+  // Only apply date filter for non-live queries
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  apiUrl.searchParams.set('startsAtFrom', today.toISOString());
+}
+```
+
+### Changes to Frontend Hook (useGames.ts)
+
+Add ability to request live games specifically:
+
+```typescript
+// In GamesFilters type or as a new parameter
+if (filters.liveOnly) {
+  params.set('live', 'true');
+}
+```
 
 ---
 
@@ -75,24 +67,35 @@ The mock live game in `useGames.ts` already has the correct format and should co
 
 | File | Change |
 |------|--------|
-| `supabase/functions/sports-events/index.ts` | Add score extraction from `results` object |
+| `supabase/functions/sports-events/index.ts` | Add `live` parameter support |
+| `src/hooks/useGames.ts` | Pass `live=true` when we want live scores |
+| `src/types/games.ts` | Add `liveOnly` to filters (optional) |
 
 ---
 
-## Testing Strategy
+## Alternative Approach: Fetch Both
 
-1. Deploy updated edge function
-2. Check if mock live game (Warriors vs Celtics) still displays scores
-3. When real live games are available, verify scores appear
-4. Add console logging to debug score extraction
+Instead of separate queries, we could modify the query to fetch both live games AND upcoming games, prioritizing live games at the top. This would require:
+
+1. Making two API calls (live + upcoming)
+2. Merging results with live games first
+3. De-duplicating any overlaps
 
 ---
 
-## Additional Consideration
+## Score Data Structure Confirmation
 
-The current API query may not be fetching truly live games. The games returned have `status.live: false`. To get live games, we may need to:
+Based on the SportsGameOdds API:
+- Scores come from `results.home.points` and `results.away.points`
+- The current edge function extraction is correct
+- Empty results (`{}`) means the game hasn't started or scores aren't available
 
-1. Add a `live=true` filter parameter to the API request
-2. Or query without the `startsAtFrom` date filter to include in-progress games
+---
 
-This can be investigated as a follow-up if scores still don't appear after the data mapping fix.
+## Testing Plan
+
+1. Deploy updated edge function with `live=true` support
+2. Call the function with `live=true` during an actual NBA game
+3. Verify scores appear in the response
+4. Confirm GameCard displays them correctly
+
