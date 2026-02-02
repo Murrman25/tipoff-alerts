@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
     const eventID = url.searchParams.get('eventID');
     const leagueID = url.searchParams.get('leagueID');
     const oddsAvailable = url.searchParams.get('oddsAvailable');
+    const live = url.searchParams.get('live');
     const limit = url.searchParams.get('limit') || '5';
 
     // Build the SportsGameOdds API URL
@@ -62,10 +63,17 @@ Deno.serve(async (req) => {
         apiUrl.searchParams.set('oddsAvailable', 'true');
       }
       
-      // Only fetch upcoming/current games (from today onwards)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      apiUrl.searchParams.set('startsAtFrom', today.toISOString());
+      // Handle live games vs upcoming games
+      if (live === 'true') {
+        // Fetch only currently live games
+        apiUrl.searchParams.set('live', 'true');
+        // Don't use startsAtFrom for live games - they already started
+      } else {
+        // Only fetch upcoming/current games (from today onwards)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        apiUrl.searchParams.set('startsAtFrom', today.toISOString());
+      }
       
       apiUrl.searchParams.set('limit', limit);
     }
@@ -80,7 +88,7 @@ Deno.serve(async (req) => {
       'points-all-game-ou-under'
     ].join(','));
 
-    console.log(`Fetching events from SportsGameOdds API with filters: leagueID=${leagueID}, oddsAvailable=${oddsAvailable}, limit=${limit}`);
+    console.log(`Fetching events from SportsGameOdds API with filters: leagueID=${leagueID}, oddsAvailable=${oddsAvailable}, live=${live}, limit=${limit}`);
 
     const response = await fetch(apiUrl.toString(), {
       method: 'GET',
