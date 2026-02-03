@@ -4,6 +4,7 @@ export interface Profile {
   id: string;
   user_id: string;
   display_name: string | null;
+  avatar_url: string | null;
   subscription_tier: SubscriptionTier;
   created_at: string;
   updated_at: string;

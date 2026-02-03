@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useFavoriteTeams } from "@/hooks/useFavoriteTeams";
@@ -10,6 +9,7 @@ import {
   PersonalInfoSection,
   SubscriptionSection,
   FavoriteTeamsSection,
+  AvatarUpload,
 } from "@/components/profile";
 import { Navbar } from "@/components/landing/Navbar";
 import type { SubscriptionTier } from "@/types/profile";
@@ -17,7 +17,7 @@ import type { SubscriptionTier } from "@/types/profile";
 const Profile = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const { profile, isLoading: profileLoading, updateProfile } = useProfile();
+  const { profile, isLoading: profileLoading, updateProfile, uploadAvatar } = useProfile();
   const {
     allTeams,
     favoriteTeams,
@@ -43,6 +43,10 @@ const Profile = () => {
     await updateProfile.mutateAsync({ display_name: displayName });
   };
 
+  const handleUploadAvatar = async (file: File) => {
+    await uploadAvatar.mutateAsync(file);
+  };
+
   if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -57,7 +61,7 @@ const Profile = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container px-4 py-8 pt-24 max-w-2xl mx-auto">
-        {/* Header */}
+        {/* Header with Avatar Upload */}
         <div className="flex items-center justify-between mb-8">
           <Link to="/">
             <Button variant="ghost" size="sm">
@@ -66,12 +70,12 @@ const Profile = () => {
             </Button>
           </Link>
           <h1 className="text-2xl font-bold">Profile</h1>
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={user.user_metadata?.avatar_url} />
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {getUserInitials()}
-            </AvatarFallback>
-          </Avatar>
+          <AvatarUpload
+            avatarUrl={profile?.avatar_url || null}
+            userInitials={getUserInitials()}
+            onUpload={handleUploadAvatar}
+            isUploading={uploadAvatar.isPending}
+          />
         </div>
 
         {/* Sections */}
