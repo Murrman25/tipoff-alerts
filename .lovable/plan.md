@@ -1,174 +1,150 @@
 
-
-# Enhanced Alert Builder Animation - Match Real App Flow
+# User Profile Page Implementation
 
 ## Overview
 
-Improve the existing `AlertBuilderPreview` animation in `HowItWorks.tsx` to keep a consistent bento box size throughout the animation and more clearly demonstrate the user journey: **Select Game → Set Condition (Market + Team + Threshold) → Create Alert**.
+Create a dedicated profile page (`/profile`) accessible from the user dropdown menu, displaying personal information, subscription tier, and favorite teams management.
 
 ---
 
-## Current Issues
+## Database Changes
 
-1. **Layout shifting**: Elements appearing/disappearing causes the bento box to grow and shrink
-2. **Animation not clear enough**: Hard to follow that this is a step-by-step flow
-3. **Doesn't fully match app UI**: Missing labels, selection indicators, and visual feedback patterns from actual components
+### New Table: `profiles`
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | uuid | No | gen_random_uuid() | Primary key |
+| user_id | uuid | No | - | References auth user (unique constraint) |
+| display_name | text | Yes | null | User's display name |
+| subscription_tier | text | No | 'rookie' | Current tier: 'rookie', 'pro', 'legend' |
+| created_at | timestamptz | No | now() | Creation timestamp |
+| updated_at | timestamptz | No | now() | Last update timestamp |
+
+**RLS Policies:**
+- Users can view their own profile (SELECT)
+- Users can create their own profile (INSERT)
+- Users can update their own profile (UPDATE)
+
+### New Table: `user_favorite_teams`
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | uuid | No | gen_random_uuid() | Primary key |
+| user_id | uuid | No | - | References auth user |
+| team_id | text | No | - | References teams.id |
+| created_at | timestamptz | No | now() | When favorited |
+
+**Constraints:**
+- Unique constraint on (user_id, team_id) to prevent duplicates
+- Foreign key to teams table
+
+**RLS Policies:**
+- Users can view their own favorites (SELECT)
+- Users can create their own favorites (INSERT)
+- Users can delete their own favorites (DELETE)
 
 ---
 
-## Proposed Improvements
+## UI Components
 
-### 1. Fixed Height Container
-Keep all elements visible but use opacity/highlighting to show the active step, preventing layout shifts.
-
-### 2. Visual Selection Indicators
-Add animated selection ring and highlight that moves through the flow:
-- **Step 0-1**: Game card gets selected (ring appears, glow)
-- **Step 2**: Market toggle selection animates, team card gets selected ring
-- **Step 3**: Threshold input fills in with typing animation, direction badge appears
-- **Step 4**: Summary glows amber, button pulses
-
-### 3. Match Real Component Styling
-
-| Element | Match From |
-|---------|-----------|
-| Game card | `GameSelectCard.tsx` - selection ring, glow, live badge |
-| Market toggle | `MarketToggle.tsx` - label, segment styling, selected state |
-| Team cards | `TeamSelectCards.tsx` - label, min-height, HOME/AWAY tags |
-| Threshold/Direction | `AlertThresholdInput.tsx` / `AlertDirectionSelector.tsx` - labels, input styling |
-| Summary | `AlertSummary.tsx` - amber glow, TipOff logo pulse |
-
----
-
-## Visual Flow (All Elements Always Visible)
+### 1. Profile Page (`src/pages/Profile.tsx`)
 
 ```text
-┌──────────────────────────────────────────────────┐
-│  ┌────────────────────────────────────────────┐  │
-│  │ [NBA] CHI 98 @ 101 BOS         ● LIVE     │  │ ← Ring appears (step 0-1)
-│  │      ML: -120/+110 • SP: -2.5 • O/U: 218  │  │
-│  └────────────────────────────────────────────┘  │
-│                                                  │
-│  MARKET                                          │
-│  ┌──────┬──────┬──────┐                          │
-│  │  ML  │  SP  │ O/U  │  ← ML highlights (step 2)│
-│  └──────┴──────┴──────┘                          │
-│                                                  │
-│  TEAM                                            │
-│  ┌─────────┐  ┌─────────┐                        │
-│  │ [Bulls] │  │ [Celts] │  ← Bulls gets ring     │
-│  │   CHI   │  │   BOS   │     (step 2)           │
-│  │  AWAY   │  │  HOME   │                        │
-│  └─────────┘  └─────────┘                        │
-│                                                  │
-│  THRESHOLD              DIRECTION                │
-│  ┌─────────┐            ┌──────────────┐         │
-│  │  +100   │  ←typing   │  or better   │ (step 3)│
-│  └─────────┘            └──────────────┘         │
-│                                                  │
-│  ┌────────────────────────────────────────────┐  │
-│  │ [TipOff] Ready to create                   │  │ ← Amber glow (step 4)
-│  │ "Alert me when Bulls ML reaches +100..."   │  │
-│  └────────────────────────────────────────────┘  │
-│                                                  │
-│  ┌────────────────────────────────────────────┐  │
-│  │             ⚡ Create Alert                 │  │ ← Button glows (step 4)
-│  └────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────┘
++------------------------------------------+
+| [<- Back]        Profile        [Avatar] |
++------------------------------------------+
+|                                          |
+|  +------------------------------------+  |
+|  | PERSONAL INFORMATION               |  |
+|  +------------------------------------+  |
+|  |  Display Name: ________________    |  |
+|  |  Email: user@example.com (locked)  |  |
+|  |  [Save Changes]                    |  |
+|  +------------------------------------+  |
+|                                          |
+|  +------------------------------------+  |
+|  | SUBSCRIPTION                       |  |
+|  +------------------------------------+  |
+|  |  [Rookie Badge]  Current Plan      |  |
+|  |                                    |  |
+|  |  Benefits:                         |  |
+|  |  - 1 active alert per day          |  |
+|  |  - Basic alert builder             |  |
+|  |  - Email notifications             |  |
+|  |                                    |  |
+|  |  [Upgrade to Pro]                  |  |
+|  +------------------------------------+  |
+|                                          |
+|  +------------------------------------+  |
+|  | FAVORITE TEAMS                     |  |
+|  +------------------------------------+  |
+|  | [NFL v] [NBA v] [MLB v] ...        |  |
+|  |                                    |  |
+|  | Selected Teams:                    |  |
+|  | [Bulls x] [Bears x] [Cubs x]       |  |
+|  |                                    |  |
+|  | Available Teams:                   |  |
+|  | [Celtics +] [Lakers +] ...         |  |
+|  +------------------------------------+  |
+|                                          |
++------------------------------------------+
 ```
+
+### 2. Profile Card Sections
+
+**Personal Information Section:**
+- Editable display name field
+- Read-only email from auth
+- Save button for name changes
+
+**Subscription Section:**
+- Visual tier badge (color-coded by tier)
+- Tier name and description
+- Benefits list matching Pricing.tsx definitions
+- Upgrade CTA button (hidden for Legend tier)
+
+**Favorite Teams Section:**
+- League filter tabs (NFL, NBA, MLB, NHL, MLS, NCAAF, NCAAB)
+- Selected teams displayed as removable chips
+- Grid of available teams in selected league to add
+- Team logos from storage bucket
 
 ---
 
-## Animation Timeline (10 seconds total, looping)
+## Navigation Updates
 
-| Time | Step | Visual Changes |
-|------|------|----------------|
-| 0-2s | Game Selection | Game card: primary ring + glow appears. Cursor-like animation on card. |
-| 2-4s | Market + Team | Market: "ML" segment animates to selected state. Team: Bulls card gets primary ring + glow. |
-| 4-6s | Threshold + Direction | Threshold: Value animates in (typewriter "+100"). Direction: Badge transitions from muted to primary. |
-| 6-9s | Summary + Button | Summary: Amber border/glow fades in. TipOff logo pulses. Button: Gets glow effect. |
-| 9-10s | Reset pause | Brief hold before restarting |
+### Navbar.tsx Changes
+
+Add "Profile" link to user dropdown menu:
+```text
+[Avatar dropdown]
+├── user@email.com
+├── ─────────────
+├── [User icon] Profile      <- NEW
+├── [Bell icon] My Alerts
+├── [Zap icon] Create Alert
+├── ─────────────
+└── [LogOut] Sign out
+```
+
+### Mobile Menu
+
+Add Profile link in mobile menu for authenticated users.
 
 ---
 
-## Technical Implementation
+## New Files
 
-### State Machine
-```typescript
-const [step, setStep] = useState(0);
-// 0: Initial state (nothing selected)
-// 1: Game selected
-// 2: Market + Team selected  
-// 3: Threshold + Direction filled
-// 4: Summary visible, ready to create
-
-useEffect(() => {
-  const timer = setInterval(() => {
-    setStep((prev) => (prev + 1) % 5);
-  }, 2000);
-  return () => clearInterval(timer);
-}, []);
-```
-
-### Selection Ring Animation
-```typescript
-// Reusable selection ring style
-const selectionRing = "border-primary ring-2 ring-primary/30 bg-primary/5";
-const unselectedStyle = "border-border bg-secondary/30";
-
-// Apply conditionally
-className={cn(
-  "rounded-lg border transition-all duration-300",
-  step >= 1 ? selectionRing : unselectedStyle
-)}
-```
-
-### Typewriter Effect for Threshold
-```typescript
-const thresholdValue = step >= 3 ? "+100" : "";
-// Or animate character by character for more polish
-```
-
----
-
-## Component Structure
-
-```tsx
-const AlertBuilderPreview = () => {
-  const [step, setStep] = useState(0);
-  
-  return (
-    <div className="space-y-4">
-      {/* Game Card - always visible */}
-      <GameCardMock isSelected={step >= 1} />
-      
-      {/* Market Toggle - always visible */}
-      <div className="space-y-2">
-        <label>MARKET</label>
-        <MarketToggleMock isActive={step >= 2} />
-      </div>
-      
-      {/* Team Cards - always visible */}
-      <div className="space-y-2">
-        <label>TEAM</label>
-        <TeamCardsMock selectedTeam={step >= 2 ? "away" : null} />
-      </div>
-      
-      {/* Threshold + Direction - always visible */}
-      <div className="grid grid-cols-2 gap-3">
-        <ThresholdMock value={step >= 3 ? "+100" : ""} />
-        <DirectionMock isSelected={step >= 3} />
-      </div>
-      
-      {/* Summary - always visible but muted until step 4 */}
-      <SummaryMock isActive={step >= 4} />
-      
-      {/* Create Button */}
-      <CreateButtonMock isReady={step >= 4} />
-    </div>
-  );
-};
-```
+| File | Purpose |
+|------|---------|
+| `src/pages/Profile.tsx` | Main profile page component |
+| `src/hooks/useProfile.ts` | Hook for fetching/updating profile data |
+| `src/hooks/useFavoriteTeams.ts` | Hook for managing favorite teams |
+| `src/components/profile/PersonalInfoSection.tsx` | Personal info form |
+| `src/components/profile/SubscriptionSection.tsx` | Tier display and upgrade |
+| `src/components/profile/FavoriteTeamsSection.tsx` | Teams management |
+| `src/components/profile/TierBadge.tsx` | Reusable tier badge component |
+| `src/components/profile/index.ts` | Barrel export |
 
 ---
 
@@ -176,25 +152,90 @@ const AlertBuilderPreview = () => {
 
 | File | Changes |
 |------|---------|
-| `src/components/landing/HowItWorks.tsx` | Rewrite `AlertBuilderPreview` component (lines 249-416) with fixed-height layout and enhanced step animations |
+| `src/App.tsx` | Add `/profile` route |
+| `src/components/landing/Navbar.tsx` | Add Profile link to user dropdown |
+| `src/types/profile.ts` (new) | TypeScript types for profile and tiers |
 
 ---
 
-## Additional Polish
+## Tier Benefits Configuration
 
-1. **Labels**: Add "MARKET", "TEAM", "THRESHOLD", "DIRECTION" labels matching actual components
-2. **HOME/AWAY tags**: Add small tags under team abbreviations like the real `TeamSelectCards`
-3. **Smooth transitions**: Use `transition-all duration-300` consistently
-4. **Cursor indicator**: Optional animated cursor/pointer to show where "clicks" are happening
-5. **Step indicator dots**: Optional subtle dots at bottom showing current animation step
+Reuse the tier data from Pricing.tsx:
+
+```typescript
+const TIER_CONFIG = {
+  rookie: {
+    name: "Rookie",
+    color: "text-muted-foreground",
+    bgColor: "bg-secondary",
+    features: [
+      "1 active alert per day",
+      "Basic alert builder",
+      "Email notifications",
+      "Access to all sports",
+    ],
+    canUpgrade: true,
+  },
+  pro: {
+    name: "Pro",
+    color: "text-amber-400",
+    bgColor: "bg-amber-500/20",
+    features: [
+      "15 alerts per day",
+      "Multi-condition logic (AND/OR)",
+      "Alert templates",
+      "Priority notification delivery",
+      "Advanced filters",
+      "Line movement history",
+    ],
+    canUpgrade: true,
+  },
+  legend: {
+    name: "Legend",
+    color: "text-purple-400",
+    bgColor: "bg-purple-500/20",
+    features: [
+      "Unlimited alerts",
+      "Auto-rearm alerts",
+      "Advanced configurations",
+      "API access",
+      "Priority support",
+      "Custom notification channels",
+      "Early access to new features",
+    ],
+    canUpgrade: false,
+  },
+};
+```
 
 ---
 
-## Description Update
+## Technical Details
 
-Also update the step description text to match the new UI:
+### Profile Auto-Creation
 
-**Current**: "Build custom conditions with IF/THEN logic. Set thresholds, combine rules, and choose exactly when you want to be notified."
+When user visits profile page and no profile exists, automatically create one with defaults:
+- `display_name`: null (user can set later)
+- `subscription_tier`: 'rookie'
 
-**Proposed**: "Select a game, set your price target, and choose how you want to be notified. Creating alerts takes just seconds."
+### Team Logo Display
 
+Use the existing storage bucket `team-logos` with `logo_filename` from teams table:
+```typescript
+const logoUrl = `https://wxcezmqaknhftwnpkanu.supabase.co/storage/v1/object/public/team-logos/${team.logo_filename}.svg`;
+```
+
+### Auth Protection
+
+Profile page requires authentication - redirect to `/auth?redirect=/profile` if not logged in.
+
+---
+
+## Summary
+
+This implementation adds:
+1. Two new database tables with proper RLS
+2. A dedicated `/profile` route
+3. Profile link in user navigation
+4. Sections for personal info, subscription tier, and favorite teams
+5. Reuses existing team data and pricing tier definitions
