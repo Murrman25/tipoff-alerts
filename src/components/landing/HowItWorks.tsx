@@ -241,69 +241,177 @@ const GamesDashboardPreview = () => {
 // ==========================================
 // STEP 2: CREATE ALERTS - Consolidated Preview
 // ==========================================
+// TipOff logo
+import tipoffIcon from "@/assets/tipoff-logo-icon.png";
+// League logo
+import NBALogo from "@/assets/leagues/nba.png";
+
 const AlertBuilderPreview = () => {
-  const templates = [
-    { label: "+100 Alert", icon: "🎯" },
-    { label: "Line Movement", icon: "📈" },
-    { label: "Pregame Only", icon: "⏰" },
-  ];
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStep((prev) => (prev + 1) % 4);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="space-y-3">
-      {/* IF/AND/THEN Logic */}
-      <div className="space-y-2 text-sm">
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
-          <span className="text-primary font-semibold">IF</span>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-muted border border-border">
-            <img src={BullsLogo} alt="Bulls" className="w-4 h-4 object-contain" />
-            <span>Bulls</span>
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+      {/* Step 1: Game Card */}
+      <div
+        className={cn(
+          "p-3 rounded-lg border transition-all duration-300",
+          step === 0
+            ? "bg-primary/10 border-primary/50 shadow-[0_0_10px_-3px_hsl(var(--primary)/0.4)]"
+            : "bg-secondary/50 border-border"
+        )}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <img src={NBALogo} alt="NBA" className="w-4 h-4 object-contain" />
+            <span className="text-xs font-medium text-muted-foreground">NBA</span>
           </div>
-          <span className="text-muted-foreground">ML reaches</span>
-          <span className="text-primary font-mono font-bold">+100</span>
-        </div>
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
-          <span className="text-accent font-semibold">AND</span>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-muted border border-border">
-            <span>Game is</span>
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
-          </div>
-          <span className="text-primary font-mono font-bold">LIVE</span>
-        </div>
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-          <span className="text-green-400 font-semibold">THEN</span>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-1 rounded text-xs bg-secondary border border-border">📱 Push</span>
-            <span className="text-muted-foreground">+</span>
-            <span className="px-2 py-1 rounded text-xs bg-secondary border border-border">📧 Email</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground italic">
-        → "Alert me when Bulls ML is even money during live play"
-      </div>
-
-      {/* Create button */}
-      <button className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
-        Create Alert
-      </button>
-
-      {/* Templates */}
-      <div className="pt-3 border-t border-border/50">
-        <p className="text-xs text-muted-foreground mb-2">Quick Templates:</p>
-        <div className="flex flex-wrap gap-2">
-          {templates.map((template) => (
-            <span
-              key={template.label}
-              className="px-3 py-1.5 rounded-lg text-xs bg-secondary/50 border border-border hover:border-primary/50 cursor-pointer transition-colors"
-            >
-              {template.icon} {template.label}
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+              <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
+              LIVE
             </span>
+            <span className="text-[10px] text-muted-foreground">Q3 4:32</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src={BullsLogo} alt="Bulls" className="w-5 h-5 object-contain" />
+            <span className="font-semibold text-sm">CHI</span>
+            <span className="text-lg font-bold">98</span>
+          </div>
+          <span className="text-xs text-muted-foreground">@</span>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold">101</span>
+            <span className="font-semibold text-sm">BOS</span>
+            <img src={CelticsLogo} alt="Celtics" className="w-5 h-5 object-contain" />
+          </div>
+        </div>
+        <div className="flex items-center justify-center gap-2 mt-2 text-[10px] text-muted-foreground">
+          <span>ML: -120/+110</span>
+          <span>•</span>
+          <span>SP: -2.5</span>
+          <span>•</span>
+          <span>O/U: 218</span>
+        </div>
+      </div>
+
+      {/* Step 2: Market Toggle + Team Selection */}
+      <div
+        className={cn(
+          "space-y-2 transition-all duration-300",
+          step >= 1 ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none h-0 overflow-hidden"
+        )}
+      >
+        {/* Market Toggle */}
+        <div className="flex rounded-lg bg-muted/50 border border-border p-0.5">
+          {["ML", "SP", "O/U"].map((market, idx) => (
+            <button
+              key={market}
+              className={cn(
+                "flex-1 py-1.5 text-xs font-medium rounded-md transition-all",
+                idx === 0
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {market}
+            </button>
           ))}
         </div>
+
+        {/* Team Cards */}
+        <div className="flex gap-2">
+          <div
+            className={cn(
+              "flex-1 p-3 rounded-lg border transition-all duration-300",
+              step >= 1
+                ? "bg-primary/10 border-primary/50"
+                : "bg-secondary/50 border-border"
+            )}
+          >
+            <div className="flex flex-col items-center gap-1.5">
+              <img src={BullsLogo} alt="Bulls" className="w-8 h-8 object-contain" />
+              <span className="text-sm font-medium">CHI</span>
+            </div>
+          </div>
+          <div className="flex-1 p-3 rounded-lg bg-secondary/50 border border-border">
+            <div className="flex flex-col items-center gap-1.5">
+              <img src={CelticsLogo} alt="Celtics" className="w-8 h-8 object-contain" />
+              <span className="text-sm font-medium text-muted-foreground">BOS</span>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Step 3: Threshold + Direction */}
+      <div
+        className={cn(
+          "flex items-center gap-3 transition-all duration-300",
+          step >= 2 ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none h-0 overflow-hidden"
+        )}
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Threshold:</span>
+          <span className="px-2 py-1 rounded bg-muted border border-border font-mono text-sm font-semibold text-primary">
+            +100
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">Direction:</span>
+          <span className="px-2 py-1 rounded bg-primary/10 border border-primary/30 text-xs font-medium text-primary">
+            or better
+          </span>
+        </div>
+      </div>
+
+      {/* Step 4: Summary */}
+      <div
+        className={cn(
+          "transition-all duration-300",
+          step >= 3 ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none h-0 overflow-hidden"
+        )}
+      >
+        <div
+          className={cn(
+            "p-3 rounded-lg border",
+            "bg-amber-500/5 border-amber-500/30",
+            "shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)]"
+          )}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <img
+              src={tipoffIcon}
+              alt="TipOff"
+              className="w-4 h-4 object-contain animate-[pulse_2s_ease-in-out_infinite]"
+            />
+            <p className="text-[10px] uppercase tracking-wide text-amber-500 font-medium">
+              Ready to create
+            </p>
+          </div>
+          <p className="text-sm text-foreground">
+            "Alert me when Bulls ML reaches +100 or better, via email"
+          </p>
+        </div>
+      </div>
+
+      {/* Create Alert Button */}
+      <button
+        className={cn(
+          "w-full py-3 rounded-lg font-semibold text-sm transition-all duration-300",
+          step >= 3
+            ? "bg-primary text-primary-foreground shadow-[0_0_15px_-3px_hsl(var(--primary)/0.6)]"
+            : "bg-primary/80 text-primary-foreground"
+        )}
+      >
+        Create Alert
+      </button>
     </div>
   );
 };
