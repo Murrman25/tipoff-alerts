@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Heart, X, Search } from "lucide-react";
+import { getLogoUrl } from "@/components/TeamLogo";
 import {
   Command,
   CommandEmpty,
@@ -40,15 +40,27 @@ export const FavoriteTeamsSection = ({
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  const getTeamLogoUrl = (team: Team) => {
-    if (!team.logo_filename) return null;
-    return `https://wxcezmqaknhftwnpkanu.supabase.co/storage/v1/object/public/team-logos/${team.logo_filename}.svg`;
-  };
+  // Deduplicate by display_name, preferring NCAAF for NCAA schools
+  const deduplicatedTeams = useMemo(() => {
+    const teamMap = new Map<string, typeof allTeams[0]>();
+    
+    for (const team of allTeams) {
+      const existing = teamMap.get(team.display_name);
+      if (!existing) {
+        teamMap.set(team.display_name, team);
+      } else if (team.league === 'NCAAF' && existing.league === 'NCAAB') {
+        // Prefer NCAAF entry for NCAA schools (shared logos stored in ncaaf folder)
+        teamMap.set(team.display_name, team);
+      }
+    }
+    
+    return Array.from(teamMap.values());
+  }, [allTeams]);
 
-  // Filter out already favorited teams
+  // Filter out already favorited teams from deduplicated list
   const availableTeams = useMemo(() => {
-    return allTeams.filter((t) => !favoriteTeamIds.includes(t.id));
-  }, [allTeams, favoriteTeamIds]);
+    return deduplicatedTeams.filter((t) => !favoriteTeamIds.includes(t.id));
+  }, [deduplicatedTeams, favoriteTeamIds]);
 
   const handleSelectTeam = (teamId: string) => {
     onAddFavorite(teamId);
@@ -77,7 +89,7 @@ export const FavoriteTeamsSection = ({
                 >
                   {team.logo_filename ? (
                     <img
-                      src={getTeamLogoUrl(team)!}
+                      src={getLogoUrl(team.logo_filename)!}
                       alt={team.display_name}
                       className="w-8 h-8 object-contain"
                       onError={(e) => (e.currentTarget.style.display = "none")}
@@ -160,7 +172,7 @@ export const FavoriteTeamsSection = ({
                         >
                           {team.logo_filename ? (
                             <img
-                              src={getTeamLogoUrl(team)!}
+                              src={getLogoUrl(team.logo_filename)!}
                               alt={team.display_name}
                               className="w-6 h-6 object-contain"
                               onError={(e) =>
