@@ -630,37 +630,74 @@ const NotificationsPreview = () => {
               </div>
             </div>
           ) : (
-            /* Android with Green SMS Bubble - Clean minimal screen */
-            <div className="w-[280px] h-[460px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[1.75rem] p-2 shadow-2xl border border-zinc-700 relative flex flex-col">
-              {/* Camera Punch Hole - Android signature */}
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-950 rounded-full z-10 border border-zinc-800" />
+            /* Android with Green SMS Bubble - Realistic lock screen */
+            <div className="w-[280px] h-[480px] bg-gradient-to-b from-zinc-900 via-zinc-800 to-zinc-900 rounded-[3rem] p-[3px] shadow-2xl relative">
+              {/* Phone frame outer edge highlight */}
+              <div className="absolute inset-0 rounded-[3rem] bg-gradient-to-b from-zinc-600 via-zinc-700 to-zinc-800 opacity-50" />
               
-              {/* Lock Screen - Solid dark background */}
-              <div className="flex-1 bg-zinc-950 rounded-[1.5rem] mx-0.5 flex flex-col overflow-hidden">
-                {/* Clock - Android style */}
-                <div className="text-center pt-12">
-                  <p className="text-5xl font-normal text-white tracking-wide">9:41</p>
-                </div>
+              {/* Inner phone body */}
+              <div className="relative w-full h-full rounded-[2.8rem] overflow-hidden bg-black">
+                {/* Camera Punch Hole */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-3 h-3 bg-zinc-950 rounded-full z-20 border border-zinc-700" />
                 
-                {/* SMS Notification Area - Bottom positioned */}
-                <div className="flex-1 px-3 flex flex-col justify-end pb-6">
-                  {showNotification && (
-                    <div className="flex justify-end animate-notification-slide-in">
-                      <div className="max-w-[85%] bg-[#34C759] rounded-2xl rounded-br-sm px-4 py-2.5 shadow-lg">
-                        <p className="text-[15px] text-white leading-snug">
-                          🚨 Alert: {notif.team} {notif.event}. Tap to view live odds.
-                        </p>
+                {/* Screen with Android wallpaper gradient */}
+                <div className="absolute inset-[2px] rounded-[2.6rem] overflow-hidden">
+                  {/* Android style warm gradient wallpaper */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-100 via-yellow-200 to-orange-200">
+                    {/* Organic blob shapes like reference */}
+                    <div className="absolute top-[20%] left-[50%] w-[250px] h-[250px] rounded-full bg-gradient-to-br from-amber-300 via-yellow-300 to-orange-300 opacity-90 blur-sm" />
+                    <div className="absolute top-[10%] right-[-20%] w-[180px] h-[180px] rounded-full bg-gradient-to-tr from-orange-400 to-amber-400 opacity-70 blur-md" />
+                    <div className="absolute bottom-[30%] left-[-10%] w-[150px] h-[150px] rounded-full bg-gradient-to-br from-yellow-200 to-amber-200 opacity-80 blur-sm" />
+                  </div>
+                  
+                  {/* Lock Screen Content */}
+                  <div className="relative h-full flex flex-col pt-14 px-6">
+                    {/* Time Display - Android style */}
+                    <div className="text-center">
+                      <p className="text-[64px] font-light text-zinc-800 tracking-tight leading-none">
+                        4:49
+                      </p>
+                    </div>
+                    
+                    {/* Date - Android style */}
+                    <div className="text-center mt-1">
+                      <p className="text-[14px] font-medium text-zinc-600">
+                        Mon, February 3
+                      </p>
+                    </div>
+                    
+                    {/* Quick access icons */}
+                    <div className="flex items-center justify-center gap-4 mt-3">
+                      <div className="w-8 h-8 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-zinc-700">G</span>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center">
+                        <MessageSquare className="w-4 h-4 text-zinc-700" />
                       </div>
                     </div>
-                  )}
+                    
+                    {/* SMS Notification Area - Above bottom controls */}
+                    <div className="flex-1 px-0 flex flex-col justify-end pb-20">
+                      {showNotification && (
+                        <div className="flex justify-end animate-notification-slide-in">
+                          <div className="max-w-[90%] bg-[#34C759] rounded-2xl rounded-br-sm px-4 py-2.5 shadow-lg">
+                            <p className="text-[14px] text-white leading-snug">
+                              🚨 Alert: {notif.team} {notif.event}. Tap to view live odds.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Swipe to unlock */}
+                    <div className="absolute bottom-12 left-0 right-0 text-center">
+                      <p className="text-[11px] text-zinc-500 font-medium">Swipe to unlock</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Navigation Bar - Android signature */}
-              <div className="flex items-center justify-center gap-10 py-2">
-                <div className="w-0 h-0 border-r-[5px] border-r-white/30 border-y-[4px] border-y-transparent" />
-                <div className="w-4 h-4 rounded-full border-2 border-white/30" />
-                <div className="w-4 h-4 border-2 border-white/30 rounded-sm" />
+                
+                {/* Home Indicator - Android style bar */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-28 h-1 bg-zinc-600 rounded-full z-20" />
               </div>
             </div>
           )}
