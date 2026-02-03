@@ -23,6 +23,7 @@ import {
   QuickAlertPanel,
   CreateAlertStepper,
   AlertStep,
+  AlertSummary,
 } from "@/components/alerts";
 import { AuthModal } from "@/components/auth";
 import { TeamLogo } from "@/components/TeamLogo";
@@ -508,6 +509,14 @@ const CreateAlert = () => {
               />
             </AlertStep>
           </CreateAlertStepper>
+
+          {/* Alert Summary - only when all steps complete */}
+          <AlertSummary
+            condition={condition}
+            selectedGame={selectedGame}
+            notificationChannels={notificationChannels}
+            isVisible={isFormValid}
+          />
 
           {/* Create Button */}
           <Button
