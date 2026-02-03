@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Zap, Menu, ChevronDown, LogOut, Bell } from "lucide-react";
+import { Zap, Menu, ChevronDown, LogOut, Bell, User } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -116,6 +116,12 @@ export const Navbar = () => {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
+                    <Link to="/profile" className="cursor-pointer">
+                      <User className="w-4 h-4 mr-2" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/alerts" className="cursor-pointer">
                       <Bell className="w-4 h-4 mr-2" />
                       My Alerts
@@ -199,6 +205,15 @@ export const Navbar = () => {
                   Create Alert →
                 </Link>
               </div>
+              {user && (
+                <Link
+                  to="/profile"
+                  className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+              )}
               <div className="flex gap-4 pt-4 border-t border-border">
                 {user ? (
                   <Button
