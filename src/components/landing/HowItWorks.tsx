@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from "react";
-import { ChevronDown, ArrowUp, ArrowDown, Bell, Mail, Smartphone, MessageSquare } from "lucide-react";
+import { ChevronDown, ArrowUp, ArrowDown, Bell, Mail, Smartphone, MessageSquare, Flashlight, Camera } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { cn } from "@/lib/utils";
@@ -550,47 +550,84 @@ const NotificationsPreview = () => {
           isFadingOut && "opacity-0 scale-95"
         )}>
           {showIphone ? (
-            /* iPhone with Push Notification - Clean minimal screen */
-            <div className="w-[280px] h-[460px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2.5rem] p-3 shadow-2xl border border-zinc-700 relative">
-              {/* Dynamic Island - iPhone signature */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-7 bg-black rounded-full z-10" />
+            /* iPhone with Push Notification - Realistic iOS lock screen */
+            <div className="w-[280px] h-[480px] bg-gradient-to-b from-zinc-900 via-zinc-800 to-zinc-900 rounded-[3rem] p-[3px] shadow-2xl relative">
+              {/* Phone frame outer edge highlight */}
+              <div className="absolute inset-0 rounded-[3rem] bg-gradient-to-b from-zinc-600 via-zinc-700 to-zinc-800 opacity-50" />
               
-              {/* Screen - Solid dark background */}
-              <div className="bg-zinc-950 rounded-[2rem] h-full flex flex-col overflow-hidden">
-                {/* Lock Screen Content */}
-                <div className="flex-1 flex flex-col pt-14 px-4">
-                  {/* Time Display - iOS style thin font */}
-                  <div className="text-center">
-                    <p className="text-6xl font-extralight text-white tracking-tight">9:41</p>
+              {/* Inner phone body */}
+              <div className="relative w-full h-full rounded-[2.8rem] overflow-hidden bg-black">
+                {/* Dynamic Island */}
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[100px] h-[28px] bg-black rounded-full z-20" />
+                
+                {/* Screen with iOS wallpaper gradient */}
+                <div className="absolute inset-[2px] rounded-[2.6rem] overflow-hidden">
+                  {/* iOS 16 style wallpaper - colorful gradient with organic shapes */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-teal-600 via-blue-800 to-indigo-900">
+                    {/* Organic blob shapes like iOS wallpaper */}
+                    <div className="absolute top-[30%] right-[-10%] w-[200px] h-[200px] rounded-full bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 opacity-90 blur-sm" />
+                    <div className="absolute top-[45%] left-[-5%] w-[120px] h-[120px] rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 opacity-80 blur-sm" />
+                    <div className="absolute bottom-[15%] right-[10%] w-[80px] h-[80px] rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-70 blur-sm" />
                   </div>
                   
-                  {/* Push Notification Area - Bottom positioned */}
-                  <div className="flex-1 flex flex-col justify-end pb-8">
-                    {showNotification && (
-                      <div className="bg-white/15 backdrop-blur-xl rounded-2xl p-3.5 border border-white/10 animate-notification-slide-in shadow-lg">
-                        <div className="flex items-start gap-3">
-                          <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-md">
-                            <Bell className="w-5 h-5 text-primary-foreground" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-0.5">
-                              <p className="text-xs font-semibold text-white/90 uppercase tracking-wide">TIPOFFHQ</p>
-                              <p className="text-[10px] text-white/50">now</p>
+                  {/* Lock Screen Content */}
+                  <div className="relative h-full flex flex-col pt-16 px-6">
+                    {/* Date - iOS style */}
+                    <div className="text-center mb-1">
+                      <p className="text-[15px] font-medium text-white/90 tracking-wide">
+                        Monday, February 3
+                      </p>
+                    </div>
+                    
+                    {/* Time Display - iOS style large thin font */}
+                    <div className="text-center">
+                      <p className="text-[72px] font-bold text-white tracking-tight leading-none" style={{ fontWeight: 700 }}>
+                        9:41
+                      </p>
+                    </div>
+                    
+                    {/* Push Notification Area - Bottom positioned */}
+                    <div className="flex-1 flex flex-col justify-end pb-24">
+                      {showNotification && (
+                        <div className="bg-white/20 backdrop-blur-2xl rounded-[20px] p-3 animate-notification-slide-in shadow-xl border border-white/10">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-[10px] bg-primary flex items-center justify-center flex-shrink-0 shadow-lg">
+                              <Bell className="w-5 h-5 text-primary-foreground" />
                             </div>
-                            <p className="text-sm font-semibold text-white">🚨 Alert Triggered</p>
-                            <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
-                              {notif.team} {notif.event}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <p className="text-[13px] font-semibold text-white">TIPOFFHQ</p>
+                                <p className="text-[11px] text-white/60">now</p>
+                              </div>
+                              <p className="text-[13px] text-white/90 leading-snug">
+                                🚨 {notif.team} {notif.event}
+                              </p>
+                            </div>
                           </div>
                         </div>
+                      )}
+                    </div>
+                    
+                    {/* Bottom controls - Flashlight & Camera */}
+                    <div className="absolute bottom-16 left-0 right-0 flex items-center justify-between px-10">
+                      <div className="w-12 h-12 rounded-full bg-zinc-800/60 backdrop-blur-xl flex items-center justify-center border border-white/10">
+                        <Flashlight className="w-5 h-5 text-white" />
                       </div>
-                    )}
+                      <div className="w-12 h-12 rounded-full bg-zinc-800/60 backdrop-blur-xl flex items-center justify-center border border-white/10">
+                        <Camera className="w-5 h-5 text-white" />
+                      </div>
+                    </div>
+                    
+                    {/* Swipe up text */}
+                    <div className="absolute bottom-8 left-0 right-0 text-center">
+                      <p className="text-[11px] text-white/50 font-medium">Swipe up to open</p>
+                    </div>
                   </div>
                 </div>
+                
+                {/* Home Indicator */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/60 rounded-full z-20" />
               </div>
-              
-              {/* Home Indicator - iOS signature */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/40 rounded-full" />
             </div>
           ) : (
             /* Android with Green SMS Bubble - Clean minimal screen */
