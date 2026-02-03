@@ -586,8 +586,8 @@ const NotificationsPreview = () => {
                       </p>
                     </div>
                     
-                    {/* Push Notification Area - Bottom positioned */}
-                    <div className="flex-1 flex flex-col justify-end pb-24">
+                    {/* Push Notification Area - Above bottom controls */}
+                    <div className="flex-1 flex flex-col justify-end pb-32">
                       {showNotification && (
                         <div className="bg-white/20 backdrop-blur-2xl rounded-[20px] p-3 animate-notification-slide-in shadow-xl border border-white/10">
                           <div className="flex items-start gap-3">
