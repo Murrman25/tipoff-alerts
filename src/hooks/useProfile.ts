@@ -44,14 +44,55 @@ export const useProfile = () => {
   const updateProfile = useMutation({
     mutationFn: async ({
       display_name,
+      avatar_url,
     }: {
-      display_name: string | null;
+      display_name?: string | null;
+      avatar_url?: string | null;
     }) => {
       if (!user) throw new Error("Not authenticated");
 
+      const updates: Record<string, string | null> = {};
+      if (display_name !== undefined) updates.display_name = display_name;
+      if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+
       const { data, error } = await supabase
         .from("profiles")
-        .update({ display_name })
+        .update(updates)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Profile;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+    },
+  });
+
+  const uploadAvatar = useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+
+      // Upload file to storage
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      // Update profile with avatar URL
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: urlData.publicUrl })
         .eq("user_id", user.id)
         .select()
         .single();
@@ -69,5 +110,6 @@ export const useProfile = () => {
     isLoading,
     error,
     updateProfile,
+    uploadAvatar,
   };
 };

@@ -1,11 +1,22 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Plus, X, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Heart, X, Search } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { Team } from "@/hooks/useFavoriteTeams";
-
-const LEAGUES = ["NFL", "NBA", "MLB", "NHL", "MLS", "NCAAF", "NCAAB"];
 
 interface FavoriteTeamsSectionProps {
   allTeams: Team[];
@@ -26,15 +37,23 @@ export const FavoriteTeamsSection = ({
   isAddingFavorite,
   isRemovingFavorite,
 }: FavoriteTeamsSectionProps) => {
-  const [selectedLeague, setSelectedLeague] = useState<string>("NFL");
-
-  const teamsInLeague = allTeams.filter(
-    (t) => t.league.toUpperCase() === selectedLeague
-  );
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   const getTeamLogoUrl = (team: Team) => {
     if (!team.logo_filename) return null;
     return `https://wxcezmqaknhftwnpkanu.supabase.co/storage/v1/object/public/team-logos/${team.logo_filename}.svg`;
+  };
+
+  // Filter out already favorited teams
+  const availableTeams = useMemo(() => {
+    return allTeams.filter((t) => !favoriteTeamIds.includes(t.id));
+  }, [allTeams, favoriteTeamIds]);
+
+  const handleSelectTeam = (teamId: string) => {
+    onAddFavorite(teamId);
+    setOpen(false);
+    setSearchValue("");
   };
 
   return (
@@ -46,96 +65,134 @@ export const FavoriteTeamsSection = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Selected teams */}
+        {/* Selected teams with logos */}
         {favoriteTeams.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <p className="text-sm font-medium text-foreground">Your Teams:</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {favoriteTeams.map((team) => (
-                <Badge
+                <div
                   key={team.id}
-                  variant="secondary"
-                  className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary border-primary/20"
+                  className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 shadow-sm"
                 >
-                  {team.logo_filename && (
+                  {team.logo_filename ? (
                     <img
                       src={getTeamLogoUrl(team)!}
                       alt={team.display_name}
-                      className="w-4 h-4"
+                      className="w-8 h-8 object-contain"
                       onError={(e) => (e.currentTarget.style.display = "none")}
                     />
+                  ) : (
+                    <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {team.short_name?.charAt(0) || team.display_name.charAt(0)}
+                      </span>
+                    </div>
                   )}
-                  {team.display_name}
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-foreground">
+                      {team.display_name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {team.league}
+                    </span>
+                  </div>
                   <button
                     onClick={() => onRemoveFavorite(team.id)}
                     disabled={isRemovingFavorite}
-                    className="ml-1 hover:text-destructive transition-colors"
+                    className="ml-2 p-1 hover:bg-destructive/10 rounded-full transition-colors"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-4 h-4 text-muted-foreground hover:text-destructive" />
                   </button>
-                </Badge>
+                </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* League filter */}
+        {/* Search to add teams */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">Add Teams:</p>
-          <div className="flex flex-wrap gap-2">
-            {LEAGUES.map((league) => (
-              <Button
-                key={league}
-                variant={selectedLeague === league ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedLeague(league)}
-                className={
-                  selectedLeague === league
-                    ? "bg-primary text-primary-foreground"
-                    : ""
-                }
-              >
-                {league}
-              </Button>
-            ))}
-          </div>
+          <p className="text-sm font-medium text-foreground">Add a Team:</p>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search teams..."
+                  className="pl-10 cursor-pointer"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  onClick={() => setOpen(true)}
+                />
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0" align="start">
+              <Command>
+                <CommandInput
+                  placeholder="Search teams..."
+                  value={searchValue}
+                  onValueChange={setSearchValue}
+                />
+                <CommandList>
+                  <CommandEmpty>No teams found.</CommandEmpty>
+                  <CommandGroup>
+                    {availableTeams
+                      .filter(
+                        (team) =>
+                          team.display_name
+                            .toLowerCase()
+                            .includes(searchValue.toLowerCase()) ||
+                          team.city
+                            ?.toLowerCase()
+                            .includes(searchValue.toLowerCase()) ||
+                          team.league
+                            .toLowerCase()
+                            .includes(searchValue.toLowerCase())
+                      )
+                      .slice(0, 20)
+                      .map((team) => (
+                        <CommandItem
+                          key={team.id}
+                          value={team.display_name}
+                          onSelect={() => handleSelectTeam(team.id)}
+                          disabled={isAddingFavorite}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          {team.logo_filename ? (
+                            <img
+                              src={getTeamLogoUrl(team)!}
+                              alt={team.display_name}
+                              className="w-6 h-6 object-contain"
+                              onError={(e) =>
+                                (e.currentTarget.style.display = "none")
+                              }
+                            />
+                          ) : (
+                            <div className="w-6 h-6 bg-secondary rounded-full flex items-center justify-center">
+                              <span className="text-xs">
+                                {team.short_name?.charAt(0) ||
+                                  team.display_name.charAt(0)}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex flex-col">
+                            <span className="text-sm">{team.display_name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {team.league}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
-        {/* Available teams grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-          {teamsInLeague.map((team) => {
-            const isFavorite = favoriteTeamIds.includes(team.id);
-            return (
-              <Button
-                key={team.id}
-                variant="outline"
-                size="sm"
-                disabled={isFavorite || isAddingFavorite}
-                onClick={() => onAddFavorite(team.id)}
-                className={`justify-start gap-2 ${
-                  isFavorite ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-              >
-                {team.logo_filename && (
-                  <img
-                    src={getTeamLogoUrl(team)!}
-                    alt={team.display_name}
-                    className="w-4 h-4"
-                    onError={(e) => (e.currentTarget.style.display = "none")}
-                  />
-                )}
-                <span className="truncate text-xs">
-                  {team.short_name || team.display_name}
-                </span>
-                {!isFavorite && <Plus className="w-3 h-3 ml-auto flex-shrink-0" />}
-              </Button>
-            );
-          })}
-        </div>
-
-        {teamsInLeague.length === 0 && (
+        {favoriteTeams.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No teams found for {selectedLeague}
+            No favorite teams yet. Search to add your first team!
           </p>
         )}
       </CardContent>
