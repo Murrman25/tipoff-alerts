@@ -1,8 +1,8 @@
-import { Check } from "lucide-react";
-import { AlertCondition, MARKET_OPTIONS, DIRECTION_OPTIONS, RULE_TYPE_OPTIONS } from "@/types/alerts";
+import { AlertCondition, MARKET_OPTIONS, DIRECTION_OPTIONS } from "@/types/alerts";
 import { GameEvent } from "@/types/games";
 import { NotificationChannel } from "./AlertNotificationChannels";
 import { cn } from "@/lib/utils";
+import tipoffIcon from "@/assets/tipoff-logo-icon.png";
 
 interface AlertSummaryProps {
   condition: AlertCondition;
@@ -89,15 +89,18 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
   return (
     <div 
       className={cn(
-        "bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4",
-        "animate-in fade-in slide-in-from-bottom-2 duration-300"
+        "bg-amber-500/5 border border-amber-500/30 rounded-lg p-4",
+        "shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)]",
+        "animate-fade-in"
       )}
     >
       <div className="flex items-center gap-2 mb-2">
-        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500">
-          <Check className="w-3 h-3 text-white" />
-        </div>
-        <p className="text-xs uppercase tracking-wide text-emerald-500 font-medium">
+        <img 
+          src={tipoffIcon} 
+          alt="TipOff" 
+          className="w-5 h-5 object-contain"
+        />
+        <p className="text-xs uppercase tracking-wide text-amber-500 font-medium">
           Ready to create
         </p>
       </div>
