@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 interface AlertEventSelectorProps {
   value: string | null;
-  onChange: (value: string | null, game: GameEvent | null) => void;
+  onChange: (value: string | null, game: GameEvent | null, isAutoSelect?: boolean) => void;
   preSelectedEventID?: string | null;
 }
 
@@ -47,7 +47,7 @@ export const AlertEventSelector = ({
   // Effect to auto-select when pre-selected game loads
   useEffect(() => {
     if (preSelectedEventID && preSelectedGame && !hasAutoSelected) {
-      onChange(preSelectedEventID, preSelectedGame);
+      onChange(preSelectedEventID, preSelectedGame, true); // Mark as auto-select
       setHasAutoSelected(true);
     }
   }, [preSelectedGame, preSelectedEventID, hasAutoSelected, onChange]);
@@ -82,7 +82,7 @@ export const AlertEventSelector = ({
 
   const handleSelect = (eventID: string) => {
     const selectedGame = filteredGames.find(g => g.eventID === eventID) || null;
-    onChange(eventID, selectedGame);
+    onChange(eventID, selectedGame, false); // User manually selected
   };
 
   return (

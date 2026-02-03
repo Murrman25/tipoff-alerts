@@ -59,8 +59,13 @@ const CreateAlert = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<QuickAlertTemplateId | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<number>>(new Set(preSelectedEventID ? [2] : [1]));
+  const userManuallyOpenedStep1Ref = useRef(false);
 
   const toggleStep = (step: number) => {
+    // Track if user manually opens step 1 (to prevent auto-close from fighting user intent)
+    if (step === 1) {
+      userManuallyOpenedStep1Ref.current = true;
+    }
     setOpenSteps((prev) => {
       const next = new Set(prev);
       if (next.has(step)) {
@@ -100,12 +105,17 @@ const CreateAlert = () => {
     });
   };
 
-  const handleGameSelect = (eventID: string | null, game: GameEvent | null) => {
+  const handleGameSelect = (eventID: string | null, game: GameEvent | null, isAutoSelect = false) => {
     updateCondition("eventID", eventID);
     setSelectedGame(game);
-    if (eventID) {
-      // Auto-collapse step 1, open step 2
+    
+    // Only auto-collapse step 1 if this is NOT a pre-select (user explicitly chose a game)
+    // or if it's the initial auto-select and step 1 wasn't manually opened
+    if (eventID && !isAutoSelect && !userManuallyOpenedStep1Ref.current) {
       setOpenSteps(new Set([2]));
+    } else if (eventID && isAutoSelect && !userManuallyOpenedStep1Ref.current) {
+      // For auto-select on page load, just ensure step 2 is open but don't close step 1 if user opened it
+      setOpenSteps(prev => new Set([...prev, 2]));
     }
   };
 
