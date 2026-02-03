@@ -9,6 +9,7 @@ import Games from "./pages/Games";
 import CreateAlert from "./pages/CreateAlert";
 import MyAlerts from "./pages/MyAlerts";
 import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/alerts" element={<MyAlerts />} />
             <Route path="/alerts/create" element={<CreateAlert />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/profile" element={<Profile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
