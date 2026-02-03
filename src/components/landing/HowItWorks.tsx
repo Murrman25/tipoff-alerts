@@ -642,12 +642,12 @@ const NotificationsPreview = () => {
                 
                 {/* Screen with Android wallpaper gradient */}
                 <div className="absolute inset-[2px] rounded-[2.6rem] overflow-hidden">
-                  {/* Android style warm gradient wallpaper */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-100 via-yellow-200 to-orange-200">
-                    {/* Organic blob shapes like reference */}
-                    <div className="absolute top-[20%] left-[50%] w-[250px] h-[250px] rounded-full bg-gradient-to-br from-amber-300 via-yellow-300 to-orange-300 opacity-90 blur-sm" />
-                    <div className="absolute top-[10%] right-[-20%] w-[180px] h-[180px] rounded-full bg-gradient-to-tr from-orange-400 to-amber-400 opacity-70 blur-md" />
-                    <div className="absolute bottom-[30%] left-[-10%] w-[150px] h-[150px] rounded-full bg-gradient-to-br from-yellow-200 to-amber-200 opacity-80 blur-sm" />
+                  {/* Android style warm gradient wallpaper - muted tones */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-stone-200 via-amber-100/70 to-orange-100/50">
+                    {/* Organic blob shapes - softer colors */}
+                    <div className="absolute top-[20%] left-[50%] w-[250px] h-[250px] rounded-full bg-gradient-to-br from-amber-200/80 via-yellow-200/60 to-orange-200/50 opacity-80 blur-sm" />
+                    <div className="absolute top-[10%] right-[-20%] w-[180px] h-[180px] rounded-full bg-gradient-to-tr from-orange-200/60 to-amber-200/50 opacity-60 blur-md" />
+                    <div className="absolute bottom-[30%] left-[-10%] w-[150px] h-[150px] rounded-full bg-gradient-to-br from-yellow-100/50 to-amber-100/40 opacity-70 blur-sm" />
                   </div>
                   
                   {/* Lock Screen Content */}
