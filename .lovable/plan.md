@@ -1,108 +1,113 @@
 
 
-# Add Alert Summary When All Steps Complete
+# Update Alert Builder Bento Box to Match App Flow
 
 ## Overview
 
-Add a concise, human-readable summary that appears only when all three steps are completed, giving users a final confirmation of what they're about to create before hitting the button.
+Replace the current "Alert Builder" preview on the landing page with an animated mockup that accurately reflects the actual 3-step alert creation flow in the app: **Select Game → Set Condition → Create Alert**.
 
 ---
 
-## Implementation Options
+## Current vs. Proposed
 
-| Option | Description | Pros | Cons |
-|--------|-------------|------|------|
-| **A. Inline above button** | Summary appears directly above "Create Alert" button | Simple, natural placement, no extra UI complexity | Can feel cramped on mobile |
-| **B. Animated slide-in card** | Summary slides in with animation when complete | Eye-catching, celebrates completion | More complex, could feel distracting |
-| **C. Replace button area** | Transform the button section to include summary | Clean transition, unified CTA area | Requires more layout restructuring |
-
-**Recommended: Option A (Inline above button)** - simplest, most natural, and mobile-friendly.
-
----
-
-## Proposed Design
-
-**When all 3 steps complete, show:**
-
-```text
-┌─────────────────────────────────────────────────┐
-│  ✓ Ready to create                              │
-│                                                 │
-│  "Alert me when Lakers spread reaches +3.5      │
-│   or better, via email"                         │
-│                                                 │
-│  ┌─────────────────────────────────────────┐    │
-│  │  ⚡ Create Alert                         │    │
-│  └─────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────┘
-```
-
----
-
-## Technical Approach
-
-### Update Existing AlertSummary Component
-
-The existing `AlertSummary` component already has summary generation logic. We'll enhance it to:
-
-1. Accept `notificationChannels` as a prop to include them in the summary
-2. Accept `selectedGame` prop instead of using `mockGames` lookup
-3. Add conditional rendering based on `isAllComplete` prop
-4. Style with green accents to match the completed step theme
-
-### Key Changes to AlertSummary
-
-```typescript
-interface AlertSummaryProps {
-  condition: AlertCondition;
-  selectedGame: GameEvent | null;
-  notificationChannels: NotificationChannel[];
-  isVisible: boolean;  // Only show when all steps complete
-}
-```
-
-### Summary Text Generation
-
-Improve the `generateSummary` function to produce concise, readable text:
-
-**Examples by rule type:**
-- **Threshold At**: "Alert me when Lakers spread reaches +3.5 or better"
-- **Threshold Cross**: "Alert me when Celtics moneyline crosses below -150"
-- **Value Change**: "Alert me when any Bulls spread movement occurs"
-- **Arbitrage**: "Alert me when an arbitrage opportunity is detected"
-- **Best Available**: "Alert me when Warriors has the best moneyline"
-
-**Notification suffix:**
-- Single channel: "via email"
-- Multiple channels: "via email and push"
-
-### Integration in CreateAlert
-
-Add the summary component between the stepper and the Create button:
-
-```tsx
-{/* Alert Summary - only when complete */}
-{isFormValid && (
-  <AlertSummary
-    condition={condition}
-    selectedGame={selectedGame}
-    notificationChannels={notificationChannels}
-    isVisible={true}
-  />
-)}
-
-{/* Create Button */}
-<Button ...>
-```
+| Current | Proposed |
+|---------|----------|
+| IF/AND/THEN logic builder syntax | Step-by-step visual flow matching app |
+| Complex multi-condition display | Simple: Game card → Market/Team → Summary |
+| "Popular Templates" section | Amber "Ready to create" summary with TipOff logo |
+| Static display | Animated progression through steps |
 
 ---
 
 ## Visual Design
 
-- **Container**: Green-tinted background (`bg-emerald-500/5`) with green border to match completed steps
-- **Header**: Small "Ready to create" label with checkmark
-- **Summary text**: Regular weight, quoted text style
-- **Animation**: Fade-in when appearing (`animate-in fade-in`)
+The new preview will animate through the actual flow:
+
+```text
+┌──────────────────────────────────────────────┐
+│  ① Select Game                               │
+│  ┌────────────────────────────────────────┐  │
+│  │ 🏀 NBA          ● LIVE  Q3 4:32        │  │
+│  │                                        │  │
+│  │ [Bulls logo] CHI  98  @  101  BOS [🍀] │  │
+│  │                                        │  │
+│  │  ML: -120/+110 • SP: -2.5 • O/U: 218   │  │
+│  └────────────────────────────────────────┘  │
+│                     ↓                        │
+│  ② Set Condition                             │
+│  ┌─────────────────┬─────────────────────┐   │
+│  │   ML  |  SP  | O/U                    │   │
+│  └─────────────────┴─────────────────────┘   │
+│  ┌─────────┐  ┌─────────┐                    │
+│  │ [Bulls] │  │ [Celts] │   ← Team Cards    │
+│  │   CHI   │  │   BOS   │                    │
+│  └─────────┘  └─────────┘                    │
+│  Threshold: +100   Direction: or better      │
+│                     ↓                        │
+│  ┌────────────────────────────────────────┐  │
+│  │ 🔔 Ready to create                     │  │
+│  │ "Alert me when Bulls ML reaches +100   │  │
+│  │  or better, via email"                 │  │
+│  └────────────────────────────────────────┘  │
+│                                              │
+│  [⚡ Create Alert]                           │
+└──────────────────────────────────────────────┘
+```
+
+---
+
+## Animation Sequence
+
+The preview will use a timed animation (~8 seconds total, looping):
+
+1. **0-2s**: Show game card (game selected/highlighted)
+2. **2-4s**: Show market toggle + team selection (team card animates to selected state)
+3. **4-6s**: Show threshold input + direction appearing
+4. **6-8s**: Amber "Ready to create" summary fades in with TipOff logo pulse, button glows
+
+This demonstrates the smooth progression users experience in the actual app.
+
+---
+
+## Technical Approach
+
+### New AlertBuilderPreview Component
+
+Replace the existing `AlertBuilderPreview` with a new implementation that:
+
+1. Uses existing team logos (Bulls, Celtics) for the mock game
+2. Replicates the visual style of `GameSelectCard` (compact version)
+3. Shows the `MarketToggle` segment control (ML | SP | O/U)
+4. Shows mini `TeamSelectCards` style cards
+5. Ends with the amber-glowing summary box matching `AlertSummary.tsx`
+6. Includes the TipOff logo icon with pulse animation
+
+### Animation State Machine
+
+```typescript
+const [step, setStep] = useState(0);
+// step 0: Game card highlighted
+// step 1: Market + Team selection visible  
+// step 2: Threshold + Direction visible
+// step 3: Summary appears with glow
+
+useEffect(() => {
+  const interval = setInterval(() => {
+    setStep((prev) => (prev + 1) % 4);
+  }, 2000);
+  return () => clearInterval(interval);
+}, []);
+```
+
+### Visual Elements to Include
+
+- **Game Card**: NBA league icon, Bulls @ Celtics, live badge, score, compact odds row
+- **Market Toggle**: 3-segment control with "ML" selected
+- **Team Cards**: Two side-by-side cards with team logos
+- **Threshold Display**: Shows "+100" in a styled input-like box
+- **Direction Badge**: Shows "or better" selected
+- **Summary Card**: Amber border/glow with TipOff logo and quote text
+- **Create Button**: Primary button that glows when summary appears
 
 ---
 
@@ -110,14 +115,15 @@ Add the summary component between the stepper and the Create button:
 
 | File | Changes |
 |------|---------|
-| `src/components/alerts/AlertSummary.tsx` | Update props, improve summary generation, add notification channels, update styling |
-| `src/pages/CreateAlert.tsx` | Import and render AlertSummary conditionally when `isFormValid` is true |
+| `src/components/landing/AlertsSection.tsx` | Replace `AlertBuilderPreview` component with new animated step-by-step preview |
 
 ---
 
-## Mobile Considerations
+## Additional Considerations
 
-- Summary text wraps naturally on narrow screens
-- Padding kept minimal (p-3 vs p-4) on mobile
-- No fixed heights that could cause overflow
+- Keep the component self-contained within `AlertsSection.tsx` (no new files needed)
+- Use existing team logo imports already present in the file
+- Match exact styling from real components (border colors, padding, font sizes)
+- Ensure mobile responsiveness with appropriate text truncation
+- The TipOff logo icon path: `@/assets/tipoff-logo-icon.png`
 
