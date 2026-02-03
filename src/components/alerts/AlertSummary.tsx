@@ -98,7 +98,7 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
         <img 
           src={tipoffIcon} 
           alt="TipOff" 
-          className="w-5 h-5 object-contain"
+          className="w-5 h-5 object-contain animate-[pulse_2s_ease-in-out_infinite]"
         />
         <p className="text-xs uppercase tracking-wide text-amber-500 font-medium">
           Ready to create
