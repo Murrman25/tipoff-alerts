@@ -5,8 +5,10 @@ import { GamesFilters } from "@/components/games/GamesFilters";
 import { GameCard } from "@/components/games/GameCard";
 import { GameCardSkeleton } from "@/components/games/GameCardSkeleton";
 import { EmptyGamesState } from "@/components/games/EmptyGamesState";
+import { FavoriteTeamsFilter } from "@/components/games/FavoriteTeamsFilter";
 import { GamesFilters as FiltersType } from "@/types/games";
 import { useGames } from "@/hooks/useGames";
+import { useFavoriteTeams } from "@/hooks/useFavoriteTeams";
 import { Button } from "@/components/ui/button";
 
 const Games = () => {
@@ -18,15 +20,38 @@ const Games = () => {
     dateRange: "today",
     oddsAvailable: true,
   });
+  const [selectedFavoriteTeamIds, setSelectedFavoriteTeamIds] = useState<string[]>([]);
+
+  // Fetch favorite teams
+  const { favoriteTeams, isLoading: favoritesLoading } = useFavoriteTeams();
 
   // Fetch games from the API
   const { data: games, isLoading, error, refetch, isFetching } = useGames(filters);
 
-  // Client-side search filtering (API doesn't support team name search)
+  const handleToggleFavoriteTeam = (teamId: string) => {
+    setSelectedFavoriteTeamIds((prev) =>
+      prev.includes(teamId)
+        ? prev.filter((id) => id !== teamId)
+        : [...prev, teamId]
+    );
+  };
+
+  // Client-side filtering (search + favorite teams)
   const filteredGames = useMemo(() => {
     if (!games) return [];
     
     let result = games;
+    
+    // Apply favorite teams filter
+    if (selectedFavoriteTeamIds.length > 0) {
+      result = result.filter((game) =>
+        selectedFavoriteTeamIds.some(
+          (teamId) =>
+            game.teams.home.canonical?.id === teamId ||
+            game.teams.away.canonical?.id === teamId
+        )
+      );
+    }
     
     // Apply search filter
     if (filters.searchQuery) {
@@ -52,13 +77,14 @@ const Games = () => {
       // Then by start time
       return new Date(a.status.startsAt).getTime() - new Date(b.status.startsAt).getTime();
     });
-  }, [games, filters.searchQuery]);
+  }, [games, filters.searchQuery, selectedFavoriteTeamIds]);
 
   const hasActiveFilters =
     filters.leagueID.length > 0 ||
     filters.bookmakerID.length > 0 ||
     filters.betTypeID.length > 0 ||
-    filters.searchQuery.length > 0;
+    filters.searchQuery.length > 0 ||
+    selectedFavoriteTeamIds.length > 0;
 
   const clearFilters = () => {
     setFilters({
@@ -69,6 +95,7 @@ const Games = () => {
       dateRange: "today",
       oddsAvailable: true,
     });
+    setSelectedFavoriteTeamIds([]);
   };
 
   return (
@@ -103,6 +130,18 @@ const Games = () => {
 
       {/* Main content */}
       <main className="container px-4 md:px-6 py-6">
+        {/* Favorite Teams Filter */}
+        {(favoriteTeams.length > 0 || favoritesLoading) && (
+          <div className="mb-4">
+            <FavoriteTeamsFilter
+              favoriteTeams={favoriteTeams}
+              selectedTeamIds={selectedFavoriteTeamIds}
+              onToggleTeam={handleToggleFavoriteTeam}
+              isLoading={favoritesLoading}
+            />
+          </div>
+        )}
+
         {/* Filters */}
         <div className="mb-6">
           <GamesFilters

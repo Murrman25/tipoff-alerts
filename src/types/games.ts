@@ -89,6 +89,7 @@ export interface GamesFilters {
   searchQuery: string;
   dateRange: 'today' | 'tomorrow' | 'week' | 'all';
   oddsAvailable: boolean;
+  favoriteTeamIds?: string[];
 }
 
 // Display metadata for filters
