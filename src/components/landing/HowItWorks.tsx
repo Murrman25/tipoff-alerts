@@ -248,23 +248,49 @@ import NBALogo from "@/assets/leagues/nba.png";
 
 const AlertBuilderPreview = () => {
   const [step, setStep] = useState(0);
+  const [typedValue, setTypedValue] = useState("");
 
+  // Animation timeline: 10 seconds total
+  // 0: Initial (nothing selected)
+  // 1: Game selected
+  // 2: Market + Team selected
+  // 3: Threshold + Direction filled
+  // 4: Summary visible, ready to create
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStep((prev) => (prev + 1) % 4);
+    const timer = setInterval(() => {
+      setStep((prev) => (prev + 1) % 5);
     }, 2000);
-    return () => clearInterval(interval);
+    return () => clearInterval(timer);
   }, []);
+
+  // Typewriter effect for threshold
+  useEffect(() => {
+    if (step === 3) {
+      setTypedValue("");
+      const chars = ["+", "1", "0", "0"];
+      chars.forEach((char, i) => {
+        setTimeout(() => {
+          setTypedValue((prev) => prev + char);
+        }, i * 150);
+      });
+    } else if (step < 3) {
+      setTypedValue("");
+    }
+  }, [step]);
+
+  // Selection styles
+  const selectedStyle = "border-primary ring-2 ring-primary/30 bg-primary/5 shadow-lg shadow-primary/10";
+  const unselectedStyle = "border-border bg-secondary/30";
+  const mutedStyle = "opacity-50";
 
   return (
     <div className="space-y-3">
-      {/* Step 1: Game Card */}
+      {/* Game Card - always visible */}
       <div
         className={cn(
           "p-3 rounded-lg border transition-all duration-300",
-          step === 0
-            ? "bg-primary/10 border-primary/50 shadow-[0_0_10px_-3px_hsl(var(--primary)/0.4)]"
-            : "bg-secondary/50 border-border"
+          step >= 1 ? selectedStyle : unselectedStyle,
+          step === 0 && "hover:border-muted-foreground/30"
         )}
       >
         <div className="flex items-center justify-between mb-2">
@@ -302,116 +328,170 @@ const AlertBuilderPreview = () => {
         </div>
       </div>
 
-      {/* Step 2: Market Toggle + Team Selection */}
-      <div
-        className={cn(
-          "space-y-2 transition-all duration-300",
-          step >= 1 ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none h-0 overflow-hidden"
-        )}
-      >
-        {/* Market Toggle */}
+      {/* Market Toggle - always visible */}
+      <div className={cn(
+        "space-y-1.5 transition-all duration-300",
+        step < 2 && mutedStyle
+      )}>
+        <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+          Market
+        </label>
         <div className="flex rounded-lg bg-muted/50 border border-border p-0.5">
           {["ML", "SP", "O/U"].map((market, idx) => (
             <button
               key={market}
               className={cn(
-                "flex-1 py-1.5 text-xs font-medium rounded-md transition-all",
-                idx === 0
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                "flex-1 py-1.5 text-xs font-medium rounded-md transition-all duration-300",
+                idx === 0 && step >= 2
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground"
               )}
             >
               {market}
             </button>
           ))}
         </div>
+      </div>
 
-        {/* Team Cards */}
-        <div className="flex gap-2">
+      {/* Team Cards - always visible */}
+      <div className={cn(
+        "space-y-1.5 transition-all duration-300",
+        step < 2 && mutedStyle
+      )}>
+        <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+          Team
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {/* Bulls - Away */}
           <div
             className={cn(
-              "flex-1 p-3 rounded-lg border transition-all duration-300",
-              step >= 1
-                ? "bg-primary/10 border-primary/50"
-                : "bg-secondary/50 border-border"
+              "flex flex-col items-center justify-center p-3 rounded-lg border transition-all duration-300 min-h-[80px]",
+              step >= 2 ? selectedStyle : unselectedStyle
             )}
           >
-            <div className="flex flex-col items-center gap-1.5">
-              <img src={BullsLogo} alt="Bulls" className="w-8 h-8 object-contain" />
-              <span className="text-sm font-medium">CHI</span>
-            </div>
+            <img src={BullsLogo} alt="Bulls" className="w-7 h-7 object-contain" />
+            <span className="text-xs font-medium mt-1.5">CHI</span>
+            <span className={cn(
+              "text-[10px] uppercase tracking-wide mt-0.5 transition-colors duration-300",
+              step >= 2 ? "text-primary" : "text-muted-foreground"
+            )}>
+              AWAY
+            </span>
           </div>
-          <div className="flex-1 p-3 rounded-lg bg-secondary/50 border border-border">
-            <div className="flex flex-col items-center gap-1.5">
-              <img src={CelticsLogo} alt="Celtics" className="w-8 h-8 object-contain" />
-              <span className="text-sm font-medium text-muted-foreground">BOS</span>
-            </div>
+          {/* Celtics - Home */}
+          <div
+            className={cn(
+              "flex flex-col items-center justify-center p-3 rounded-lg border transition-all duration-300 min-h-[80px]",
+              unselectedStyle
+            )}
+          >
+            <img src={CelticsLogo} alt="Celtics" className="w-7 h-7 object-contain" />
+            <span className="text-xs font-medium mt-1.5 text-muted-foreground">BOS</span>
+            <span className="text-[10px] uppercase tracking-wide mt-0.5 text-muted-foreground">
+              HOME
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Step 3: Threshold + Direction */}
-      <div
-        className={cn(
-          "flex items-center gap-3 transition-all duration-300",
-          step >= 2 ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none h-0 overflow-hidden"
-        )}
-      >
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Threshold:</span>
-          <span className="px-2 py-1 rounded bg-muted border border-border font-mono text-sm font-semibold text-primary">
-            +100
-          </span>
+      {/* Threshold + Direction - always visible */}
+      <div className={cn(
+        "grid grid-cols-2 gap-3 transition-all duration-300",
+        step < 3 && mutedStyle
+      )}>
+        {/* Threshold */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+            Threshold
+          </label>
+          <div className={cn(
+            "px-3 py-2 rounded-lg border transition-all duration-300 h-9 flex items-center",
+            step >= 3 ? "border-primary/50 bg-primary/5" : "border-border bg-secondary/30"
+          )}>
+            <span className={cn(
+              "font-mono text-sm font-semibold transition-colors duration-300",
+              step >= 3 ? "text-primary" : "text-muted-foreground"
+            )}>
+              {step >= 3 ? typedValue : ""}
+              {step === 3 && typedValue.length < 4 && (
+                <span className="animate-pulse">|</span>
+              )}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Direction:</span>
-          <span className="px-2 py-1 rounded bg-primary/10 border border-primary/30 text-xs font-medium text-primary">
-            or better
-          </span>
+        {/* Direction */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+            Direction
+          </label>
+          <div className={cn(
+            "px-3 py-2 rounded-lg border transition-all duration-300 h-9 flex items-center justify-center",
+            step >= 3 
+              ? "border-primary/50 bg-primary/10 text-primary" 
+              : "border-border bg-secondary/30 text-muted-foreground"
+          )}>
+            <span className="text-xs font-medium">or better</span>
+          </div>
         </div>
       </div>
 
-      {/* Step 4: Summary */}
+      {/* Summary - always visible but muted until step 4 */}
       <div
         className={cn(
-          "transition-all duration-300",
-          step >= 3 ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none h-0 overflow-hidden"
+          "p-3 rounded-lg border transition-all duration-500",
+          step >= 4 
+            ? "bg-amber-500/5 border-amber-500/30 shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)]" 
+            : "bg-secondary/20 border-border opacity-40"
         )}
       >
-        <div
-          className={cn(
-            "p-3 rounded-lg border",
-            "bg-amber-500/5 border-amber-500/30",
-            "shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)]"
-          )}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <img
-              src={tipoffIcon}
-              alt="TipOff"
-              className="w-4 h-4 object-contain animate-[pulse_2s_ease-in-out_infinite]"
-            />
-            <p className="text-[10px] uppercase tracking-wide text-amber-500 font-medium">
-              Ready to create
-            </p>
-          </div>
-          <p className="text-sm text-foreground">
-            "Alert me when Bulls ML reaches +100 or better, via email"
+        <div className="flex items-center gap-2 mb-1">
+          <img
+            src={tipoffIcon}
+            alt="TipOff"
+            className={cn(
+              "w-4 h-4 object-contain transition-all duration-300",
+              step >= 4 && "animate-[pulse_2s_ease-in-out_infinite]"
+            )}
+          />
+          <p className={cn(
+            "text-[10px] uppercase tracking-wide font-medium transition-colors duration-300",
+            step >= 4 ? "text-amber-500" : "text-muted-foreground"
+          )}>
+            Ready to create
           </p>
         </div>
+        <p className={cn(
+          "text-sm transition-colors duration-300",
+          step >= 4 ? "text-foreground" : "text-muted-foreground"
+        )}>
+          "Alert me when Bulls ML reaches +100 or better"
+        </p>
       </div>
 
-      {/* Create Alert Button */}
+      {/* Create Alert Button - always visible */}
       <button
         className={cn(
           "w-full py-3 rounded-lg font-semibold text-sm transition-all duration-300",
-          step >= 3
+          step >= 4
             ? "bg-primary text-primary-foreground shadow-[0_0_15px_-3px_hsl(var(--primary)/0.6)]"
-            : "bg-primary/80 text-primary-foreground"
+            : "bg-primary/50 text-primary-foreground/70"
         )}
       >
         Create Alert
       </button>
+
+      {/* Step indicator dots */}
+      <div className="flex items-center justify-center gap-1.5 pt-2">
+        {[0, 1, 2, 3, 4].map((s) => (
+          <div
+            key={s}
+            className={cn(
+              "w-1.5 h-1.5 rounded-full transition-all duration-300",
+              step === s ? "bg-primary w-3" : "bg-muted-foreground/30"
+            )}
+          />
+        ))}
+      </div>
     </div>
   );
 };
