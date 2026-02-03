@@ -5,7 +5,9 @@ import { Search, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { LEAGUES, LeagueID, GameEvent } from "@/types/games";
 import { useGames } from "@/hooks/useGames";
 import { useGameById } from "@/hooks/useGameById";
+import { useFavoriteTeams } from "@/hooks/useFavoriteTeams";
 import { LeagueLogo } from "@/components/games/LeagueLogo";
+import { FavoriteTeamsFilter } from "@/components/games/FavoriteTeamsFilter";
 import { GameSelectCard } from "./GameSelectCard";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +30,18 @@ export const AlertEventSelector = ({
   const [selectedLeague, setSelectedLeague] = useState<"all" | LeagueID>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
+  const [selectedFavoriteTeamIds, setSelectedFavoriteTeamIds] = useState<string[]>([]);
+
+  // Fetch favorite teams
+  const { favoriteTeams, isLoading: favoritesLoading } = useFavoriteTeams();
+
+  const handleToggleFavoriteTeam = (teamId: string) => {
+    setSelectedFavoriteTeamIds((prev) =>
+      prev.includes(teamId)
+        ? prev.filter((id) => id !== teamId)
+        : [...prev, teamId]
+    );
+  };
 
   // Fetch games from API with selected league filter
   const { data: games, isLoading, error, refetch, isRefetching } = useGames({
@@ -61,22 +75,41 @@ export const AlertEventSelector = ({
     return gameList;
   }, [games, preSelectedGame]);
 
-  // Client-side search filtering
-  const filteredGames = allGames.filter((game) => {
+  // Client-side filtering (search + favorite teams)
+  const filteredGames = useMemo(() => {
+    let result = allGames;
+
+    // Apply favorite teams filter
+    if (selectedFavoriteTeamIds.length > 0) {
+      result = result.filter((game) =>
+        selectedFavoriteTeamIds.some(
+          (teamId) =>
+            game.teams.home.canonical?.id === teamId ||
+            game.teams.away.canonical?.id === teamId
+        )
+      );
+    }
+
+    // Apply search filter
     const query = searchQuery.toLowerCase();
-    const homeName = game.teams.home.name || game.teams.home.teamID || '';
-    const awayName = game.teams.away.name || game.teams.away.teamID || '';
-    const homeAbbr = game.teams.home.abbreviation || '';
-    const awayAbbr = game.teams.away.abbreviation || '';
-    
-    return (
-      query === "" ||
-      homeName.toLowerCase().includes(query) ||
-      awayName.toLowerCase().includes(query) ||
-      homeAbbr.toLowerCase().includes(query) ||
-      awayAbbr.toLowerCase().includes(query)
-    );
-  });
+    if (query) {
+      result = result.filter((game) => {
+        const homeName = game.teams.home.name || game.teams.home.teamID || '';
+        const awayName = game.teams.away.name || game.teams.away.teamID || '';
+        const homeAbbr = game.teams.home.abbreviation || '';
+        const awayAbbr = game.teams.away.abbreviation || '';
+
+        return (
+          homeName.toLowerCase().includes(query) ||
+          awayName.toLowerCase().includes(query) ||
+          homeAbbr.toLowerCase().includes(query) ||
+          awayAbbr.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    return result;
+  }, [allGames, searchQuery, selectedFavoriteTeamIds]);
 
   const isLoadingAny = isLoading || isLoadingPreSelected;
   const isRateLimited = (error as any)?.isRateLimited;
@@ -111,6 +144,16 @@ export const AlertEventSelector = ({
           </Button>
         ))}
       </div>
+
+      {/* Favorite Teams Filter */}
+      {(favoriteTeams.length > 0 || favoritesLoading) && (
+        <FavoriteTeamsFilter
+          favoriteTeams={favoriteTeams}
+          selectedTeamIds={selectedFavoriteTeamIds}
+          onToggleTeam={handleToggleFavoriteTeam}
+          isLoading={favoritesLoading}
+        />
+      )}
 
       {/* Search Input */}
       <div className="relative">
