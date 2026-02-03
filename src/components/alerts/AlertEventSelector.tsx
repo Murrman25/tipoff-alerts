@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { LEAGUES, LeagueID, GameEvent } from "@/types/games";
 import { useGames } from "@/hooks/useGames";
 import { useGameById } from "@/hooks/useGameById";
@@ -30,7 +30,7 @@ export const AlertEventSelector = ({
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
   // Fetch games from API with selected league filter
-  const { data: games, isLoading } = useGames({
+  const { data: games, isLoading, error, refetch, isRefetching } = useGames({
     leagueID: selectedLeague === "all" ? [] : [selectedLeague],
     bookmakerID: [],
     betTypeID: [],
@@ -79,6 +79,7 @@ export const AlertEventSelector = ({
   });
 
   const isLoadingAny = isLoading || isLoadingPreSelected;
+  const isRateLimited = (error as any)?.isRateLimited;
 
   const handleSelect = (eventID: string) => {
     const selectedGame = filteredGames.find(g => g.eventID === eventID) || null;
@@ -129,6 +130,26 @@ export const AlertEventSelector = ({
           <div className="py-8 text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
             Loading games...
+          </div>
+        ) : isRateLimited ? (
+          <div className="py-6 text-center space-y-3">
+            <div className="flex items-center justify-center gap-2 text-amber-500">
+              <AlertCircle className="w-5 h-5" />
+              <span className="text-sm font-medium">API rate limit reached</span>
+            </div>
+            <p className="text-xs text-muted-foreground max-w-[240px] mx-auto">
+              The sports data API is temporarily unavailable. Please wait a moment.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="gap-2"
+            >
+              <RefreshCw className={cn("w-3 h-3", isRefetching && "animate-spin")} />
+              {isRefetching ? "Retrying..." : "Try again"}
+            </Button>
           </div>
         ) : filteredGames.length === 0 ? (
           <div className="py-8 text-sm text-muted-foreground text-center">

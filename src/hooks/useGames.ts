@@ -48,6 +48,13 @@ export function useGames(filters: GamesFilters) {
         ),
       ]);
 
+      // Handle rate limiting gracefully
+      if (liveResponse.status === 429 || upcomingResponse.status === 429) {
+        const error = new Error('Rate limit exceeded. Please wait a moment and try again.');
+        (error as any).isRateLimited = true;
+        throw error;
+      }
+
       // Parse responses
       const liveData: SportsEventsResponse = liveResponse.ok 
         ? await liveResponse.json() 
@@ -97,17 +104,25 @@ export function useGames(filters: GamesFilters) {
 
       return transformedData;
     },
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 60 * 1000, // Auto-refresh every 1 minute
-    retry: 2,
+    staleTime: 60 * 1000, // 1 minute (increased from 30s to reduce API calls)
+    refetchInterval: 2 * 60 * 1000, // Auto-refresh every 2 minutes (reduced frequency)
+    retry: (failureCount, error) => {
+      // Don't retry on rate limit errors
+      if ((error as any)?.isRateLimited) return false;
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     meta: {
       onError: (error: Error) => {
         console.error('Error fetching games:', error);
-        toast({
-          title: "Failed to load games",
-          description: error.message || "Please try again later",
-          variant: "destructive",
-        });
+        // Only show toast for non-rate-limit errors (rate limit has inline UI)
+        if (!(error as any)?.isRateLimited) {
+          toast({
+            title: "Failed to load games",
+            description: error.message || "Please try again later",
+            variant: "destructive",
+          });
+        }
       },
     },
   });
