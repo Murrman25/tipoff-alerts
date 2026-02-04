@@ -349,9 +349,11 @@ const NotificationsPreview = () => {
               isNew 
                 ? "bg-primary/10 border-primary/30" 
                 : "bg-secondary/50 border-border",
-              isNew && animatingNew && "animate-notification-slide-in",
               displayIdx === 2 && "opacity-60"
             )}
+            style={{
+              animation: isNew && animatingNew ? "fade-in 0.3s ease-out" : "none"
+            }}
           >
             <div className="flex items-center gap-2 text-sm">
               {isNew && (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Target, ArrowUpDown, TrendingUp, Timer, Zap, Check, Lock, Crown } from "lucide-react";
+import { Target, GitCompareArrows, ChartNoAxesCombined, Timer, Zap, Check, Lock, Crown } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     name: "Spread Alerts",
     shortName: "Spread",
     description: "Monitor point spread movements and get alerted when lines hit your desired number. Essential for bettors who need a specific number.",
-    icon: ArrowUpDown,
+    icon: GitCompareArrows,
     examples: [
       "Alert when Chiefs spread reaches +3.5",
       "Notify when Celtics spread crosses -7",
@@ -49,7 +49,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     name: "Over/Under Alerts",
     shortName: "O/U",
     description: "Track total points lines and get notified when they move above or below your target. Great for totals bettors watching weather or injury news.",
-    icon: TrendingUp,
+    icon: ChartNoAxesCombined,
     examples: [
       "Alert when O/U drops below 42.5",
       "Notify when total reaches 220 or higher",
