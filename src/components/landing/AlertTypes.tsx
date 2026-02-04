@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Target, ArrowUpDown, TrendingUp, Timer, Zap, Check, Lock, Crown } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { cn } from "@/lib/utils";
 import type { SubscriptionTier } from "@/types/profile";
@@ -121,6 +122,7 @@ const TIER_LIMITS: Record<SubscriptionTier, { alerts: string; types: string[] }>
 export const AlertTypes = () => {
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("rookie");
   const [selectedAlertType, setSelectedAlertType] = useState<string>("ml_threshold");
+  const [isAnimating, setIsAnimating] = useState(false);
   const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation();
   const { ref: contentRef, isVisible: contentVisible } = useScrollAnimation();
 
@@ -130,6 +132,7 @@ export const AlertTypes = () => {
 
   // When tier changes, ensure selected alert type is valid for that tier
   const handleTierChange = (tier: SubscriptionTier) => {
+    setIsAnimating(true);
     setSelectedTier(tier);
     const newConfig = TIER_LIMITS[tier];
     if (!newConfig.types.includes(selectedAlertType)) {
@@ -137,7 +140,25 @@ export const AlertTypes = () => {
     }
   };
 
+  // Reset animation state after transition
+  useEffect(() => {
+    if (isAnimating) {
+      const timer = setTimeout(() => setIsAnimating(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isAnimating]);
+
   const isAlertAvailable = (alertId: string) => tierConfig.types.includes(alertId);
+
+  const scrollToPricing = (tier: SubscriptionTier) => {
+    // First switch to the tier
+    handleTierChange(tier);
+    // Then scroll to pricing section
+    const pricingSection = document.getElementById("pricing");
+    if (pricingSection) {
+      pricingSection.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
     <section className="py-24 relative" id="alert-types">
@@ -216,7 +237,7 @@ export const AlertTypes = () => {
               Available Alerts
             </p>
             <div className="space-y-2">
-              {ALERT_TYPES.map((alertType) => {
+              {ALERT_TYPES.map((alertType, index) => {
                 const isAvailable = isAlertAvailable(alertType.id);
                 const isSelected = selectedAlertType === alertType.id;
                 const Icon = alertType.icon;
@@ -227,8 +248,13 @@ export const AlertTypes = () => {
                     key={alertType.id}
                     onClick={() => isAvailable && setSelectedAlertType(alertType.id)}
                     disabled={!isAvailable}
+                    style={{
+                      animationDelay: isAnimating ? `${index * 50}ms` : '0ms',
+                    }}
                     className={cn(
-                      "w-full flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 text-left",
+                      "w-full flex items-center gap-3 p-3 rounded-lg border text-left",
+                      "transition-all duration-200",
+                      isAnimating && "animate-fade-in",
                       isAvailable
                         ? isSelected
                           ? "border-primary bg-primary/10 ring-1 ring-primary/30"
@@ -238,7 +264,7 @@ export const AlertTypes = () => {
                   >
                     <div
                       className={cn(
-                        "flex items-center justify-center w-9 h-9 rounded-md shrink-0",
+                        "flex items-center justify-center w-9 h-9 rounded-md shrink-0 transition-colors duration-200",
                         isSelected && isAvailable
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground"
@@ -253,7 +279,7 @@ export const AlertTypes = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={cn(
-                          "text-sm font-medium truncate",
+                          "text-sm font-medium truncate transition-colors duration-200",
                           isSelected && isAvailable ? "text-foreground" : "text-foreground/80"
                         )}>
                           {alertType.shortName}
@@ -270,7 +296,7 @@ export const AlertTypes = () => {
                       </div>
                     </div>
                     {isSelected && isAvailable && (
-                      <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                      <div className="w-2 h-2 rounded-full bg-primary shrink-0 animate-scale-in" />
                     )}
                   </button>
                 );
@@ -326,14 +352,18 @@ export const AlertTypes = () => {
                     : "Upgrade to Legend for unlimited alerts and all alert types"
                   }
                 </p>
-                <button className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-colors",
-                  selectedTier === "rookie"
-                    ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-                    : "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
-                )}>
+                <Button
+                  variant="ghost"
+                  onClick={() => scrollToPricing(selectedTier === "rookie" ? "pro" : "legend")}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium transition-all duration-200",
+                    selectedTier === "rookie"
+                      ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 hover:text-amber-300"
+                      : "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 hover:text-purple-300"
+                  )}
+                >
                   {selectedTier === "rookie" ? "View Pro Plan" : "View Legend Plan"}
-                </button>
+                </Button>
               </div>
             )}
           </div>
