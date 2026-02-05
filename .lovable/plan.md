@@ -1,155 +1,128 @@
 
-# Sync Pricing Cards with Feature Comparison Table
+
+# Add Tier Badges to All Alert Types & Enable Full Selection
 
 ## Overview
 
-This update ensures the pricing cards accurately reflect the feature comparison table, adds a tooltip to the Rookie Active Alerts value, and makes Over/Under a Pro-only feature.
+This update makes the alert type selector more interactive and informative by:
+1. Adding "Rookie" badges to Moneyline and Spread alerts for consistency
+2. Showing tier badges on ALL alert types at all times (not just locked ones)
+3. Making all alert types selectable regardless of current tier
+4. Auto-updating the tier selector when a Pro or Legend alert type is selected
 
 ---
 
-## Changes Required
+## Changes
 
-### 1. Add Tooltip to Rookie Active Alerts
+### 1. Always Show Tier Badges
 
-Add a tooltip explaining that the Rookie's 1 active alert is the same as their 1 daily alert quota.
+Currently, badges only appear on locked (unavailable) alert types. This update will show the appropriate tier badge on every alert type at all times.
 
-**Current:** `rookie: "1"` (no tooltip)
-**New:** `rookie: "1"` with tooltip: `"Your 1 daily alert can be active and monitoring for your specified conditions."`
+**Before:** Moneyline and Spread show no badge, Pro/Legend alerts only show badge when locked
+**After:** All 6 alert types show their tier badge (Rookie, Pro, or Legend)
 
-This requires updating the tooltip interface to support a `rookie` field.
+### 2. Make All Alert Types Selectable
 
-### 2. Make Over/Under a Pro Feature
+Remove the `disabled` attribute and unlock all alert types for selection. When clicking on a Pro or Legend alert type, it will:
+1. Select that alert type
+2. Automatically update the tier selector above to match
 
-Change Over/Under Alerts from available to all tiers to Pro and Legend only.
+This creates a more interactive experience where users can explore all alert types and see the tier requirements.
 
-**Current:** `{ name: "Over/Under Alerts", rookie: true, pro: true, legend: true }`
-**New:** `{ name: "Over/Under Alerts", rookie: false, pro: true, legend: true }`
+### 3. Auto-Switch Tier on Selection
 
-### 3. Sync Pricing Cards with Table
-
-Based on the feature comparison table, here are the corrections needed:
-
-#### Rookie Card (Current vs Corrected)
-
-| Current | Issue | Corrected |
-|---------|-------|-----------|
-| 1 alert per day | Correct | Keep |
-| Basic alert builder | Correct | Keep |
-| Email notifications | Wrong - Email is Pro+ | Change to "Push notifications" |
-| Access to all sports | Not in table | Change to "Moneyline & spread alerts" |
-
-#### Pro Card (Current vs Corrected)
-
-| Current | Issue | Corrected |
-|---------|-------|-----------|
-| Up to 5 active alerts | Correct | Keep |
-| Multi-condition logic (AND/OR) | Correct | Keep |
-| Alert templates | Correct | Keep |
-| Push & SMS notifications | Wrong - SMS is Legend only | Change to "Email & push notifications" |
-| Priority notification delivery | Correct | Keep |
-| Line movement history | Correct | Keep |
-
-**Also add:** Over/Under & Score Margin alerts (now Pro features)
-
-#### Legend Card (Current vs Corrected)
-
-| Current | Issue | Corrected |
-|---------|-------|-----------|
-| All Pro features | Correct | Keep (style in amber) |
-| Unlimited alerts | Correct | Keep |
-| Auto-rearm alerts | Correct | Keep |
-| Priority support | Not in table but valid | Keep or change to "SMS notifications" |
-| Custom notification channels | Correct | Keep |
-| Early access to new features | Not in table but valid | Keep or change to "Timed Line Surge alerts" |
-
----
-
-## Updated Feature Lists
-
-### Rookie (Free)
-```typescript
-features: [
-  "1 alert per day",
-  "Moneyline & spread alerts",
-  "Basic alert builder",
-  "Push notifications",
-]
-```
-
-### Pro ($20/mo)
-```typescript
-features: [
-  "Up to 5 active alerts",
-  "Over/Under & Score Margin alerts",
-  "Multi-condition logic (AND/OR)",
-  "Email & push notifications",
-  "Priority delivery",
-  "Line movement history",
-]
-```
-
-### Legend ($40/mo)
-```typescript
-features: [
-  "All Pro features",
-  "Unlimited active alerts",
-  "Timed Line Surge & Momentum alerts",
-  "SMS notifications",
-  "Auto-rearm alerts",
-  "Custom notification channels",
-]
-```
+When a user clicks on an alert type that requires a higher tier, automatically switch the tier selector to that tier. For example:
+- Clicking "O/U" (Pro) while on Rookie → switches to Pro tab
+- Clicking "Momentum" (Legend) while on Pro → switches to Legend tab
 
 ---
 
 ## Technical Implementation
 
-### File: `src/components/landing/FeatureComparisonTable.tsx`
+### File: `src/components/landing/AlertTypes.tsx`
 
-**Change 1: Update tooltip interface to support Rookie**
-```typescript
-tooltip?: {
-  rookie?: string;  // Add this
-  pro?: string;
-  legend?: string;
+**Change 1: Update the alert type button to always be selectable**
+```tsx
+<button
+  key={alertType.id}
+  onClick={() => handleAlertTypeSelect(alertType)}
+  // Remove disabled={!isAvailable}
+  className={cn(
+    "w-full flex items-center gap-3 p-3 rounded-lg border text-left",
+    "transition-all duration-200",
+    isSelected
+      ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+      : "border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground/30"
+  )}
+>
+```
+
+**Change 2: Add new handler to select alert and update tier**
+```tsx
+const handleAlertTypeSelect = (alertType: AlertTypeInfo) => {
+  setSelectedAlertType(alertType.id);
+  // If this alert requires a higher tier, switch to that tier
+  if (alertType.minTier !== "rookie") {
+    setSelectedTier(alertType.minTier);
+  } else if (selectedTier !== "rookie" && alertType.minTier === "rookie") {
+    // Optional: stay on current tier if selecting a lower-tier alert
+    // (keeps user on Pro/Legend to see full feature set)
+  }
 };
 ```
 
-**Change 2: Add Rookie tooltip for Active Alerts**
-```typescript
-{
-  name: "Active Alerts",
-  rookie: "1",
-  pro: "5",
-  legend: "Unlimited",
-  tooltip: {
-    rookie: "Your 1 daily alert can be active and monitoring for your conditions.",
-    pro: "An active alert is one that's currently monitoring...",
-    legend: "Create as many alerts as you want...",
-  },
-}
+**Change 3: Always show tier badge (not just when locked)**
+```tsx
+{/* Always show tier badge */}
+<span className={cn(
+  "text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded",
+  tierDisplay.bgColor,
+  tierDisplay.color
+)}>
+  {tierDisplay.label}
+</span>
 ```
 
-**Change 3: Update FeatureCell to render Rookie tooltip**
-```typescript
-<TableCell className="text-center py-3">
-  <FeatureCell
-    value={feature.rookie}
-    tier="rookie"
-    tooltip={feature.tooltip?.rookie}  // Add this
-    legendExclusive={feature.legendExclusive}
-  />
-</TableCell>
+**Change 4: Always show the alert icon (remove Lock icon swap)**
+```tsx
+<div className={cn(
+  "flex items-center justify-center w-9 h-9 rounded-md shrink-0 transition-colors duration-200",
+  isSelected
+    ? "bg-primary text-primary-foreground"
+    : "bg-muted text-muted-foreground"
+)}>
+  <Icon className="w-4 h-4" />
+</div>
 ```
 
-**Change 4: Make Over/Under Pro-only**
-```typescript
-{ name: "Over/Under Alerts", rookie: false, pro: true, legend: true }
-```
+**Change 5: Update styling to remove disabled state**
 
-### File: `src/components/landing/Pricing.tsx`
+Remove the opacity/cursor-not-allowed styling since all items are now selectable.
 
-**Update the plans array with corrected features** (as shown above)
+---
+
+## Interaction Flow
+
+1. User lands on section → Rookie tab selected, Moneyline selected by default
+2. All 6 alert types visible with tier badges (Rookie, Rookie, Pro, Pro, Legend, Legend)
+3. User clicks "O/U" → O/U becomes selected, tier switches to Pro automatically
+4. User clicks "Momentum" → Momentum becomes selected, tier switches to Legend automatically
+5. User can also click tier tabs directly to filter/focus on that tier's alerts
+
+---
+
+## Visual Result
+
+| Alert Type | Badge |
+|------------|-------|
+| Moneyline | Rookie (muted) |
+| Spread | Rookie (muted) |
+| O/U | Pro (amber) |
+| Score Margin | Pro (amber) |
+| Line Surge | Legend (purple) |
+| Momentum | Legend (purple) |
+
+All items are fully clickable with hover states. Selecting any item updates both the detail panel on the right AND the tier selector above.
 
 ---
 
@@ -157,16 +130,5 @@ tooltip?: {
 
 | File | Changes |
 |------|---------|
-| `src/components/landing/FeatureComparisonTable.tsx` | Add rookie tooltip support, add tooltip for Rookie Active Alerts, make Over/Under Pro-only |
-| `src/components/landing/Pricing.tsx` | Update all three plan feature lists to match the comparison table |
+| `src/components/landing/AlertTypes.tsx` | Add tier badges to all items, remove disabled state, add auto-tier-switch on selection |
 
----
-
-## Visual Summary
-
-After these changes:
-- Rookie card will correctly show Push (not Email) notifications and basic alert types
-- Pro card will correctly show Email & Push (not SMS) and highlight new Pro alert types
-- Legend card will highlight SMS and exclusive alert types
-- Over/Under will show as unavailable for Rookie in the comparison table
-- Rookie's "1" in Active Alerts will have a helpful tooltip explaining it's the same as their daily quota
