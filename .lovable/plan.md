@@ -1,50 +1,68 @@
 
-# Update Pricing Section with Feature Comparison Table
+
+# Update Feature Comparison Table
 
 ## Overview
 
-This update enhances the Pricing section with revised discount rates, updated alert limits, and a comprehensive feature comparison table that clearly distinguishes what's available at each subscription tier.
+This update modifies the Feature Comparison Table to remove the Support section and restructure the Notifications category with updated tier availability.
 
 ---
 
 ## Changes Summary
 
-### 1. Update Yearly Discount to 25%
+### 1. Remove Support Section
 
-**Current:** 20% discount on yearly plans
-**New:** 25% discount on yearly plans
-
-Price adjustments:
-- **Pro:** Monthly $20 → Yearly $180/year ($15/mo equivalent)
-- **Legend:** Monthly $40 → Yearly $360/year ($30/mo equivalent)
+Delete the entire "Support" category from the feature data, which currently includes:
+- Email Support
+- Priority Support
+- Early Access to Features
 
 ---
 
-### 2. Update Alert Limits Per Tier
+### 2. Update Notifications Tier Availability
 
-| Tier | Current | New |
-|------|---------|-----|
-| Rookie | 1 active alert per day | 1 alert per day |
-| Pro | 15 alerts per day | Up to 5 active alerts ⓘ |
-| Legend | Unlimited alerts | Unlimited alerts (active or inactive) ⓘ |
-
-Tooltips to add:
-- **Pro "Active Alerts":** "An active alert is one that's currently monitoring for your specified conditions. Inactive alerts are paused and don't count toward your limit."
-- **Legend "Unlimited":** "Create as many alerts as you want with no restrictions. Keep alerts active indefinitely or pause them for later."
+| Feature | Current | New |
+|---------|---------|-----|
+| Push Notifications | Pro & Legend only | Everyone (Rookie, Pro, Legend) |
+| Email Notifications | Everyone | Pro & Legend only |
+| SMS Notifications | Pro & Legend | Legend only |
+| Priority Delivery | Pro & Legend | Pro & Legend (unchanged) |
 
 ---
 
-### 3. Remove API Access from Legend
+## Technical Implementation
 
-The "API access" feature will be removed from the Legend tier's feature list in the pricing cards.
+### File: `src/components/landing/FeatureComparisonTable.tsx`
+
+**Update the `featureData` array:**
+
+```typescript
+// Updated Notifications category (lines 64-72)
+{
+  category: "Notifications",
+  features: [
+    { name: "Push Notifications", rookie: true, pro: true, legend: true },
+    { name: "Email Notifications", rookie: false, pro: true, legend: true },
+    { name: "SMS Notifications", rookie: false, pro: false, legend: true },
+    { name: "Priority Delivery", rookie: false, pro: true, legend: true },
+  ],
+},
+
+// Remove entire Support category (lines 84-91)
+// DELETE this block:
+// {
+//   category: "Support",
+//   features: [
+//     { name: "Email Support", rookie: true, pro: true, legend: true },
+//     { name: "Priority Support", rookie: false, pro: false, legend: true },
+//     { name: "Early Access to Features", rookie: false, pro: false, legend: true },
+//   ],
+// },
+```
 
 ---
 
-### 4. Add Feature Comparison Table
-
-A comprehensive table below the pricing cards that clearly shows feature availability across tiers:
-
-**Table Structure:**
+## Updated Table Structure
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -64,9 +82,9 @@ A comprehensive table below the pricing cards that clearly shows feature availab
 │ Momentum Run Alerts          │ -        │ -        │ ✓              │
 │                                                                      │
 │ NOTIFICATIONS                                                        │
-│ Email Notifications          │ ✓        │ ✓        │ ✓              │
-│ Push Notifications           │ -        │ ✓        │ ✓              │
-│ SMS Notifications            │ -        │ ✓        │ ✓              │
+│ Push Notifications           │ ✓        │ ✓        │ ✓              │
+│ Email Notifications          │ -        │ ✓        │ ✓              │
+│ SMS Notifications            │ -        │ -        │ ✓              │
 │ Priority Delivery            │ -        │ ✓        │ ✓              │
 │                                                                      │
 │ FEATURES                                                             │
@@ -76,111 +94,8 @@ A comprehensive table below the pricing cards that clearly shows feature availab
 │ Line Movement History        │ -        │ ✓        │ ✓              │
 │ Auto-rearm Alerts            │ -        │ -        │ ✓              │
 │ Custom Notification Channels │ -        │ -        │ ✓              │
-│                                                                      │
-│ SUPPORT                                                              │
-│ Email Support                │ ✓        │ ✓        │ ✓              │
-│ Priority Support             │ -        │ -        │ ✓              │
-│ Early Access to Features     │ -        │ -        │ ✓              │
 └─────────────────────────────────────────────────────────────────────┘
 ```
-
----
-
-## Technical Implementation
-
-### File: `src/components/landing/Pricing.tsx`
-
-**Key Changes:**
-
-1. **Update yearly prices:**
-```typescript
-// Pro: $20/mo → 25% off = $15/mo = $180/year
-yearlyPrice: 180
-
-// Legend: $40/mo → 25% off = $30/mo = $360/year
-yearlyPrice: 360
-```
-
-2. **Update badge text:**
-```tsx
-<span className="...">Save 25%</span>
-```
-
-3. **Update plan features in cards:**
-```typescript
-// Rookie
-features: [
-  "1 alert per day",
-  "Basic alert builder",
-  "Email notifications",
-  "Access to all sports",
-]
-
-// Pro - remove "15 alerts" and update
-features: [
-  "Up to 5 active alerts",
-  "Multi-condition logic (AND/OR)",
-  "Alert templates",
-  "Push & SMS notifications",
-  "Priority notification delivery",
-  "Line movement history",
-]
-
-// Legend - remove "API access"
-features: [
-  "Unlimited alerts",
-  "Auto-rearm alerts",
-  "All Pro features",
-  "Priority support",
-  "Custom notification channels",
-  "Early access to new features",
-]
-```
-
-4. **Add TooltipProvider wrapper and tooltip imports**
-
-5. **Add feature comparison table component below pricing cards:**
-```tsx
-// New component or inline JSX
-<div className="mt-20 max-w-5xl mx-auto">
-  <h3 className="text-2xl font-bold text-center mb-8">Feature Comparison</h3>
-  <div className="border rounded-xl overflow-hidden">
-    <table className="w-full">
-      {/* Table content with check/dash icons per tier */}
-    </table>
-  </div>
-</div>
-```
-
-6. **Implement tooltips for alert limits:**
-```tsx
-<Tooltip>
-  <TooltipTrigger className="flex items-center gap-1">
-    5 active alerts
-    <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
-  </TooltipTrigger>
-  <TooltipContent>
-    An active alert is one that's currently monitoring...
-  </TooltipContent>
-</Tooltip>
-```
-
----
-
-## Visual Design
-
-**Table Styling:**
-- Alternating row backgrounds for readability
-- Sticky header with tier names
-- Check marks (✓) in primary color for included features
-- Dashes (-) in muted color for excluded features
-- Category headers in uppercase with section dividers
-- Info icons (ⓘ) next to items with tooltips
-- Responsive: horizontal scroll on mobile or stacked card view
-
-**Tooltip Content:**
-- Pro (5 active alerts): "An active alert is one that's currently monitoring for your specified conditions. Inactive alerts are paused and don't count toward your limit."
-- Legend (Unlimited): "Create as many alerts as you want with no restrictions. Keep alerts active indefinitely or pause them for later."
 
 ---
 
@@ -188,16 +103,5 @@ features: [
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/components/landing/Pricing.tsx` | Modify | Update prices, features, add comparison table with tooltips |
+| `src/components/landing/FeatureComparisonTable.tsx` | Modify | Update notifications, remove support section |
 
----
-
-## Summary of Changes
-
-1. **Yearly discount:** 20% → 25%
-2. **Alert limits:**
-   - Rookie: 1 alert per day (unchanged)
-   - Pro: 5 active alerts (with tooltip)
-   - Legend: Unlimited (with tooltip)
-3. **Removed:** API access from Legend tier
-4. **Added:** Feature comparison table with all alert types and features organized by category
