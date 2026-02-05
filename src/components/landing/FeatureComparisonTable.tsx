@@ -27,6 +27,7 @@
      pro?: string;
      legend?: string;
    };
+  legendExclusive?: boolean;
  }
  
  interface FeatureCategory {
@@ -57,8 +58,8 @@
        { name: "Spread Alerts", rookie: true, pro: true, legend: true },
        { name: "Over/Under Alerts", rookie: true, pro: true, legend: true },
        { name: "Score Margin Alerts", rookie: false, pro: true, legend: true },
-       { name: "Timed Line Surge", rookie: false, pro: false, legend: true },
-       { name: "Momentum Run Alerts", rookie: false, pro: false, legend: true },
+      { name: "Timed Line Surge", rookie: false, pro: false, legend: true, legendExclusive: true },
+      { name: "Momentum Run Alerts", rookie: false, pro: false, legend: true, legendExclusive: true },
      ],
    },
    {
@@ -66,7 +67,7 @@
      features: [
       { name: "Push Notifications", rookie: true, pro: true, legend: true },
       { name: "Email Notifications", rookie: false, pro: true, legend: true },
-      { name: "SMS Notifications", rookie: false, pro: false, legend: true },
+      { name: "SMS Notifications", rookie: false, pro: false, legend: true, legendExclusive: true },
        { name: "Priority Delivery", rookie: false, pro: true, legend: true },
      ],
    },
@@ -77,8 +78,8 @@
        { name: "Multi-condition Logic", rookie: false, pro: true, legend: true },
        { name: "Alert Templates", rookie: false, pro: true, legend: true },
        { name: "Line Movement History", rookie: false, pro: true, legend: true },
-       { name: "Auto-rearm Alerts", rookie: false, pro: false, legend: true },
-       { name: "Custom Notification Channels", rookie: false, pro: false, legend: true },
+      { name: "Auto-rearm Alerts", rookie: false, pro: false, legend: true, legendExclusive: true },
+      { name: "Custom Notification Channels", rookie: false, pro: false, legend: true, legendExclusive: true },
      ],
    },
  ];
@@ -87,16 +88,46 @@
    value,
    tier,
    tooltip,
+  legendExclusive,
  }: {
    value: FeatureValue;
    tier: "rookie" | "pro" | "legend";
    tooltip?: string;
+  legendExclusive?: boolean;
  }) => {
    if (typeof value === "boolean") {
-     return value ? (
-       <Check className="w-5 h-5 text-primary mx-auto" />
-     ) : (
-       <Minus className="w-4 h-4 text-muted-foreground/50 mx-auto" />
+    if (value) {
+      const isLegendExclusiveCell = tier === "legend" && legendExclusive;
+      const isProCell = tier === "pro";
+      
+      return (
+        <div
+          className={cn(
+            "w-7 h-7 rounded-full flex items-center justify-center mx-auto",
+            isLegendExclusiveCell && "bg-purple-500/20",
+            isProCell && "bg-primary/10",
+            tier === "legend" && !legendExclusive && "bg-purple-500/10",
+            tier === "rookie" && "bg-muted/50"
+          )}
+        >
+          <Check
+            className={cn(
+              "w-4 h-4",
+              isLegendExclusiveCell ? "text-purple-400" : "",
+              isProCell ? "text-primary" : "",
+              tier === "legend" && !legendExclusive ? "text-purple-400" : "",
+              tier === "rookie" ? "text-muted-foreground" : "",
+              !isLegendExclusiveCell && !isProCell && tier !== "legend" && tier !== "rookie" && "text-primary"
+            )}
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="w-7 h-7 flex items-center justify-center mx-auto">
+        <Minus className="w-4 h-4 text-muted-foreground/30" />
+      </div>
      );
    }
  
@@ -114,7 +145,17 @@
      );
    }
  
-   return <span className="text-sm font-medium">{value}</span>;
+  return (
+    <span
+      className={cn(
+        "text-sm font-medium",
+        tier === "pro" && "text-primary",
+        tier === "legend" && "text-purple-400"
+      )}
+    >
+      {value}
+    </span>
+  );
  };
  
  export const FeatureComparisonTable = () => {
@@ -133,22 +174,24 @@
            Feature Comparison
          </h3>
  
-         <div className="border border-border rounded-xl overflow-hidden bg-card">
+        {/* Gradient border container */}
+        <div className="relative p-[1px] rounded-xl bg-gradient-to-b from-border via-border/50 to-transparent overflow-hidden shadow-lg">
+          <div className="bg-card rounded-xl overflow-hidden">
            <div className="overflow-x-auto">
              <Table>
                <TableHeader>
-                 <TableRow className="bg-secondary/50 hover:bg-secondary/50">
-                   <TableHead className="w-[280px] font-semibold text-foreground">
+                <TableRow className="bg-secondary/60 hover:bg-secondary/60 border-b border-border/50">
+                  <TableHead className="w-[280px] font-semibold text-foreground py-4">
                      Feature
                    </TableHead>
-                   <TableHead className="text-center font-semibold text-foreground w-[120px]">
+                  <TableHead className="text-center font-semibold text-muted-foreground w-[120px] py-4">
                      Rookie
                    </TableHead>
-                   <TableHead className="text-center font-semibold text-foreground w-[120px]">
-                     <span className="text-gradient-amber">Pro</span>
+                  <TableHead className="text-center font-semibold w-[120px] py-4">
+                    <span className="text-gradient-amber font-bold">Pro</span>
                    </TableHead>
-                   <TableHead className="text-center font-semibold text-foreground w-[120px]">
-                     Legend
+                  <TableHead className="text-center font-semibold w-[120px] py-4">
+                    <span className="text-purple-400 font-bold">Legend</span>
                    </TableHead>
                  </TableRow>
                </TableHeader>
@@ -158,11 +201,11 @@
                      {/* Category header row */}
                      <TableRow
                        key={`category-${categoryIndex}`}
-                       className="bg-secondary/30 hover:bg-secondary/30"
+                      className="bg-secondary/40 hover:bg-secondary/40 border-l-2 border-l-primary"
                      >
                        <TableCell
                          colSpan={4}
-                         className="py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                        className="py-3 text-xs font-bold uppercase tracking-wider text-foreground"
                        >
                          {category.category}
                        </TableCell>
@@ -172,30 +215,43 @@
                        <TableRow
                          key={`feature-${categoryIndex}-${featureIndex}`}
                          className={cn(
-                           featureIndex % 2 === 0 ? "bg-transparent" : "bg-secondary/10"
+                          "transition-colors duration-150",
+                          featureIndex % 2 === 0 ? "bg-transparent" : "bg-secondary/10",
+                          "hover:bg-secondary/25"
                          )}
                        >
-                         <TableCell className="font-medium text-sm">
+                        <TableCell className={cn(
+                          "font-medium text-sm py-3",
+                          feature.legendExclusive && "text-purple-300/90"
+                        )}>
                            {feature.name}
+                          {feature.legendExclusive && (
+                            <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
+                              Legend
+                            </span>
+                          )}
                          </TableCell>
-                         <TableCell className="text-center">
+                        <TableCell className="text-center py-3">
                            <FeatureCell
                              value={feature.rookie}
                              tier="rookie"
+                            legendExclusive={feature.legendExclusive}
                            />
                          </TableCell>
-                         <TableCell className="text-center">
+                        <TableCell className="text-center py-3">
                            <FeatureCell
                              value={feature.pro}
                              tier="pro"
                              tooltip={feature.tooltip?.pro}
+                            legendExclusive={feature.legendExclusive}
                            />
                          </TableCell>
-                         <TableCell className="text-center">
+                        <TableCell className="text-center py-3">
                            <FeatureCell
                              value={feature.legend}
                              tier="legend"
                              tooltip={feature.tooltip?.legend}
+                            legendExclusive={feature.legendExclusive}
                            />
                          </TableCell>
                        </TableRow>
@@ -205,6 +261,7 @@
                </TableBody>
              </Table>
            </div>
+          </div>
          </div>
        </div>
      </TooltipProvider>
