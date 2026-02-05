@@ -1,32 +1,89 @@
 
 
-# Update Feature Comparison Table
+# Visually Enhance Feature Comparison Table
 
 ## Overview
 
-This update modifies the Feature Comparison Table to remove the Support section and restructure the Notifications category with updated tier availability.
+This update transforms the basic feature comparison table into a polished, visually engaging component that matches the premium aesthetic of the rest of the landing page. The enhancements include improved tier headers with color accents, better visual hierarchy, subtle animations, and refined styling.
 
 ---
 
-## Changes Summary
+## Current Issues
 
-### 1. Remove Support Section
-
-Delete the entire "Support" category from the feature data, which currently includes:
-- Email Support
-- Priority Support
-- Early Access to Features
+- Plain header row with minimal visual distinction
+- Basic alternating row colors that feel flat
+- No tier-specific branding (Pro = amber, Legend = purple)
+- Category headers lack visual impact
+- Check marks and dashes are visually monotonous
+- No hover states or interactivity
 
 ---
 
-### 2. Update Notifications Tier Availability
+## Enhancement Summary
 
-| Feature | Current | New |
-|---------|---------|-----|
-| Push Notifications | Pro & Legend only | Everyone (Rookie, Pro, Legend) |
-| Email Notifications | Everyone | Pro & Legend only |
-| SMS Notifications | Pro & Legend | Legend only |
-| Priority Delivery | Pro & Legend | Pro & Legend (unchanged) |
+### 1. Enhanced Tier Header Columns
+
+Add visual emphasis to tier columns with color-coded styling:
+
+| Tier | Color | Enhancement |
+|------|-------|-------------|
+| Rookie | Default | Clean, subtle styling |
+| Pro | Amber gradient | Apply `text-gradient-amber` class, subtle amber glow |
+| Legend | Purple | Apply `text-purple-400`, subtle purple accent |
+
+### 2. Improved Category Headers
+
+- Add left-side colored accent bar
+- Increase visual weight with slightly larger text
+- Add subtle icon or visual indicator
+
+### 3. Better Check/Dash Indicators
+
+- Checkmarks: Use filled circular backgrounds for included features
+- Dashes: Make exclusions more subtle
+- Add tier-specific coloring (amber checks for Pro column, purple for Legend)
+
+### 4. Row Hover States
+
+- Add subtle highlight on hover
+- Improve visual feedback for interactivity
+
+### 5. Table Container
+
+- Add subtle gradient border glow
+- Improve rounded corners and shadow depth
+- Add glass-morphism effect to header
+
+### 6. Responsive Improvements
+
+- Better mobile spacing
+- Sticky tier header labels
+
+---
+
+## Visual Design Details
+
+**Header Row:**
+```
+┌────────────────────────────────────────────────────────────────────┐
+│ Feature          │  Rookie  │    Pro ★   │   Legend    │
+│                  │          │  (amber)   │  (purple)   │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Category Headers:**
+```
+┌────────────────────────────────────────────────────────────────────┐
+│ ▎ ALERT TYPES                                                      │
+└────────────────────────────────────────────────────────────────────┘
+  (with amber left border accent)
+```
+
+**Feature Cells:**
+- Included: Circular background with check icon
+- Excluded: Subtle muted dash, minimal visual weight
+- Pro column: Amber-tinted checks
+- Legend column: Purple-tinted checks for Legend-exclusive features
 
 ---
 
@@ -34,67 +91,84 @@ Delete the entire "Support" category from the feature data, which currently incl
 
 ### File: `src/components/landing/FeatureComparisonTable.tsx`
 
-**Update the `featureData` array:**
+**Key Changes:**
 
-```typescript
-// Updated Notifications category (lines 64-72)
-{
-  category: "Notifications",
-  features: [
-    { name: "Push Notifications", rookie: true, pro: true, legend: true },
-    { name: "Email Notifications", rookie: false, pro: true, legend: true },
-    { name: "SMS Notifications", rookie: false, pro: false, legend: true },
-    { name: "Priority Delivery", rookie: false, pro: true, legend: true },
-  ],
-},
-
-// Remove entire Support category (lines 84-91)
-// DELETE this block:
-// {
-//   category: "Support",
-//   features: [
-//     { name: "Email Support", rookie: true, pro: true, legend: true },
-//     { name: "Priority Support", rookie: false, pro: false, legend: true },
-//     { name: "Early Access to Features", rookie: false, pro: false, legend: true },
-//   ],
-// },
+1. **Enhanced header styling:**
+```tsx
+<TableHead className="text-center font-semibold w-[120px]">
+  <span className="text-gradient-amber font-bold">Pro</span>
+</TableHead>
+<TableHead className="text-center font-semibold w-[120px]">
+  <span className="text-purple-400 font-bold">Legend</span>
+</TableHead>
 ```
+
+2. **Improved category headers with accent bar:**
+```tsx
+<TableRow className="bg-secondary/30 hover:bg-secondary/30 border-l-2 border-l-primary">
+  <TableCell colSpan={4} className="py-3 text-xs font-bold uppercase tracking-wider text-foreground">
+    {category.category}
+  </TableCell>
+</TableRow>
+```
+
+3. **Enhanced FeatureCell with circular backgrounds:**
+```tsx
+// For checkmarks - add circular background
+<div className={cn(
+  "w-7 h-7 rounded-full flex items-center justify-center mx-auto",
+  tier === "legend" && isLegendExclusive && "bg-purple-500/20",
+  tier === "pro" && "bg-primary/10"
+)}>
+  <Check className={cn(
+    "w-4 h-4",
+    tier === "legend" && isLegendExclusive ? "text-purple-400" : "text-primary"
+  )} />
+</div>
+```
+
+4. **Table container with gradient border:**
+```tsx
+<div className="relative p-[1px] rounded-xl bg-gradient-to-b from-border via-border/50 to-border overflow-hidden">
+  <div className="bg-card rounded-xl overflow-hidden">
+    {/* Table content */}
+  </div>
+</div>
+```
+
+5. **Row hover effects:**
+```tsx
+<TableRow className={cn(
+  "transition-colors duration-150",
+  "hover:bg-secondary/20"
+)}>
+```
+
+6. **Add Legend-exclusive visual indicator:**
+For features only available in Legend tier, add special purple styling to make them stand out.
 
 ---
 
-## Updated Table Structure
+## Updated Component Structure
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Feature Comparison                                │
-├─────────────────────────────────────────────────────────────────────┤
-│ FEATURE                      │ ROOKIE   │ PRO      │ LEGEND         │
-├─────────────────────────────────────────────────────────────────────┤
-│ ALERT LIMITS                                                         │
-│ Active Alerts                │ 1/day    │ 5 ⓘ     │ Unlimited ⓘ    │
-│                                                                      │
-│ ALERT TYPES                                                          │
-│ Moneyline Alerts             │ ✓        │ ✓        │ ✓              │
-│ Spread Alerts                │ ✓        │ ✓        │ ✓              │
-│ Over/Under Alerts            │ ✓        │ ✓        │ ✓              │
-│ Score Margin Alerts          │ -        │ ✓        │ ✓              │
-│ Timed Line Surge             │ -        │ -        │ ✓              │
-│ Momentum Run Alerts          │ -        │ -        │ ✓              │
-│                                                                      │
-│ NOTIFICATIONS                                                        │
-│ Push Notifications           │ ✓        │ ✓        │ ✓              │
-│ Email Notifications          │ -        │ ✓        │ ✓              │
-│ SMS Notifications            │ -        │ -        │ ✓              │
-│ Priority Delivery            │ -        │ ✓        │ ✓              │
-│                                                                      │
-│ FEATURES                                                             │
-│ Basic Alert Builder          │ ✓        │ ✓        │ ✓              │
-│ Multi-condition Logic        │ -        │ ✓        │ ✓              │
-│ Alert Templates              │ -        │ ✓        │ ✓              │
-│ Line Movement History        │ -        │ ✓        │ ✓              │
-│ Auto-rearm Alerts            │ -        │ -        │ ✓              │
-│ Custom Notification Channels │ -        │ -        │ ✓              │
-└─────────────────────────────────────────────────────────────────────┘
+FeatureComparisonTable
+├── Title with subtle underline accent
+├── Gradient-bordered container
+│   ├── Sticky header row
+│   │   ├── Feature (left-aligned)
+│   │   ├── Rookie (centered)
+│   │   ├── Pro (amber gradient text)
+│   │   └── Legend (purple text)
+│   └── Body
+│       ├── Category Header (with left accent bar)
+│       │   └── Feature Rows
+│       │       ├── Feature name
+│       │       ├── Rookie cell (check/dash)
+│       │       ├── Pro cell (amber-tinted check/dash)
+│       │       └── Legend cell (purple for exclusives)
+│       └── ... (repeat for each category)
+└── Scroll animation wrapper
 ```
 
 ---
@@ -103,5 +177,18 @@ Delete the entire "Support" category from the feature data, which currently incl
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/components/landing/FeatureComparisonTable.tsx` | Modify | Update notifications, remove support section |
+| `src/components/landing/FeatureComparisonTable.tsx` | Modify | Apply all visual enhancements |
+
+---
+
+## Summary of Enhancements
+
+1. **Tier-branded headers**: Pro in amber, Legend in purple
+2. **Category accent bars**: Left border in primary color
+3. **Circular check backgrounds**: Better visual weight for included features
+4. **Legend-exclusive styling**: Purple accents for Legend-only features
+5. **Gradient container border**: Premium feel with subtle glow
+6. **Improved hover states**: Interactive feedback on rows
+7. **Better typography**: Bolder category headers, improved spacing
+8. **Consistent color theming**: Matches pricing cards above
 
