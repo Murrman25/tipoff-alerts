@@ -58,7 +58,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
       "Notify when total reaches 220 or higher",
       "Track all NBA games with totals over 230",
     ],
-    minTier: "rookie",
+    minTier: "pro",
   },
   {
     id: "score_margin",
@@ -260,17 +260,15 @@ export const AlertTypes = () => {
                         >
                           {alertType.shortName}
                         </span>
-                        {requiresHigherTier && (
-                          <span
-                            className={cn(
-                              "text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded",
-                              tierDisplay.bgColor,
-                              tierDisplay.color,
-                            )}
-                          >
-                            {tierDisplay.label}
-                          </span>
-                        )}
+                        <span
+                          className={cn(
+                            "text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded",
+                            tierDisplay.bgColor,
+                            tierDisplay.color,
+                          )}
+                        >
+                          {tierDisplay.label}
+                        </span>
                       </div>
                     </div>
                     {isSelected && <div className="w-2 h-2 rounded-full bg-primary shrink-0" />}
