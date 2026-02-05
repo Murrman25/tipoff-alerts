@@ -1,128 +1,209 @@
 
 
-# Add Tier Badges to All Alert Types & Enable Full Selection
+# Remove SMS, Move Priority Delivery to Legend, Add Feature Tooltips
 
 ## Overview
 
-This update makes the alert type selector more interactive and informative by:
-1. Adding "Rookie" badges to Moneyline and Spread alerts for consistency
-2. Showing tier badges on ALL alert types at all times (not just locked ones)
-3. Making all alert types selectable regardless of current tier
-4. Auto-updating the tier selector when a Pro or Legend alert type is selected
+This update will:
+1. Remove SMS notifications entirely from both the pricing cards and feature comparison table
+2. Move "Priority Delivery" from Pro tier to Legend tier (exclusive)
+3. Add helpful tooltips to all features in the "Features" category section
 
 ---
 
 ## Changes
 
-### 1. Always Show Tier Badges
+### 1. Remove SMS Notifications
 
-Currently, badges only appear on locked (unavailable) alert types. This update will show the appropriate tier badge on every alert type at all times.
+**Pricing.tsx - Legend plan features array:**
+- Remove: `"SMS notifications"`
 
-**Before:** Moneyline and Spread show no badge, Pro/Legend alerts only show badge when locked
-**After:** All 6 alert types show their tier badge (Rookie, Pro, or Legend)
+**FeatureComparisonTable.tsx - Notifications category:**
+- Remove the entire SMS row: `{ name: "SMS Notifications", rookie: false, pro: false, legend: true, legendExclusive: true }`
 
-### 2. Make All Alert Types Selectable
+### 2. Move Priority Delivery to Legend
 
-Remove the `disabled` attribute and unlock all alert types for selection. When clicking on a Pro or Legend alert type, it will:
-1. Select that alert type
-2. Automatically update the tier selector above to match
+**Pricing.tsx:**
+- Remove from Pro: `"Priority delivery"`
+- Add to Legend: `"Priority delivery"` (after "Timed Line Surge & Momentum alerts")
 
-This creates a more interactive experience where users can explore all alert types and see the tier requirements.
+**FeatureComparisonTable.tsx - Notifications category:**
+- Update Priority Delivery row:
+  - Change `pro: true` → `pro: false`
+  - Add `legendExclusive: true`
 
-### 3. Auto-Switch Tier on Selection
+### 3. Add Tooltips to All Features
 
-When a user clicks on an alert type that requires a higher tier, automatically switch the tier selector to that tier. For example:
-- Clicking "O/U" (Pro) while on Rookie → switches to Pro tab
-- Clicking "Momentum" (Legend) while on Pro → switches to Legend tab
+Add descriptive tooltips to each feature in the "Features" category:
+
+| Feature | Tooltip |
+|---------|---------|
+| Basic Alert Builder | Create simple threshold-based alerts with our intuitive step-by-step builder. |
+| Multi-condition Logic | Combine multiple conditions with AND/OR operators for precise alert triggers. |
+| Alert Templates | Save and reuse your favorite alert configurations to set up new alerts quickly. |
+| Line Movement History | View historical line changes and trends to make more informed decisions. |
+| Auto-rearm Alerts | Automatically reactivate alerts after they trigger so you never miss a repeat opportunity. |
+| Custom Notification Channels | Route different alerts to different devices or channels based on your preferences. |
 
 ---
 
 ## Technical Implementation
 
-### File: `src/components/landing/AlertTypes.tsx`
+### File: `src/components/landing/Pricing.tsx`
 
-**Change 1: Update the alert type button to always be selectable**
+**Pro plan features (lines 28-35):**
 ```tsx
-<button
-  key={alertType.id}
-  onClick={() => handleAlertTypeSelect(alertType)}
-  // Remove disabled={!isAvailable}
-  className={cn(
-    "w-full flex items-center gap-3 p-3 rounded-lg border text-left",
-    "transition-all duration-200",
-    isSelected
-      ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-      : "border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground/30"
+features: [
+  "Up to 5 active alerts",
+  "Over/Under & Score Margin alerts",
+  "Multi-condition logic (AND/OR)",
+  "Email & push notifications",
+  // Remove: "Priority delivery"
+  "Line movement history",
+],
+```
+
+**Legend plan features (lines 45-51):**
+```tsx
+features: [
+  "All Pro features",
+  "Unlimited active alerts",
+  "Timed Line Surge & Momentum alerts",
+  "Priority delivery",  // Add here
+  // Remove: "SMS notifications"
+  "Auto-rearm alerts",
+  "Custom notification channels",
+],
+```
+
+### File: `src/components/landing/FeatureComparisonTable.tsx`
+
+**Notifications category (lines 74-80):**
+```tsx
+{
+  category: "Notifications",
+  features: [
+    { name: "Push Notifications", rookie: true, pro: true, legend: true },
+    { name: "Email Notifications", rookie: false, pro: true, legend: true },
+    // Remove SMS row entirely
+    { 
+      name: "Priority Delivery", 
+      rookie: false, 
+      pro: false,  // Changed from true
+      legend: true, 
+      legendExclusive: true  // Added
+    },
+  ],
+},
+```
+
+**Features category with tooltips (lines 83-91):**
+```tsx
+{
+  category: "Features",
+  features: [
+    { 
+      name: "Basic Alert Builder", 
+      rookie: true, 
+      pro: true, 
+      legend: true,
+      tooltip: {
+        rookie: "Create simple threshold-based alerts with our intuitive step-by-step builder.",
+        pro: "Create simple threshold-based alerts with our intuitive step-by-step builder.",
+        legend: "Create simple threshold-based alerts with our intuitive step-by-step builder.",
+      }
+    },
+    { 
+      name: "Multi-condition Logic", 
+      rookie: false, 
+      pro: true, 
+      legend: true,
+      tooltip: {
+        pro: "Combine multiple conditions with AND/OR operators for precise alert triggers.",
+        legend: "Combine multiple conditions with AND/OR operators for precise alert triggers.",
+      }
+    },
+    { 
+      name: "Alert Templates", 
+      rookie: false, 
+      pro: true, 
+      legend: true,
+      tooltip: {
+        pro: "Save and reuse your favorite alert configurations to set up new alerts quickly.",
+        legend: "Save and reuse your favorite alert configurations to set up new alerts quickly.",
+      }
+    },
+    { 
+      name: "Line Movement History", 
+      rookie: false, 
+      pro: true, 
+      legend: true,
+      tooltip: {
+        pro: "View historical line changes and trends to make more informed decisions.",
+        legend: "View historical line changes and trends to make more informed decisions.",
+      }
+    },
+    { 
+      name: "Auto-rearm Alerts", 
+      rookie: false, 
+      pro: false, 
+      legend: true, 
+      legendExclusive: true,
+      tooltip: {
+        legend: "Automatically reactivate alerts after they trigger so you never miss a repeat opportunity.",
+      }
+    },
+    { 
+      name: "Custom Notification Channels", 
+      rookie: false, 
+      pro: false, 
+      legend: true, 
+      legendExclusive: true,
+      tooltip: {
+        legend: "Route different alerts to different devices or channels based on your preferences.",
+      }
+    },
+  ],
+},
+```
+
+**Update FeatureCell to show tooltip icon for boolean values with tooltips:**
+
+The current implementation only shows tooltips for string values. We need to update the FeatureCell component to also display a HelpCircle icon next to the feature name when tooltips exist. 
+
+Add a new component or modify the TableCell for feature names to include tooltip support:
+
+```tsx
+<TableCell className="font-medium text-sm py-3">
+  {feature.tooltip ? (
+    <Tooltip>
+      <TooltipTrigger className="inline-flex items-center gap-1.5">
+        {feature.name}
+        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipContent side="right" className="max-w-xs">
+        {/* Show description based on available tiers */}
+        {feature.tooltip.legend || feature.tooltip.pro || feature.tooltip.rookie}
+      </TooltipContent>
+    </Tooltip>
+  ) : (
+    feature.name
   )}
->
+</TableCell>
 ```
-
-**Change 2: Add new handler to select alert and update tier**
-```tsx
-const handleAlertTypeSelect = (alertType: AlertTypeInfo) => {
-  setSelectedAlertType(alertType.id);
-  // If this alert requires a higher tier, switch to that tier
-  if (alertType.minTier !== "rookie") {
-    setSelectedTier(alertType.minTier);
-  } else if (selectedTier !== "rookie" && alertType.minTier === "rookie") {
-    // Optional: stay on current tier if selecting a lower-tier alert
-    // (keeps user on Pro/Legend to see full feature set)
-  }
-};
-```
-
-**Change 3: Always show tier badge (not just when locked)**
-```tsx
-{/* Always show tier badge */}
-<span className={cn(
-  "text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded",
-  tierDisplay.bgColor,
-  tierDisplay.color
-)}>
-  {tierDisplay.label}
-</span>
-```
-
-**Change 4: Always show the alert icon (remove Lock icon swap)**
-```tsx
-<div className={cn(
-  "flex items-center justify-center w-9 h-9 rounded-md shrink-0 transition-colors duration-200",
-  isSelected
-    ? "bg-primary text-primary-foreground"
-    : "bg-muted text-muted-foreground"
-)}>
-  <Icon className="w-4 h-4" />
-</div>
-```
-
-**Change 5: Update styling to remove disabled state**
-
-Remove the opacity/cursor-not-allowed styling since all items are now selectable.
-
----
-
-## Interaction Flow
-
-1. User lands on section → Rookie tab selected, Moneyline selected by default
-2. All 6 alert types visible with tier badges (Rookie, Rookie, Pro, Pro, Legend, Legend)
-3. User clicks "O/U" → O/U becomes selected, tier switches to Pro automatically
-4. User clicks "Momentum" → Momentum becomes selected, tier switches to Legend automatically
-5. User can also click tier tabs directly to filter/focus on that tier's alerts
 
 ---
 
 ## Visual Result
 
-| Alert Type | Badge |
-|------------|-------|
-| Moneyline | Rookie (muted) |
-| Spread | Rookie (muted) |
-| O/U | Pro (amber) |
-| Score Margin | Pro (amber) |
-| Line Surge | Legend (purple) |
-| Momentum | Legend (purple) |
+### Pricing Cards
+- **Pro**: 5 features (removed Priority delivery)
+- **Legend**: 5 features (removed SMS, added Priority delivery)
 
-All items are fully clickable with hover states. Selecting any item updates both the detail panel on the right AND the tier selector above.
+### Feature Comparison Table
+- **Notifications section**: 3 rows (Push, Email, Priority Delivery)
+  - Priority Delivery now shows checkmark only in Legend column
+- **Features section**: All 6 features have info icon with tooltip on hover
 
 ---
 
@@ -130,5 +211,6 @@ All items are fully clickable with hover states. Selecting any item updates both
 
 | File | Changes |
 |------|---------|
-| `src/components/landing/AlertTypes.tsx` | Add tier badges to all items, remove disabled state, add auto-tier-switch on selection |
+| `src/components/landing/Pricing.tsx` | Remove SMS from Legend, move Priority delivery from Pro to Legend |
+| `src/components/landing/FeatureComparisonTable.tsx` | Remove SMS row, update Priority Delivery to Legend-only, add tooltips to all Features |
 
