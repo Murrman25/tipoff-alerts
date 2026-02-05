@@ -29,6 +29,7 @@
      legend?: string;
    };
   legendExclusive?: boolean;
+  featureTooltip?: string;
  }
  
  interface FeatureCategory {
@@ -75,19 +76,56 @@
      features: [
       { name: "Push Notifications", rookie: true, pro: true, legend: true },
       { name: "Email Notifications", rookie: false, pro: true, legend: true },
-      { name: "SMS Notifications", rookie: false, pro: false, legend: true, legendExclusive: true },
-       { name: "Priority Delivery", rookie: false, pro: true, legend: true },
+      { name: "Priority Delivery", rookie: false, pro: false, legend: true, legendExclusive: true },
      ],
    },
    {
      category: "Features",
      features: [
-       { name: "Basic Alert Builder", rookie: true, pro: true, legend: true },
-       { name: "Multi-condition Logic", rookie: false, pro: true, legend: true },
-       { name: "Alert Templates", rookie: false, pro: true, legend: true },
-       { name: "Line Movement History", rookie: false, pro: true, legend: true },
-      { name: "Auto-rearm Alerts", rookie: false, pro: false, legend: true, legendExclusive: true },
-      { name: "Custom Notification Channels", rookie: false, pro: false, legend: true, legendExclusive: true },
+      { 
+        name: "Basic Alert Builder", 
+        rookie: true, 
+        pro: true, 
+        legend: true,
+        featureTooltip: "Create simple threshold-based alerts with our intuitive step-by-step builder.",
+      },
+      { 
+        name: "Multi-condition Logic", 
+        rookie: false, 
+        pro: true, 
+        legend: true,
+        featureTooltip: "Combine multiple conditions with AND/OR operators for precise alert triggers.",
+      },
+      { 
+        name: "Alert Templates", 
+        rookie: false, 
+        pro: true, 
+        legend: true,
+        featureTooltip: "Save and reuse your favorite alert configurations to set up new alerts quickly.",
+      },
+      { 
+        name: "Line Movement History", 
+        rookie: false, 
+        pro: true, 
+        legend: true,
+        featureTooltip: "View historical line changes and trends to make more informed decisions.",
+      },
+      { 
+        name: "Auto-rearm Alerts", 
+        rookie: false, 
+        pro: false, 
+        legend: true, 
+        legendExclusive: true,
+        featureTooltip: "Automatically reactivate alerts after they trigger so you never miss a repeat opportunity.",
+      },
+      { 
+        name: "Custom Notification Channels", 
+        rookie: false, 
+        pro: false, 
+        legend: true, 
+        legendExclusive: true,
+        featureTooltip: "Route different alerts to different devices or channels based on your preferences.",
+      },
      ],
    },
  ];
@@ -233,7 +271,19 @@
                          )}
                        >
                         <TableCell className="font-medium text-sm py-3">
-                           {feature.name}
+                           {feature.featureTooltip ? (
+                             <Tooltip>
+                               <TooltipTrigger className="inline-flex items-center gap-1.5 text-left">
+                                 {feature.name}
+                                 <HelpCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                               </TooltipTrigger>
+                               <TooltipContent side="right" className="max-w-xs">
+                                 {feature.featureTooltip}
+                               </TooltipContent>
+                             </Tooltip>
+                           ) : (
+                             feature.name
+                           )}
                          </TableCell>
                         <TableCell className="text-center py-3">
                            <FeatureCell
