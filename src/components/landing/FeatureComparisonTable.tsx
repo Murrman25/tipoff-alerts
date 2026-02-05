@@ -201,7 +201,7 @@
                      {/* Category header row */}
                      <TableRow
                        key={`category-${categoryIndex}`}
-                      className="bg-secondary/40 hover:bg-secondary/40 border-l-2 border-l-primary"
+                      className="bg-secondary/40 hover:bg-secondary/40"
                      >
                        <TableCell
                          colSpan={4}
@@ -220,16 +220,8 @@
                           "hover:bg-secondary/25"
                          )}
                        >
-                        <TableCell className={cn(
-                          "font-medium text-sm py-3",
-                          feature.legendExclusive && "text-purple-300/90"
-                        )}>
+                        <TableCell className="font-medium text-sm py-3">
                            {feature.name}
-                          {feature.legendExclusive && (
-                            <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
-                              Legend
-                            </span>
-                          )}
                          </TableCell>
                         <TableCell className="text-center py-3">
                            <FeatureCell
