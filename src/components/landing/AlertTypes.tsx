@@ -40,7 +40,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     examples: [
       "Alert when Chiefs spread reaches +3.5",
       "Notify when Celtics spread crosses -7",
-      "Track spread movement on all primetime games",
+      "Track spread movement on all games",
     ],
     minTier: "rookie",
   },
