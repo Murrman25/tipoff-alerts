@@ -1,89 +1,34 @@
 
-
-# Visually Enhance Feature Comparison Table
+# Color & Clarity Improvements for Feature Comparison Table
 
 ## Overview
 
-This update transforms the basic feature comparison table into a polished, visually engaging component that matches the premium aesthetic of the rest of the landing page. The enhancements include improved tier headers with color accents, better visual hierarchy, subtle animations, and refined styling.
+This update addresses two issues in the Alert Limits section:
+1. Apply tier colors (amber/purple) to the "5" and "Unlimited" text values in the Active Alerts row
+2. Fix the confusing Rookie presentation where both rows show "1/day"
 
 ---
 
-## Current Issues
+## Changes
 
-- Plain header row with minimal visual distinction
-- Basic alternating row colors that feel flat
-- No tier-specific branding (Pro = amber, Legend = purple)
-- Category headers lack visual impact
-- Check marks and dashes are visually monotonous
-- No hover states or interactivity
+### 1. Apply Tier Colors to Active Alerts Values
 
----
+Currently, when a tooltip is present, the text value doesn't inherit the tier color. I'll update the `FeatureCell` component to apply tier-specific colors to tooltip trigger text as well.
 
-## Enhancement Summary
+**Before:** "5" and "Unlimited" in Active Alerts row appear in default text color
+**After:** "5" appears in amber (Pro), "Unlimited" appears in purple (Legend)
 
-### 1. Enhanced Tier Header Columns
+### 2. Fix Rookie Active Alerts Presentation
 
-Add visual emphasis to tier columns with color-coded styling:
+The problem: Showing "1/day" for both Total Alerts and Active Alerts suggests 2 separate quotas (2 alerts per day), when in reality it's 1 alert total that can be active.
 
-| Tier | Color | Enhancement |
-|------|-------|-------------|
-| Rookie | Default | Clean, subtle styling |
-| Pro | Amber gradient | Apply `text-gradient-amber` class, subtle amber glow |
-| Legend | Purple | Apply `text-purple-400`, subtle purple accent |
+**Solution:** Change Active Alerts for Rookie from "1/day" to just "1" 
 
-### 2. Improved Category Headers
+This communicates:
+- **Total Alerts: 1/day** → You can create 1 alert per day
+- **Active Alerts: 1** → That 1 alert can be active (monitoring)
 
-- Add left-side colored accent bar
-- Increase visual weight with slightly larger text
-- Add subtle icon or visual indicator
-
-### 3. Better Check/Dash Indicators
-
-- Checkmarks: Use filled circular backgrounds for included features
-- Dashes: Make exclusions more subtle
-- Add tier-specific coloring (amber checks for Pro column, purple for Legend)
-
-### 4. Row Hover States
-
-- Add subtle highlight on hover
-- Improve visual feedback for interactivity
-
-### 5. Table Container
-
-- Add subtle gradient border glow
-- Improve rounded corners and shadow depth
-- Add glass-morphism effect to header
-
-### 6. Responsive Improvements
-
-- Better mobile spacing
-- Sticky tier header labels
-
----
-
-## Visual Design Details
-
-**Header Row:**
-```
-┌────────────────────────────────────────────────────────────────────┐
-│ Feature          │  Rookie  │    Pro ★   │   Legend    │
-│                  │          │  (amber)   │  (purple)   │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-**Category Headers:**
-```
-┌────────────────────────────────────────────────────────────────────┐
-│ ▎ ALERT TYPES                                                      │
-└────────────────────────────────────────────────────────────────────┘
-  (with amber left border accent)
-```
-
-**Feature Cells:**
-- Included: Circular background with check icon
-- Excluded: Subtle muted dash, minimal visual weight
-- Pro column: Amber-tinted checks
-- Legend column: Purple-tinted checks for Legend-exclusive features
+This makes it clear it's the same alert being referenced, not an additional quota.
 
 ---
 
@@ -91,104 +36,53 @@ Add visual emphasis to tier columns with color-coded styling:
 
 ### File: `src/components/landing/FeatureComparisonTable.tsx`
 
-**Key Changes:**
-
-1. **Enhanced header styling:**
+**Change 1: Update data for Rookie Active Alerts**
 ```tsx
-<TableHead className="text-center font-semibold w-[120px]">
-  <span className="text-gradient-amber font-bold">Pro</span>
-</TableHead>
-<TableHead className="text-center font-semibold w-[120px]">
-  <span className="text-purple-400 font-bold">Legend</span>
-</TableHead>
+{
+  name: "Active Alerts",
+  rookie: "1",  // Changed from "1/day" to "1"
+  pro: "5",
+  legend: "Unlimited",
+  tooltip: { ... },
+}
 ```
 
-2. **Improved category headers with accent bar:**
+**Change 2: Apply tier colors to tooltip text**
 ```tsx
-<TableRow className="bg-secondary/30 hover:bg-secondary/30 border-l-2 border-l-primary">
-  <TableCell colSpan={4} className="py-3 text-xs font-bold uppercase tracking-wider text-foreground">
-    {category.category}
-  </TableCell>
-</TableRow>
+if (tooltip) {
+  return (
+    <Tooltip>
+      <TooltipTrigger className={cn(
+        "inline-flex items-center gap-1 text-sm font-medium",
+        tier === "pro" && "text-primary",
+        tier === "legend" && "text-purple-400"
+      )}>
+        {value}
+        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs text-center">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 ```
-
-3. **Enhanced FeatureCell with circular backgrounds:**
-```tsx
-// For checkmarks - add circular background
-<div className={cn(
-  "w-7 h-7 rounded-full flex items-center justify-center mx-auto",
-  tier === "legend" && isLegendExclusive && "bg-purple-500/20",
-  tier === "pro" && "bg-primary/10"
-)}>
-  <Check className={cn(
-    "w-4 h-4",
-    tier === "legend" && isLegendExclusive ? "text-purple-400" : "text-primary"
-  )} />
-</div>
-```
-
-4. **Table container with gradient border:**
-```tsx
-<div className="relative p-[1px] rounded-xl bg-gradient-to-b from-border via-border/50 to-border overflow-hidden">
-  <div className="bg-card rounded-xl overflow-hidden">
-    {/* Table content */}
-  </div>
-</div>
-```
-
-5. **Row hover effects:**
-```tsx
-<TableRow className={cn(
-  "transition-colors duration-150",
-  "hover:bg-secondary/20"
-)}>
-```
-
-6. **Add Legend-exclusive visual indicator:**
-For features only available in Legend tier, add special purple styling to make them stand out.
 
 ---
 
-## Updated Component Structure
+## Visual Result
 
-```text
-FeatureComparisonTable
-├── Title with subtle underline accent
-├── Gradient-bordered container
-│   ├── Sticky header row
-│   │   ├── Feature (left-aligned)
-│   │   ├── Rookie (centered)
-│   │   ├── Pro (amber gradient text)
-│   │   └── Legend (purple text)
-│   └── Body
-│       ├── Category Header (with left accent bar)
-│       │   └── Feature Rows
-│       │       ├── Feature name
-│       │       ├── Rookie cell (check/dash)
-│       │       ├── Pro cell (amber-tinted check/dash)
-│       │       └── Legend cell (purple for exclusives)
-│       └── ... (repeat for each category)
-└── Scroll animation wrapper
-```
+| Feature | Rookie | Pro | Legend |
+|---------|--------|-----|--------|
+| Total Alerts | 1/day | Unlimited (amber) | Unlimited (purple) |
+| Active Alerts | 1 | 5 (amber) | Unlimited (purple) |
+
+The "1" for Rookie clearly indicates it's referencing the same single alert from Total Alerts, while Pro and Legend values stand out with their tier colors.
 
 ---
 
 ## Files to Modify
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/landing/FeatureComparisonTable.tsx` | Modify | Apply all visual enhancements |
-
----
-
-## Summary of Enhancements
-
-1. **Tier-branded headers**: Pro in amber, Legend in purple
-2. **Category accent bars**: Left border in primary color
-3. **Circular check backgrounds**: Better visual weight for included features
-4. **Legend-exclusive styling**: Purple accents for Legend-only features
-5. **Gradient container border**: Premium feel with subtle glow
-6. **Improved hover states**: Interactive feedback on rows
-7. **Better typography**: Bolder category headers, improved spacing
-8. **Consistent color theming**: Matches pricing cards above
-
+| File | Changes |
+|------|---------|
+| `src/components/landing/FeatureComparisonTable.tsx` | Update Rookie Active Alerts value, add tier colors to tooltip text |
