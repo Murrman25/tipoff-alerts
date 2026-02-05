@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+ import { FeatureComparisonTable } from "./FeatureComparisonTable";
 
 const plans = [
   {
@@ -11,7 +12,7 @@ const plans = [
     yearlyPrice: 0,
     description: "Perfect for getting started with basic alerts",
     features: [
-      "1 active alert per day",
+      "1 alert per day",
       "Basic alert builder",
       "Email notifications",
       "Access to all sports",
@@ -22,14 +23,14 @@ const plans = [
   {
     name: "Pro",
     monthlyPrice: 20,
-    yearlyPrice: 192, // $16/mo billed yearly (20% off)
+    yearlyPrice: 180, // $15/mo billed yearly (25% off)
     description: "For serious bettors who need more power",
     features: [
-      "15 alerts per day",
+      "Up to 5 active alerts",
       "Multi-condition logic (AND/OR)",
       "Alert templates",
+      "Push & SMS notifications",
       "Priority notification delivery",
-      "Advanced filters",
       "Line movement history",
     ],
     cta: "Upgrade to Pro",
@@ -39,13 +40,12 @@ const plans = [
   {
     name: "Legend",
     monthlyPrice: 40,
-    yearlyPrice: 384, // $32/mo billed yearly (20% off)
+    yearlyPrice: 360, // $30/mo billed yearly (25% off)
     description: "Unlimited power for professional use",
     features: [
       "Unlimited alerts",
       "Auto-rearm alerts",
-      "Advanced configurations",
-      "API access",
+      "All Pro features",
       "Priority support",
       "Custom notification channels",
       "Early access to new features",
@@ -127,7 +127,7 @@ export const Pricing = () => {
               Yearly
             </span>
             <span className="ml-2 px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-semibold border border-green-500/30">
-              Save 20%
+              Save 25%
             </span>
           </div>
         </div>
@@ -204,6 +204,9 @@ export const Pricing = () => {
             </div>
           ))}
         </div>
+ 
+        {/* Feature Comparison Table */}
+        <FeatureComparisonTable />
       </div>
     </section>
   );

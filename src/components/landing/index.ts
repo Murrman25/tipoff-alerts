@@ -1,6 +1,7 @@
 export { Hero } from "./Hero";
 export { HowItWorks } from "./HowItWorks";
 export { Pricing } from "./Pricing";
+ export { FeatureComparisonTable } from "./FeatureComparisonTable";
 export { Footer } from "./Footer";
 export { Navbar } from "./Navbar";
 export { AlertTypes } from "./AlertTypes";
