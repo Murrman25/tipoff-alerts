@@ -24,6 +24,7 @@
    pro: FeatureValue;
    legend: FeatureValue;
    tooltip?: {
+    rookie?: string;
      pro?: string;
      legend?: string;
    };
@@ -46,15 +47,16 @@
       legend: "Unlimited",
     },
     {
-      name: "Active Alerts",
-      rookie: "1",
-      pro: "5",
-      legend: "Unlimited",
-      tooltip: {
-        pro: "An active alert is one that's currently monitoring for your specified conditions. Inactive alerts are paused and don't count toward your limit.",
-        legend: "Create as many alerts as you want with no restrictions. Keep alerts active indefinitely or pause them for later.",
+        name: "Active Alerts",
+        rookie: "1",
+        pro: "5",
+        legend: "Unlimited",
+        tooltip: {
+          rookie: "Your 1 daily alert can be active and monitoring for your conditions.",
+          pro: "An active alert is one that's currently monitoring for your specified conditions. Inactive alerts are paused and don't count toward your limit.",
+          legend: "Create as many alerts as you want with no restrictions. Keep alerts active indefinitely or pause them for later.",
+        },
       },
-    },
      ],
    },
    {
@@ -62,7 +64,7 @@
      features: [
        { name: "Moneyline Alerts", rookie: true, pro: true, legend: true },
        { name: "Spread Alerts", rookie: true, pro: true, legend: true },
-       { name: "Over/Under Alerts", rookie: true, pro: true, legend: true },
+        { name: "Over/Under Alerts", rookie: false, pro: true, legend: true },
        { name: "Score Margin Alerts", rookie: false, pro: true, legend: true },
       { name: "Timed Line Surge", rookie: false, pro: false, legend: true, legendExclusive: true },
       { name: "Momentum Run Alerts", rookie: false, pro: false, legend: true, legendExclusive: true },
@@ -237,6 +239,7 @@
                            <FeatureCell
                              value={feature.rookie}
                              tier="rookie"
+                              tooltip={feature.tooltip?.rookie}
                             legendExclusive={feature.legendExclusive}
                            />
                          </TableCell>

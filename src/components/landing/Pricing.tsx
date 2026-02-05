@@ -13,9 +13,9 @@ const plans = [
     description: "Perfect for getting started with basic alerts",
     features: [
       "1 alert per day",
+      "Moneyline & spread alerts",
       "Basic alert builder",
-      "Email notifications",
-      "Access to all sports",
+      "Push notifications",
     ],
     cta: "Start for free",
     highlighted: false,
@@ -27,10 +27,10 @@ const plans = [
     description: "For serious bettors who need more power",
     features: [
       "Up to 5 active alerts",
+      "Over/Under & Score Margin alerts",
       "Multi-condition logic (AND/OR)",
-      "Alert templates",
-      "Push & SMS notifications",
-      "Priority notification delivery",
+      "Email & push notifications",
+      "Priority delivery",
       "Line movement history",
     ],
     cta: "Upgrade to Pro",
@@ -44,16 +44,14 @@ const plans = [
     description: "Unlimited power for professional use",
     features: [
       "All Pro features",
-      "Unlimited alerts",
+      "Unlimited active alerts",
+      "Timed Line Surge & Momentum alerts",
+      "SMS notifications",
       "Auto-rearm alerts",
-      "Priority support",
       "Custom notification channels",
-      "Early access to new features",
     ],
     cta: "Go Legend",
     highlighted: false,
-    headerColor: "text-purple-400",
-    highlightFirstFeature: true,
   },
 ];
 
@@ -191,11 +189,11 @@ export const Pricing = () => {
                   <li key={featureIndex} className="flex items-start gap-3">
                     <Check className={cn(
                       "w-5 h-5 shrink-0 mt-0.5",
-                      plan.name === "Legend" && featureIndex === 0 ? "text-amber-400" : "text-primary"
+                      plan.name === "Legend" && featureIndex === 0 ? "text-primary" : "text-primary"
                     )} />
                     <span className={cn(
                       "text-sm",
-                      plan.name === "Legend" && featureIndex === 0 && "text-amber-400 font-medium"
+                      plan.name === "Legend" && featureIndex === 0 && "text-primary font-medium"
                     )}>{feature}</span>
                   </li>
                 ))}
