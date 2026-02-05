@@ -64,9 +64,9 @@
    {
      category: "Notifications",
      features: [
-       { name: "Email Notifications", rookie: true, pro: true, legend: true },
-       { name: "Push Notifications", rookie: false, pro: true, legend: true },
-       { name: "SMS Notifications", rookie: false, pro: true, legend: true },
+      { name: "Push Notifications", rookie: true, pro: true, legend: true },
+      { name: "Email Notifications", rookie: false, pro: true, legend: true },
+      { name: "SMS Notifications", rookie: false, pro: false, legend: true },
        { name: "Priority Delivery", rookie: false, pro: true, legend: true },
      ],
    },
@@ -79,14 +79,6 @@
        { name: "Line Movement History", rookie: false, pro: true, legend: true },
        { name: "Auto-rearm Alerts", rookie: false, pro: false, legend: true },
        { name: "Custom Notification Channels", rookie: false, pro: false, legend: true },
-     ],
-   },
-   {
-     category: "Support",
-     features: [
-       { name: "Email Support", rookie: true, pro: true, legend: true },
-       { name: "Priority Support", rookie: false, pro: false, legend: true },
-       { name: "Early Access to Features", rookie: false, pro: false, legend: true },
      ],
    },
  ];
