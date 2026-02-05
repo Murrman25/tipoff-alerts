@@ -1,123 +1,93 @@
 
-# Add Favorite Teams Filter to Games Page and Alert Creation
+# Update Footer and Add Legal Pages
 
 ## Overview
 
-Add a "My Teams" filter row that displays the user's favorite team logos. When clicked, these act as quick filters to show only games featuring that team. This feature will be implemented in both:
-1. **Games page** - Filter the games list to show only games with favorite teams
-2. **Create Alert flow** - Filter the game selection to prioritize/filter by favorite teams
+This update will modernize the footer to match the TIPOFFHQ branding and add dedicated pages for Privacy Policy, Terms of Service, and Contact. These legal pages will have their own minimal layout with back navigation to the home page.
 
 ---
 
-## Technical Approach
+## Changes Summary
 
-### Key Insight: Team Matching
-Games from the API include `teams.home.canonical.id` and `teams.away.canonical.id` which match the `id` field in the `teams` table. The `useFavoriteTeams` hook returns `favoriteTeamIds` which are these same IDs, making filtering straightforward.
+### 1. Update Footer Component
 
-### Matching Logic
-```typescript
-const isGameFromFavoriteTeam = (game: GameEvent, teamId: string) => {
-  return game.teams.home.canonical?.id === teamId || 
-         game.teams.away.canonical?.id === teamId;
-};
-```
-
----
-
-## Implementation Plan
-
-### 1. Create Shared Component: `FavoriteTeamsFilter`
-
-A new reusable component that displays favorite team logos as clickable filter chips.
-
-**File:** `src/components/games/FavoriteTeamsFilter.tsx`
-
-**Features:**
-- Horizontal scrolling row of team logo pills
-- Each pill shows: team logo + short name (e.g., "LAL", "NYG")
-- Click to toggle selection (multi-select supported)
-- Selected teams get highlighted border/background
-- Shows only when user has favorite teams (graceful empty state)
-- Compact design to fit above existing filters
-
-**Props:**
-```typescript
-interface FavoriteTeamsFilterProps {
-  favoriteTeams: Team[];
-  selectedTeamIds: string[];
-  onToggleTeam: (teamId: string) => void;
-  isLoading?: boolean;
-}
-```
-
----
-
-### 2. Update Games Page
-
-**File:** `src/pages/Games.tsx`
+**File:** `src/components/landing/Footer.tsx`
 
 **Changes:**
-- Import and use `useFavoriteTeams` hook
-- Add `selectedFavoriteTeamIds` state (array of team IDs)
-- Add `FavoriteTeamsFilter` component above the existing `GamesFilters`
-- Extend the client-side filtering logic in `filteredGames` to filter by selected favorite teams
-- Update `hasActiveFilters` and `clearFilters` to include favorite team filters
+- Replace the Zap icon placeholder with the actual TIPOFFHQ logo (`@/assets/logo.png`)
+- Update brand name from "TipOff" to "TipOffHQ"
+- Remove the entire "Product" section (Features, Pricing, API Docs links)
+- Keep the "Legal" section with links to the new pages
+- Update the disclaimer and copyright to use "TipOffHQ"
+- Convert the Legal links from anchor tags to React Router `Link` components
 
-**Filter Logic:**
+**New Footer Structure:**
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  [LOGO] TipOffHQ                    Legal                   │
+│  Real-time sports alerts...         • Privacy Policy        │
+│                                      • Terms of Service     │
+│                                      • Contact              │
+├─────────────────────────────────────────────────────────────┤
+│  Disclaimer: TipOffHQ is an informational tool only...      │
+│              © 2025 TipOffHQ. All rights reserved.          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 2. Create Legal Page Layout Component
+
+**File:** `src/components/legal/LegalPageLayout.tsx` (new)
+
+A shared layout wrapper for all legal pages featuring:
+- Minimal header with logo that links to home
+- "Back to Home" button with arrow icon
+- Centered content container
+- Footer excluded (simple, clean pages)
+
+---
+
+### 3. Create Privacy Policy Page
+
+**File:** `src/pages/PrivacyPolicy.tsx` (new)
+
+- Uses `LegalPageLayout`
+- Contains placeholder privacy policy content
+- Standard legal page structure with sections
+
+---
+
+### 4. Create Terms of Service Page
+
+**File:** `src/pages/TermsOfService.tsx` (new)
+
+- Uses `LegalPageLayout`
+- Contains placeholder terms of service content
+- Standard legal page structure with sections
+
+---
+
+### 5. Create Contact Page
+
+**File:** `src/pages/Contact.tsx` (new)
+
+- Uses `LegalPageLayout`
+- Simple contact information display
+- Could include email, support links, or a contact form placeholder
+
+---
+
+### 6. Add Routes to App.tsx
+
+**File:** `src/App.tsx`
+
+Add new routes (not connected to the main navbar):
 ```typescript
-// Inside filteredGames useMemo
-if (selectedFavoriteTeamIds.length > 0) {
-  result = result.filter((game) => 
-    selectedFavoriteTeamIds.some(teamId => 
-      game.teams.home.canonical?.id === teamId || 
-      game.teams.away.canonical?.id === teamId
-    )
-  );
-}
+<Route path="/privacy" element={<PrivacyPolicy />} />
+<Route path="/terms" element={<TermsOfService />} />
+<Route path="/contact" element={<Contact />} />
 ```
-
----
-
-### 3. Update GamesFilters Types
-
-**File:** `src/types/games.ts`
-
-**Changes:**
-- Add optional `favoriteTeamIds?: string[]` to `GamesFilters` interface (for extensibility)
-
----
-
-### 4. Update Create Alert Flow
-
-**File:** `src/components/alerts/AlertEventSelector.tsx`
-
-**Changes:**
-- Import and use `useFavoriteTeams` hook
-- Add favorite teams filter row below league filters (similar UI)
-- Add `selectedFavoriteTeamIds` local state
-- Filter games to prioritize/show favorite team games first when filter is active
-- Optional: Add "My Teams" section header when favorites exist
-
----
-
-## UI Design
-
-### Favorite Teams Filter Row
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  [My Teams]                                                  │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐            │
-│  │ 🏀 LAL  │ │ 🏈 NYG  │ │ 🏈 KC   │ │ ⚾ NYY  │  ...       │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘            │
-│    selected    normal     normal      normal                │
-└──────────────────────────────────────────────────────────────┘
-```
-
-- Pills are 36-40px tall with team logo (20-24px) + abbreviation
-- Selected state: amber/primary border, subtle background tint
-- Horizontal scroll on mobile, wraps on desktop
-- Shows only for logged-in users with favorites
 
 ---
 
@@ -125,22 +95,50 @@ if (selectedFavoriteTeamIds.length > 0) {
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/components/games/FavoriteTeamsFilter.tsx` | Create | New reusable filter component |
-| `src/pages/Games.tsx` | Modify | Add favorite teams filter + filtering logic |
-| `src/components/alerts/AlertEventSelector.tsx` | Modify | Add favorite teams filter for game selection |
-| `src/types/games.ts` | Modify | Add favoriteTeamIds to filter type (optional) |
+| `src/components/landing/Footer.tsx` | Modify | Update logo, remove Product section, fix links |
+| `src/components/legal/LegalPageLayout.tsx` | Create | Shared layout with back navigation |
+| `src/pages/PrivacyPolicy.tsx` | Create | Privacy policy page |
+| `src/pages/TermsOfService.tsx` | Create | Terms of service page |
+| `src/pages/Contact.tsx` | Create | Contact page |
+| `src/App.tsx` | Modify | Add routes for legal pages |
 
 ---
 
-## Edge Cases
+## Technical Details
 
-1. **User not logged in**: Don't show the favorite teams filter row
-2. **No favorite teams**: Don't render the filter row (empty state handled by absence)
-3. **Team not in current games**: Show the pill but it may result in 0 matches (that's valid)
-4. **NCAA deduplication**: Same logic as profile page - if user favorites NCAAB team, match both NCAAB and NCAAF games for that school
+### Legal Page Layout Structure
+```tsx
+<div className="min-h-screen bg-background">
+  <header className="border-b border-border">
+    <div className="container py-4">
+      <Link to="/">
+        <img src={logo} alt="TipOffHQ" className="h-8" />
+      </Link>
+    </div>
+  </header>
+  <main className="container py-12">
+    <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8">
+      <ArrowLeft /> Back to Home
+    </Link>
+    {children}
+  </main>
+</div>
+```
+
+### Footer Link Updates
+```tsx
+// From:
+<a href="#" className="hover:text-primary">Privacy Policy</a>
+
+// To:
+<Link to="/privacy" className="hover:text-primary">Privacy Policy</Link>
+```
 
 ---
 
-## Summary
+## Notes
 
-This feature adds a quick-access filter for users' favorite teams in both the Games browse page and the Create Alert game selection. The filter displays team logos as clickable pills that toggle filtering. When active, only games featuring the selected team(s) are shown, making it faster to find relevant games.
+- The legal pages intentionally use a minimal layout without the full navbar to keep them simple and focused
+- Back navigation always returns to the home page (`/`) as requested
+- These pages are not added to the main navigation - they're only accessible via the footer links
+- Placeholder content will be added that can be easily updated with real legal text later
