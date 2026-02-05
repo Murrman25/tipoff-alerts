@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Target, GitCompareArrows, ChartNoAxesCombined, Timer, Zap, Check, Lock, Crown } from "lucide-react";
+import { Target, GitCompareArrows, ChartNoAxesCombined, Timer, Zap, Check, Crown } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -129,16 +129,24 @@ export const AlertTypes = () => {
   const availableAlertTypes = ALERT_TYPES.filter((at) => tierConfig.types.includes(at.id));
   const selectedAlert = ALERT_TYPES.find((at) => at.id === selectedAlertType) || ALERT_TYPES[0];
 
-  // When tier changes, ensure selected alert type is valid for that tier
+  // Handle tier tab change
   const handleTierChange = (tier: SubscriptionTier) => {
     setSelectedTier(tier);
+    // Select first alert of the new tier if current selection doesn't belong to it
     const newConfig = TIER_LIMITS[tier];
     if (!newConfig.types.includes(selectedAlertType)) {
       setSelectedAlertType(newConfig.types[0]);
     }
   };
 
-  const isAlertAvailable = (alertId: string) => tierConfig.types.includes(alertId);
+  // Handle alert type selection with auto-tier switching
+  const handleAlertTypeSelect = (alertType: AlertTypeInfo) => {
+    setSelectedAlertType(alertType.id);
+    // Auto-switch to the required tier for this alert type
+    if (alertType.minTier !== selectedTier) {
+      setSelectedTier(alertType.minTier);
+    }
+  };
 
   return (
     <section className="py-24 relative" id="alert-types">
@@ -218,7 +226,6 @@ export const AlertTypes = () => {
             </p>
             <div className="space-y-2">
               {ALERT_TYPES.map((alertType) => {
-                const isAvailable = isAlertAvailable(alertType.id);
                 const isSelected = selectedAlertType === alertType.id;
                 const Icon = alertType.icon;
                 const tierDisplay = TIER_DISPLAY[alertType.minTier];
@@ -226,52 +233,43 @@ export const AlertTypes = () => {
                 return (
                   <button
                     key={alertType.id}
-                    onClick={() => isAvailable && setSelectedAlertType(alertType.id)}
-                    disabled={!isAvailable}
+                    onClick={() => handleAlertTypeSelect(alertType)}
                     className={cn(
                       "w-full flex items-center gap-3 p-3 rounded-lg border text-left",
                       "transition-all duration-200",
-                      isAvailable
-                        ? isSelected
-                          ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                          : "border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground/30"
-                        : "border-border/50 bg-muted/20 opacity-50 cursor-not-allowed"
+                      isSelected
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                        : "border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground/30"
                     )}
                   >
                     <div
                       className={cn(
                         "flex items-center justify-center w-9 h-9 rounded-md shrink-0 transition-colors duration-200",
-                        isSelected && isAvailable
+                        isSelected
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground"
                       )}
                     >
-                      {isAvailable ? (
-                        <Icon className="w-4 h-4" />
-                      ) : (
-                        <Lock className="w-4 h-4" />
-                      )}
+                      <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={cn(
                           "text-sm font-medium truncate transition-colors duration-200",
-                          isSelected && isAvailable ? "text-foreground" : "text-foreground/80"
+                          isSelected ? "text-foreground" : "text-foreground/80"
                         )}>
                           {alertType.shortName}
                         </span>
-                        {!isAvailable && (
-                          <span className={cn(
-                            "text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded",
-                            tierDisplay.bgColor,
-                            tierDisplay.color
-                          )}>
-                            {tierDisplay.label}
-                          </span>
-                        )}
+                        <span className={cn(
+                          "text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded",
+                          tierDisplay.bgColor,
+                          tierDisplay.color
+                        )}>
+                          {tierDisplay.label}
+                        </span>
                       </div>
                     </div>
-                    {isSelected && isAvailable && (
+                    {isSelected && (
                       <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
                     )}
                   </button>
