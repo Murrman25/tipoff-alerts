@@ -112,9 +112,9 @@
         <div
           className={cn(
             "w-7 h-7 rounded-full flex items-center justify-center mx-auto",
-            isLegendExclusiveCell && "bg-purple-500/20",
+            isLegendExclusiveCell && "bg-purple-500/15",
             isProCell && "bg-primary/10",
-            tier === "legend" && !legendExclusive && "bg-purple-500/10",
+            tier === "legend" && !legendExclusive && "bg-purple-500/15",
             tier === "rookie" && "bg-muted/50"
           )}
         >
