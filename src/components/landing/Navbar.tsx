@@ -20,8 +20,8 @@ export const Navbar = () => {
   const navigate = useNavigate();
 
   const sectionLinks = [
-    { href: "#games", label: "Games" },
-    { href: "#alerts", label: "Alerts" },
+    { href: "#how-it-works", label: "How It Works" },
+    { href: "#alert-types", label: "Alert Types" },
     { href: "#pricing", label: "Pricing" },
   ];
 
