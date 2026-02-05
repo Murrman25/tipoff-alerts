@@ -27,7 +27,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     examples: [
       "Alert when Bulls ML reaches +150 or better",
       "Notify me if Lakers ML crosses below -200",
-      "Track when any underdog hits +300",
+      "Get notified when your underdog hits +300",
     ],
     minTier: "rookie",
   },
