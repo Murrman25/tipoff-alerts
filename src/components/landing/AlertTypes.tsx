@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Target, GitCompareArrows, ChartNoAxesCombined, Timer, Zap, Check, Crown } from "lucide-react";
+import { Target, GitCompareArrows, ChartNoAxesCombined, Timer, Zap, Check, Lock, Crown } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,12 +22,13 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     id: "ml_threshold",
     name: "Moneyline Alerts",
     shortName: "Moneyline",
-    description: "Get notified when moneyline odds reach or cross your target value. Perfect for finding value when favorites become underdogs or lines move in your favor.",
+    description:
+      "Get notified when moneyline odds reach or cross your target value. Perfect for finding value when favorites become underdogs or lines move in your favor.",
     icon: Target,
     examples: [
       "Alert when Bulls ML reaches +150 or better",
       "Notify me if Lakers ML crosses below -200",
-      "Get notified when your underdog hits +300",
+      "Track when any underdog hits +300",
     ],
     minTier: "rookie",
   },
@@ -35,12 +36,13 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     id: "spread_threshold",
     name: "Spread Alerts",
     shortName: "Spread",
-    description: "Monitor point spread movements and get alerted when lines hit your desired number. Essential for bettors who need a specific number.",
+    description:
+      "Monitor point spread movements and get alerted when lines hit your desired number. Essential for bettors looking for a specific spread.",
     icon: GitCompareArrows,
     examples: [
       "Alert when Chiefs spread reaches +3.5",
       "Notify when Celtics spread crosses -7",
-      "Track spread movement on all games",
+      "Track spread movement on all primetime games",
     ],
     minTier: "rookie",
   },
@@ -48,20 +50,22 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     id: "ou_threshold",
     name: "Over/Under Alerts",
     shortName: "O/U",
-    description: "Track total points lines and get notified when they move above or below your target. Great for totals bettors watching weather or injury news.",
+    description:
+      "Track over/under lines and get notified when they move above or below your target. Great for total bettors watching weather or injury news pregame.",
     icon: ChartNoAxesCombined,
     examples: [
       "Alert when O/U drops below 42.5",
       "Notify when total reaches 220 or higher",
       "Track all NBA games with totals over 230",
     ],
-    minTier: "pro",
+    minTier: "rookie",
   },
   {
     id: "score_margin",
     name: "Score Margin Alert",
     shortName: "Score Margin",
-    description: "Live in-game alerts when the score margin reaches specific thresholds. Perfect for live betting opportunities when games get close or blow out.",
+    description:
+      "Live in-game alerts when the score margin reaches specific thresholds. Perfect for live betting opportunities when games get close or blow out.",
     icon: Target,
     examples: [
       "Alert when margin reaches 10+ points",
@@ -74,7 +78,8 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     id: "timed_surge",
     name: "Timed Line Surge Alert",
     shortName: "Line Surge",
-    description: "Get notified when lines move rapidly within a short time window. Catch sharp money movements and steam moves before the market adjusts.",
+    description:
+      "Get notified when lines move rapidly within a short time window. Catch sharp money movements and steam moves before the market adjusts.",
     icon: Timer,
     examples: [
       "Alert on 3+ point swing in 30 minutes",
@@ -87,7 +92,8 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     id: "momentum_run",
     name: "Momentum Run Alert",
     shortName: "Momentum",
-    description: "Live alerts triggered by scoring runs and momentum shifts. Know instantly when a team goes on a run that could swing the game.",
+    description:
+      "Live alerts triggered by scoring runs and momentum shifts. Know instantly when a team goes on a run that could swing the game.",
     icon: Zap,
     examples: [
       "Alert on 10-0 scoring runs",
@@ -107,10 +113,10 @@ const TIER_DISPLAY: Record<SubscriptionTier, { label: string; color: string; bgC
 const TIER_LIMITS: Record<SubscriptionTier, { alerts: string; types: string[] }> = {
   rookie: {
     alerts: "1 active alert",
-    types: ["ml_threshold", "spread_threshold"],
+    types: ["ml_threshold", "spread_threshold", "ou_threshold"],
   },
   pro: {
-    alerts: "Up to 5 active alerts",
+    alerts: "Up to 15 active alerts",
     types: ["ml_threshold", "spread_threshold", "ou_threshold", "score_margin"],
   },
   legend: {
@@ -129,24 +135,16 @@ export const AlertTypes = () => {
   const availableAlertTypes = ALERT_TYPES.filter((at) => tierConfig.types.includes(at.id));
   const selectedAlert = ALERT_TYPES.find((at) => at.id === selectedAlertType) || ALERT_TYPES[0];
 
-  // Handle tier tab change
+  // When tier changes, ensure selected alert type is valid for that tier
   const handleTierChange = (tier: SubscriptionTier) => {
     setSelectedTier(tier);
-    // Select first alert of the new tier if current selection doesn't belong to it
     const newConfig = TIER_LIMITS[tier];
     if (!newConfig.types.includes(selectedAlertType)) {
       setSelectedAlertType(newConfig.types[0]);
     }
   };
 
-  // Handle alert type selection with auto-tier switching
-  const handleAlertTypeSelect = (alertType: AlertTypeInfo) => {
-    setSelectedAlertType(alertType.id);
-    // Auto-switch to the required tier for this alert type
-    if (alertType.minTier !== selectedTier) {
-      setSelectedTier(alertType.minTier);
-    }
-  };
+  const isAlertAvailable = (alertId: string) => tierConfig.types.includes(alertId);
 
   return (
     <section className="py-24 relative" id="alert-types">
@@ -155,16 +153,9 @@ export const AlertTypes = () => {
 
       <div className="container px-4 md:px-6 relative z-10">
         {/* Section Header */}
-        <div
-          ref={headerRef}
-          className={cn(
-            "text-center mb-12 animate-on-scroll",
-            headerVisible && "is-visible"
-          )}
-        >
+        <div ref={headerRef} className={cn("text-center mb-12 animate-on-scroll", headerVisible && "is-visible")}>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Alert types for{" "}
-            <span className="text-gradient-amber">every edge</span>
+            Alert types for <span className="text-gradient-amber">every edge</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             From basic line alerts to advanced live-game triggers. Choose the alerts that match your betting style.
@@ -185,7 +176,7 @@ export const AlertTypes = () => {
                       "px-6 py-2 text-sm font-medium gap-2 data-[state=active]:shadow-md transition-all",
                       tier === "pro" && "data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400",
                       tier === "legend" && "data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400",
-                      tier === "rookie" && "data-[state=active]:bg-background data-[state=active]:text-foreground"
+                      tier === "rookie" && "data-[state=active]:bg-background data-[state=active]:text-foreground",
                     )}
                   >
                     {tier === "legend" && <Crown className="w-4 h-4" />}
@@ -201,11 +192,7 @@ export const AlertTypes = () => {
         <div className="flex justify-center mb-8">
           <Badge
             variant="secondary"
-            className={cn(
-              "text-sm px-4 py-1.5",
-              TIER_DISPLAY[selectedTier].bgColor,
-              TIER_DISPLAY[selectedTier].color
-            )}
+            className={cn("text-sm px-4 py-1.5", TIER_DISPLAY[selectedTier].bgColor, TIER_DISPLAY[selectedTier].color)}
           >
             {tierConfig.alerts} • {tierConfig.types.length} alert type{tierConfig.types.length > 1 ? "s" : ""}
           </Badge>
@@ -216,7 +203,7 @@ export const AlertTypes = () => {
           ref={contentRef}
           className={cn(
             "grid md:grid-cols-[280px_1fr] gap-6 max-w-5xl mx-auto animate-on-scroll",
-            contentVisible && "is-visible"
+            contentVisible && "is-visible",
           )}
         >
           {/* Alert Type Selector */}
@@ -226,6 +213,7 @@ export const AlertTypes = () => {
             </p>
             <div className="space-y-2">
               {ALERT_TYPES.map((alertType) => {
+                const isAvailable = isAlertAvailable(alertType.id);
                 const isSelected = selectedAlertType === alertType.id;
                 const Icon = alertType.icon;
                 const tierDisplay = TIER_DISPLAY[alertType.minTier];
@@ -233,45 +221,52 @@ export const AlertTypes = () => {
                 return (
                   <button
                     key={alertType.id}
-                    onClick={() => handleAlertTypeSelect(alertType)}
+                    onClick={() => isAvailable && setSelectedAlertType(alertType.id)}
+                    disabled={!isAvailable}
                     className={cn(
                       "w-full flex items-center gap-3 p-3 rounded-lg border text-left",
                       "transition-all duration-200",
-                      isSelected
-                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                        : "border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground/30"
+                      isAvailable
+                        ? isSelected
+                          ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                          : "border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground/30"
+                        : "border-border/50 bg-muted/20 opacity-50 cursor-not-allowed",
                     )}
                   >
                     <div
                       className={cn(
                         "flex items-center justify-center w-9 h-9 rounded-md shrink-0 transition-colors duration-200",
-                        isSelected
+                        isSelected && isAvailable
                           ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
+                          : "bg-muted text-muted-foreground",
                       )}
                     >
-                      <Icon className="w-4 h-4" />
+                      {isAvailable ? <Icon className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "text-sm font-medium truncate transition-colors duration-200",
-                          isSelected ? "text-foreground" : "text-foreground/80"
-                        )}>
+                        <span
+                          className={cn(
+                            "text-sm font-medium truncate transition-colors duration-200",
+                            isSelected && isAvailable ? "text-foreground" : "text-foreground/80",
+                          )}
+                        >
                           {alertType.shortName}
                         </span>
-                        <span className={cn(
-                          "text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded",
-                          tierDisplay.bgColor,
-                          tierDisplay.color
-                        )}>
-                          {tierDisplay.label}
-                        </span>
+                        {!isAvailable && (
+                          <span
+                            className={cn(
+                              "text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded",
+                              tierDisplay.bgColor,
+                              tierDisplay.color,
+                            )}
+                          >
+                            {tierDisplay.label}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {isSelected && (
-                      <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                    )}
+                    {isSelected && isAvailable && <div className="w-2 h-2 rounded-full bg-primary shrink-0" />}
                   </button>
                 );
               })}
@@ -291,7 +286,7 @@ export const AlertTypes = () => {
                   className={cn(
                     "text-xs",
                     TIER_DISPLAY[selectedAlert.minTier].bgColor,
-                    TIER_DISPLAY[selectedAlert.minTier].color
+                    TIER_DISPLAY[selectedAlert.minTier].color,
                   )}
                 >
                   {TIER_DISPLAY[selectedAlert.minTier].label}+
@@ -299,14 +294,10 @@ export const AlertTypes = () => {
               </div>
             </div>
 
-            <p className="text-muted-foreground mb-6 leading-relaxed">
-              {selectedAlert.description}
-            </p>
+            <p className="text-muted-foreground mb-6 leading-relaxed">{selectedAlert.description}</p>
 
             <div className="space-y-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                Example Alerts
-              </p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Example Alerts</p>
               <ul className="space-y-2.5">
                 {selectedAlert.examples.map((example, idx) => (
                   <li key={idx} className="flex items-start gap-3">
@@ -316,6 +307,29 @@ export const AlertTypes = () => {
                 ))}
               </ul>
             </div>
+
+            {/* CTA based on tier */}
+            {selectedTier !== "legend" && (
+              <div className="mt-8 pt-6 border-t border-border">
+                <p className="text-sm text-muted-foreground mb-3">
+                  {selectedTier === "rookie"
+                    ? "Upgrade to Pro for more alerts and advanced types"
+                    : "Upgrade to Legend for unlimited alerts and all alert types"}
+                </p>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleTierChange(selectedTier === "rookie" ? "pro" : "legend")}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium transition-all duration-200",
+                    selectedTier === "rookie"
+                      ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 hover:text-amber-300"
+                      : "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 hover:text-purple-300",
+                  )}
+                >
+                  {selectedTier === "rookie" ? "View Pro Plan" : "View Legend Plan"}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
