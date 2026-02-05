@@ -47,7 +47,7 @@
     },
     {
       name: "Active Alerts",
-      rookie: "1/day",
+      rookie: "1",
       pro: "5",
       legend: "Unlimited",
       tooltip: {
@@ -140,7 +140,11 @@
    if (tooltip) {
      return (
        <Tooltip>
-         <TooltipTrigger className="inline-flex items-center gap-1 text-sm font-medium">
+        <TooltipTrigger className={cn(
+          "inline-flex items-center gap-1 text-sm font-medium",
+          tier === "pro" && "text-primary",
+          tier === "legend" && "text-purple-400"
+        )}>
            {value}
            <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
          </TooltipTrigger>
