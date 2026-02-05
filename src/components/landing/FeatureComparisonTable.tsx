@@ -49,6 +49,12 @@
            legend: "Create as many alerts as you want with no restrictions. Keep alerts active indefinitely or pause them for later.",
          },
        },
+    {
+      name: "Total Alerts",
+      rookie: "1/day",
+      pro: "Unlimited",
+      legend: "Unlimited",
+    },
      ],
    },
    {
@@ -205,7 +211,7 @@
                      >
                        <TableCell
                          colSpan={4}
-                        className="py-3 text-xs font-bold uppercase tracking-wider text-foreground"
+                        className="py-3 text-xs font-bold uppercase tracking-wider text-primary"
                        >
                          {category.category}
                        </TableCell>
