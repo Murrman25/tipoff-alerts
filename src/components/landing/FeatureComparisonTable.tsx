@@ -40,20 +40,20 @@
      category: "Alert Limits",
      features: [
        {
-         name: "Active Alerts",
-         rookie: "1/day",
-         pro: "5",
-         legend: "Unlimited",
-         tooltip: {
-           pro: "An active alert is one that's currently monitoring for your specified conditions. Inactive alerts are paused and don't count toward your limit.",
-           legend: "Create as many alerts as you want with no restrictions. Keep alerts active indefinitely or pause them for later.",
-         },
-       },
-    {
       name: "Total Alerts",
       rookie: "1/day",
       pro: "Unlimited",
       legend: "Unlimited",
+    },
+    {
+      name: "Active Alerts",
+      rookie: "1/day",
+      pro: "5",
+      legend: "Unlimited",
+      tooltip: {
+        pro: "An active alert is one that's currently monitoring for your specified conditions. Inactive alerts are paused and don't count toward your limit.",
+        legend: "Create as many alerts as you want with no restrictions. Keep alerts active indefinitely or pause them for later.",
+      },
     },
      ],
    },
