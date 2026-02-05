@@ -71,3 +71,37 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Mobile (iOS/Android via Capacitor)
+
+This repo supports running the same Vite SPA as a native iOS/Android app using Capacitor.
+
+### Dev server (web)
+```sh
+npm install
+npm run dev
+```
+Vite defaults to `http://localhost:8080` (see `vite.config.ts`).
+
+### iOS Simulator (loads your Mac dev server)
+```sh
+CAP_SERVER_URL="http://localhost:8080" npm run cap:run:ios
+```
+
+### Android Emulator (loads your Mac dev server)
+Android emulators reach the host machine via `10.0.2.2`:
+```sh
+CAP_SERVER_URL="http://10.0.2.2:8080" npm run cap:run:android
+```
+
+### Release builds (bundled)
+Build the web assets, then sync:
+```sh
+npm run build
+npm run cap:sync
+```
+
+### Troubleshooting
+- If iOS `pod install` fails during `cap sync`, ensure your terminal uses UTF-8:
+  - `export LANG=en_US.UTF-8`
+  - `export LC_ALL=en_US.UTF-8`

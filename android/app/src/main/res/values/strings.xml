@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TIPOFFHQ</string>
+    <string name="title_activity_main">TIPOFFHQ</string>
+    <string name="package_name">com.tipoffhq.tipoffhq</string>
+    <string name="custom_url_scheme">com.tipoffhq.tipoffhq</string>
+</resources>
