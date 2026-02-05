@@ -84,13 +84,13 @@ export const Navbar = () => {
               to="/alerts"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              My Alerts
+              My TipOffs
             </Link>
             <Link
               to="/alerts/create"
               className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
             >
-              Create Alert
+              Create TipOff
             </Link>
           </div>
 
@@ -124,13 +124,13 @@ export const Navbar = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/alerts" className="cursor-pointer">
                       <Bell className="w-4 h-4 mr-2" />
-                      My Alerts
+                      My TipOffs
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/alerts/create" className="cursor-pointer">
                       <Zap className="w-4 h-4 mr-2" />
-                      Create Alert
+                      Create TipOff
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -195,14 +195,14 @@ export const Navbar = () => {
                   className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  My Alerts
+                  My TipOffs
                 </Link>
                 <Link
                   to="/alerts/create"
                   className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Create Alert →
+                  Create TipOff →
                 </Link>
               </div>
               {user && (
