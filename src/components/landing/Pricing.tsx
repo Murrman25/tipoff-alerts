@@ -43,15 +43,17 @@ const plans = [
     yearlyPrice: 360, // $30/mo billed yearly (25% off)
     description: "Unlimited power for professional use",
     features: [
+      "All Pro features",
       "Unlimited alerts",
       "Auto-rearm alerts",
-      "All Pro features",
       "Priority support",
       "Custom notification channels",
       "Early access to new features",
     ],
     cta: "Go Legend",
     highlighted: false,
+    headerColor: "text-purple-400",
+    highlightFirstFeature: true,
   },
 ];
 
@@ -158,7 +160,11 @@ export const Pricing = () => {
 
               {/* Plan header */}
               <div className="mb-6">
-                <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
+                <h3 className={cn(
+                  "text-xl font-bold mb-2",
+                  plan.name === "Pro" && "text-amber-400",
+                  plan.name === "Legend" && "text-purple-400"
+                )}>{plan.name}</h3>
                 <div className="flex items-baseline gap-1">
                   <span 
                     key={isYearly ? "yearly" : "monthly"}
@@ -183,8 +189,14 @@ export const Pricing = () => {
               <ul className="space-y-3 mb-8 flex-1">
                 {plan.features.map((feature, featureIndex) => (
                   <li key={featureIndex} className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">{feature}</span>
+                    <Check className={cn(
+                      "w-5 h-5 shrink-0 mt-0.5",
+                      plan.name === "Legend" && featureIndex === 0 ? "text-amber-400" : "text-primary"
+                    )} />
+                    <span className={cn(
+                      "text-sm",
+                      plan.name === "Legend" && featureIndex === 0 && "text-amber-400 font-medium"
+                    )}>{feature}</span>
                   </li>
                 ))}
               </ul>
