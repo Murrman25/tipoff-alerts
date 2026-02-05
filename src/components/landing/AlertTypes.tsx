@@ -316,30 +316,6 @@ export const AlertTypes = () => {
                 ))}
               </ul>
             </div>
-
-            {/* CTA based on tier */}
-            {selectedTier !== "legend" && (
-              <div className="mt-8 pt-6 border-t border-border">
-                <p className="text-sm text-muted-foreground mb-3">
-                  {selectedTier === "rookie" 
-                    ? "Upgrade to Pro for more alerts and advanced types"
-                    : "Upgrade to Legend for unlimited alerts and all alert types"
-                  }
-                </p>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleTierChange(selectedTier === "rookie" ? "pro" : "legend")}
-                  className={cn(
-                    "px-4 py-2 text-sm font-medium transition-all duration-200",
-                    selectedTier === "rookie"
-                      ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 hover:text-amber-300"
-                      : "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 hover:text-purple-300"
-                  )}
-                >
-                  {selectedTier === "rookie" ? "View Pro Plan" : "View Legend Plan"}
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </div>
