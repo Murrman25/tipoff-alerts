@@ -138,13 +138,21 @@ export const AlertTypes = () => {
   // When tier changes, ensure selected alert type is valid for that tier
   const handleTierChange = (tier: SubscriptionTier) => {
     setSelectedTier(tier);
-    const newConfig = TIER_LIMITS[tier];
-    if (!newConfig.types.includes(selectedAlertType)) {
-      setSelectedAlertType(newConfig.types[0]);
-    }
   };
 
-  const isAlertAvailable = (alertId: string) => tierConfig.types.includes(alertId);
+  // When selecting an alert type, auto-switch to the required tier if needed
+  const handleAlertTypeChange = (alertType: AlertTypeInfo) => {
+    setSelectedAlertType(alertType.id);
+    
+    // Auto-switch tier if the selected alert requires a higher tier
+    const tierOrder: SubscriptionTier[] = ["rookie", "pro", "legend"];
+    const currentTierIndex = tierOrder.indexOf(selectedTier);
+    const requiredTierIndex = tierOrder.indexOf(alertType.minTier);
+    
+    if (requiredTierIndex > currentTierIndex) {
+      setSelectedTier(alertType.minTier);
+    }
+  };
 
   return (
     <section className="py-24 relative" id="alert-types">
@@ -213,47 +221,46 @@ export const AlertTypes = () => {
             </p>
             <div className="space-y-2">
               {ALERT_TYPES.map((alertType) => {
-                const isAvailable = isAlertAvailable(alertType.id);
                 const isSelected = selectedAlertType === alertType.id;
                 const Icon = alertType.icon;
                 const tierDisplay = TIER_DISPLAY[alertType.minTier];
+                const requiresHigherTier = 
+                  (alertType.minTier === "pro" && selectedTier === "rookie") ||
+                  (alertType.minTier === "legend" && selectedTier !== "legend");
 
                 return (
                   <button
                     key={alertType.id}
-                    onClick={() => isAvailable && setSelectedAlertType(alertType.id)}
-                    disabled={!isAvailable}
+                    onClick={() => handleAlertTypeChange(alertType)}
                     className={cn(
                       "w-full flex items-center gap-3 p-3 rounded-lg border text-left",
                       "transition-all duration-200",
-                      isAvailable
-                        ? isSelected
-                          ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                          : "border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground/30"
-                        : "border-border/50 bg-muted/20 opacity-50 cursor-not-allowed",
+                      isSelected
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                        : "border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground/30",
                     )}
                   >
                     <div
                       className={cn(
                         "flex items-center justify-center w-9 h-9 rounded-md shrink-0 transition-colors duration-200",
-                        isSelected && isAvailable
+                        isSelected
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground",
                       )}
                     >
-                      {isAvailable ? <Icon className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span
                           className={cn(
                             "text-sm font-medium truncate transition-colors duration-200",
-                            isSelected && isAvailable ? "text-foreground" : "text-foreground/80",
+                            isSelected ? "text-foreground" : "text-foreground/80",
                           )}
                         >
                           {alertType.shortName}
                         </span>
-                        {!isAvailable && (
+                        {requiresHigherTier && (
                           <span
                             className={cn(
                               "text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded",
@@ -266,7 +273,7 @@ export const AlertTypes = () => {
                         )}
                       </div>
                     </div>
-                    {isSelected && isAvailable && <div className="w-2 h-2 rounded-full bg-primary shrink-0" />}
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-primary shrink-0" />}
                   </button>
                 );
               })}
