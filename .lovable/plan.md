@@ -1,115 +1,203 @@
 
-# Add About Us and Accessibility Pages
+# Update Pricing Section with Feature Comparison Table
 
 ## Overview
 
-This update adds two new pages to the footer navigation: "About Us" and "Accessibility". Both pages will follow the established pattern using the `LegalPageLayout` component for consistent styling and navigation.
+This update enhances the Pricing section with revised discount rates, updated alert limits, and a comprehensive feature comparison table that clearly distinguishes what's available at each subscription tier.
 
 ---
 
 ## Changes Summary
 
-### 1. Create About Us Page
+### 1. Update Yearly Discount to 25%
 
-**File:** `src/pages/AboutUs.tsx` (new)
+**Current:** 20% discount on yearly plans
+**New:** 25% discount on yearly plans
 
-A dedicated page introducing TipOffHQ with:
-- Company mission and vision
-- What the platform offers
-- Team or company values
-- Uses the existing `LegalPageLayout` component
-
----
-
-### 2. Create Accessibility Page
-
-**File:** `src/pages/Accessibility.tsx` (new)
-
-A page outlining accessibility commitment with:
-- Accessibility statement and commitment
-- WCAG compliance information
-- Accessibility features provided
-- Contact information for accessibility issues
-- Uses the existing `LegalPageLayout` component
+Price adjustments:
+- **Pro:** Monthly $20 → Yearly $180/year ($15/mo equivalent)
+- **Legend:** Monthly $40 → Yearly $360/year ($30/mo equivalent)
 
 ---
 
-### 3. Update Footer Component
+### 2. Update Alert Limits Per Tier
 
-**File:** `src/components/landing/Footer.tsx`
+| Tier | Current | New |
+|------|---------|-----|
+| Rookie | 1 active alert per day | 1 alert per day |
+| Pro | 15 alerts per day | Up to 5 active alerts ⓘ |
+| Legend | Unlimited alerts | Unlimited alerts (active or inactive) ⓘ |
 
-**Changes:**
-- Reorganize footer to have two link sections: "Company" and "Legal"
-- Add "About Us" and "Accessibility" links under a new "Company" section
-- Keep existing legal links (Privacy, Terms, Contact) under "Legal"
+Tooltips to add:
+- **Pro "Active Alerts":** "An active alert is one that's currently monitoring for your specified conditions. Inactive alerts are paused and don't count toward your limit."
+- **Legend "Unlimited":** "Create as many alerts as you want with no restrictions. Keep alerts active indefinitely or pause them for later."
 
-**Updated Footer Structure:**
+---
+
+### 3. Remove API Access from Legend
+
+The "API access" feature will be removed from the Legend tier's feature list in the pricing cards.
+
+---
+
+### 4. Add Feature Comparison Table
+
+A comprehensive table below the pricing cards that clearly shows feature availability across tiers:
+
+**Table Structure:**
+
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│  [LOGO] TipOffHQ              Company           Legal               │
-│  Real-time sports alerts...   • About Us        • Privacy Policy    │
-│                               • Accessibility   • Terms of Service  │
-│                                                 • Contact           │
-├──────────────────────────────────────────────────────────────────────┤
-│  Disclaimer: TipOffHQ is an informational tool only...              │
-│              © 2025 TipOffHQ. All rights reserved.                  │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Feature Comparison                                │
+├─────────────────────────────────────────────────────────────────────┤
+│ FEATURE                      │ ROOKIE   │ PRO      │ LEGEND         │
+├─────────────────────────────────────────────────────────────────────┤
+│ ALERT LIMITS                                                         │
+│ Active Alerts                │ 1/day    │ 5 ⓘ     │ Unlimited ⓘ    │
+│                                                                      │
+│ ALERT TYPES                                                          │
+│ Moneyline Alerts             │ ✓        │ ✓        │ ✓              │
+│ Spread Alerts                │ ✓        │ ✓        │ ✓              │
+│ Over/Under Alerts            │ ✓        │ ✓        │ ✓              │
+│ Score Margin Alerts          │ -        │ ✓        │ ✓              │
+│ Timed Line Surge             │ -        │ -        │ ✓              │
+│ Momentum Run Alerts          │ -        │ -        │ ✓              │
+│                                                                      │
+│ NOTIFICATIONS                                                        │
+│ Email Notifications          │ ✓        │ ✓        │ ✓              │
+│ Push Notifications           │ -        │ ✓        │ ✓              │
+│ SMS Notifications            │ -        │ ✓        │ ✓              │
+│ Priority Delivery            │ -        │ ✓        │ ✓              │
+│                                                                      │
+│ FEATURES                                                             │
+│ Basic Alert Builder          │ ✓        │ ✓        │ ✓              │
+│ Multi-condition Logic        │ -        │ ✓        │ ✓              │
+│ Alert Templates              │ -        │ ✓        │ ✓              │
+│ Line Movement History        │ -        │ ✓        │ ✓              │
+│ Auto-rearm Alerts            │ -        │ -        │ ✓              │
+│ Custom Notification Channels │ -        │ -        │ ✓              │
+│                                                                      │
+│ SUPPORT                                                              │
+│ Email Support                │ ✓        │ ✓        │ ✓              │
+│ Priority Support             │ -        │ -        │ ✓              │
+│ Early Access to Features     │ -        │ -        │ ✓              │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### 4. Add Routes to App.tsx
+## Technical Implementation
 
-**File:** `src/App.tsx`
+### File: `src/components/landing/Pricing.tsx`
 
-Add new routes:
+**Key Changes:**
+
+1. **Update yearly prices:**
 ```typescript
-<Route path="/about" element={<AboutUs />} />
-<Route path="/accessibility" element={<Accessibility />} />
+// Pro: $20/mo → 25% off = $15/mo = $180/year
+yearlyPrice: 180
+
+// Legend: $40/mo → 25% off = $30/mo = $360/year
+yearlyPrice: 360
 ```
 
----
-
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/pages/AboutUs.tsx` | Create | About Us page with company info |
-| `src/pages/Accessibility.tsx` | Create | Accessibility statement page |
-| `src/components/landing/Footer.tsx` | Modify | Add new links in organized sections |
-| `src/App.tsx` | Modify | Add routes for new pages |
-
----
-
-## Technical Details
-
-### About Us Page Structure
+2. **Update badge text:**
 ```tsx
-import { LegalPageLayout } from "@/components/legal/LegalPageLayout";
-
-const AboutUs = () => {
-  return (
-    <LegalPageLayout title="About Us">
-      {/* Mission, vision, and company information */}
-    </LegalPageLayout>
-  );
-};
+<span className="...">Save 25%</span>
 ```
 
-### Footer Grid Update
+3. **Update plan features in cards:**
+```typescript
+// Rookie
+features: [
+  "1 alert per day",
+  "Basic alert builder",
+  "Email notifications",
+  "Access to all sports",
+]
+
+// Pro - remove "15 alerts" and update
+features: [
+  "Up to 5 active alerts",
+  "Multi-condition logic (AND/OR)",
+  "Alert templates",
+  "Push & SMS notifications",
+  "Priority notification delivery",
+  "Line movement history",
+]
+
+// Legend - remove "API access"
+features: [
+  "Unlimited alerts",
+  "Auto-rearm alerts",
+  "All Pro features",
+  "Priority support",
+  "Custom notification channels",
+  "Early access to new features",
+]
+```
+
+4. **Add TooltipProvider wrapper and tooltip imports**
+
+5. **Add feature comparison table component below pricing cards:**
 ```tsx
-<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-  {/* Logo section */}
-  {/* Company links: About Us, Accessibility */}
-  {/* Legal links: Privacy, Terms, Contact */}
+// New component or inline JSX
+<div className="mt-20 max-w-5xl mx-auto">
+  <h3 className="text-2xl font-bold text-center mb-8">Feature Comparison</h3>
+  <div className="border rounded-xl overflow-hidden">
+    <table className="w-full">
+      {/* Table content with check/dash icons per tier */}
+    </table>
+  </div>
 </div>
 ```
 
+6. **Implement tooltips for alert limits:**
+```tsx
+<Tooltip>
+  <TooltipTrigger className="flex items-center gap-1">
+    5 active alerts
+    <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+  </TooltipTrigger>
+  <TooltipContent>
+    An active alert is one that's currently monitoring...
+  </TooltipContent>
+</Tooltip>
+```
+
 ---
 
-## Notes
+## Visual Design
 
-- Both new pages use the same `LegalPageLayout` for consistent navigation and styling
-- Pages are only accessible via footer links, not the main navbar
-- Back navigation on these pages returns users to the home page
-- Placeholder content will be added that can be updated with real content later
+**Table Styling:**
+- Alternating row backgrounds for readability
+- Sticky header with tier names
+- Check marks (✓) in primary color for included features
+- Dashes (-) in muted color for excluded features
+- Category headers in uppercase with section dividers
+- Info icons (ⓘ) next to items with tooltips
+- Responsive: horizontal scroll on mobile or stacked card view
+
+**Tooltip Content:**
+- Pro (5 active alerts): "An active alert is one that's currently monitoring for your specified conditions. Inactive alerts are paused and don't count toward your limit."
+- Legend (Unlimited): "Create as many alerts as you want with no restrictions. Keep alerts active indefinitely or pause them for later."
+
+---
+
+## Files to Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/landing/Pricing.tsx` | Modify | Update prices, features, add comparison table with tooltips |
+
+---
+
+## Summary of Changes
+
+1. **Yearly discount:** 20% → 25%
+2. **Alert limits:**
+   - Rookie: 1 alert per day (unchanged)
+   - Pro: 5 active alerts (with tooltip)
+   - Legend: Unlimited (with tooltip)
+3. **Removed:** API access from Legend tier
+4. **Added:** Feature comparison table with all alert types and features organized by category
