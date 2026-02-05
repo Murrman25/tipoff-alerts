@@ -55,7 +55,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
       "Notify when total reaches 220 or higher",
       "Track all NBA games with totals over 230",
     ],
-    minTier: "rookie",
+    minTier: "pro",
   },
   {
     id: "score_margin",
@@ -107,10 +107,10 @@ const TIER_DISPLAY: Record<SubscriptionTier, { label: string; color: string; bgC
 const TIER_LIMITS: Record<SubscriptionTier, { alerts: string; types: string[] }> = {
   rookie: {
     alerts: "1 active alert",
-    types: ["ml_threshold", "spread_threshold", "ou_threshold"],
+    types: ["ml_threshold", "spread_threshold"],
   },
   pro: {
-    alerts: "Up to 15 active alerts",
+    alerts: "Up to 5 active alerts",
     types: ["ml_threshold", "spread_threshold", "ou_threshold", "score_margin"],
   },
   legend: {
