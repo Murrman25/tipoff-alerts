@@ -30,13 +30,12 @@ export const AlertRuleTypeSelector = ({
       <label className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
         Alert Type
       </label>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+      <div className="flex flex-wrap gap-2">
         {RULE_TYPE_OPTIONS.map((option) => (
           <RuleTypeCard
             key={option.id}
             ruleType={option.id}
             name={option.name}
-            description={option.description}
             planRequired={option.planRequired}
             isSelected={value === option.id}
             isLocked={isLocked(option.planRequired)}
