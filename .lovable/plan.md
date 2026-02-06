@@ -1,188 +1,158 @@
 
-# Plan: Remove Crosses Direction & Add Input Validation for Threshold Fields
+
+# Plan: Update Tooltips for Mobile Accessibility and Content Accuracy
 
 ## Overview
-This plan addresses three key improvements to the alert creation form:
-1. Remove "Crosses above" and "Crosses below" direction options from all alerts
-2. Add threshold input field for Line Surge alerts (currently missing)
-3. Add smart input validation with automatic +/- formatting for Moneyline and Spread inputs
+This plan addresses two critical issues with tooltips on the Create Alert page:
+1. **Mobile accessibility**: Tooltips currently rely on hover interactions which don't work on touch devices
+2. **Content accuracy**: Help content needs to be updated to match the new alert types and removed features
 
-## Changes Required
+## Current Issues Identified
 
-### 1. Remove "Crosses" Direction Options
+### Issue 1: Mobile Inaccessibility
+- `AlertFieldHelp` component has `hidden sm:inline-flex` - completely hidden on mobile
+- `AlertNotificationChannels` uses Radix Tooltip which requires hover (not tappable)
+- Header help toggle uses Radix Tooltip (hover-only)
 
-**File: `src/types/alerts.ts`**
-- Remove `crosses_above` and `crosses_below` from the `DirectionType` union
-- Remove corresponding entries from `DIRECTION_OPTIONS` array
-- Update `QUICK_ALERT_TEMPLATES` to change `direction: 'crosses_below'` to `direction: 'at_or_below'`
+### Issue 2: Outdated Content
+The `FIELD_HELP_CONTENT` in `src/types/alerts.ts` needs updates:
 
-**File: `src/components/alerts/AlertDirectionSelector.tsx`**
-- Simplify the `getAvailableOptions()` function since "crosses" options no longer exist
-- For market-based alerts (Moneyline, Spread, O/U): only show "At or above" and "At or below"
+| Field | Current Issue | Needed Update |
+|-------|--------------|---------------|
+| `ruleType` | Missing O/U and Line Surge | Include all 6 alert types |
+| `threshold` | Too generic | Alert-type-specific descriptions |
+| `direction` | Mentions "crosses" implicitly | Clarify only "At or above/below" exist |
+| `marketType` | Only shows for Line Surge | Content is fine, just limited visibility |
 
-### 2. Add Threshold Input for Line Surge Alerts
+## Implementation Plan
 
-**File: `src/types/alerts.ts`**
-- Update `ALERT_TYPE_FIELD_CONFIG` for `timed_surge`:
-  - Set `showThreshold: true`
-  - Add `thresholdLabel: 'Line Movement'`
-  - Add `thresholdPlaceholder` based on market type context
+### 1. Make AlertFieldHelp Mobile-Friendly
 
-This will automatically show the threshold input for Line Surge alerts because the CreateAlert page already conditionally renders based on `fieldConfig.showThreshold`.
+**File: `src/components/alerts/AlertFieldHelp.tsx`**
 
-### 3. Smart Input Validation for Threshold Fields
-
-**File: `src/components/alerts/AlertThresholdInput.tsx`**
-
-Implement market-type-specific validation and formatting:
-
-**Moneyline (`ml`):**
-- Accept integers only (no decimals)
-- Auto-prepend `+` when user enters a positive number
-- Display with `+` or `-` prefix
-- Valid examples: `+200`, `-110`, `+150`
-
-**Spread (`sp`):**
-- Accept decimals (typically .5 increments)
-- Auto-prepend `+` when user enters a positive number
-- Display with `+` or `-` prefix  
-- Valid examples: `+7.5`, `-2.5`, `+3`
-
-**Over/Under (`ou`):**
-- Accept decimals
-- No sign prefix needed (totals are always positive)
-- Valid examples: `224.5`, `48`, `210.5`
-
-**Points/Margin (for Score Margin, Momentum):**
-- Accept integers only
-- No sign prefix (always positive margins)
-- Valid examples: `10`, `15`, `8`
-
-**Implementation Details:**
+Change from hover-only to tap-friendly:
+- Remove `hidden sm:inline-flex` to show on all screen sizes
+- Keep using Popover (already tap-friendly via click trigger)
+- Adjust icon size for better touch targets on mobile (min 44x44px touch area)
 
 ```text
-Component Changes:
-1. Track raw input string separately from numeric value
-2. Format display value with proper +/- prefix on blur
-3. Strip formatting on focus for easier editing
-4. Validate input based on marketType:
-   - ml: integers only, auto-add +
-   - sp: decimals allowed, auto-add +
-   - ou: decimals allowed, no sign
-5. Show validation error for invalid input
+Before: "hidden sm:inline-flex items-center justify-center w-4 h-4"
+After:  "inline-flex items-center justify-center w-6 h-6 sm:w-4 sm:h-4"
+        + touch-friendly wrapper with min-w-[44px] min-h-[44px]
 ```
 
-**New behavior flow:**
-1. User focuses input (raw number shown)
-2. User types: `150`
-3. User blurs → displays: `+150` (for ML/Spread)
-4. Numeric value stored: `150` (positive)
+### 2. Replace Hover Tooltips with Tap-Friendly Popovers
 
-For negative values:
-1. User types: `-110`
-2. User blurs → displays: `-110`
-3. Numeric value stored: `-110`
+**File: `src/components/alerts/AlertNotificationChannels.tsx`**
+
+Replace Radix Tooltip with Popover for notification channel descriptions:
+- Tooltip requires hover (desktop-only)
+- Popover works with click/tap (mobile-friendly)
+- Add accessible label for screen readers
+
+**File: `src/pages/CreateAlert.tsx`**
+
+Update the header help toggle tooltip:
+- Keep Tooltip for desktop (works fine with hover)
+- The toggle button itself is tappable so this is less critical
+- Could optionally replace with Popover for consistency
+
+### 3. Update FIELD_HELP_CONTENT for Accuracy
+
+**File: `src/types/alerts.ts`**
+
+Updated content for each field:
+
+```text
+ruleType: {
+  title: 'Alert Type',
+  description: 'Choose how to monitor the game. Moneyline, Spread, and O/U track betting lines. Score Margin tracks point differentials. Line Surge detects rapid line movement. Momentum tracks scoring runs.',
+  example: 'Use "Spread" to watch for line movement to +3.5',
+}
+
+threshold: {
+  title: 'Target Value',
+  description: 'The value that triggers your alert. For Moneyline: odds like +150 or -110. For Spread: points like +3.5 or -7. For O/U: total points like 224.5. For Score Margin: point lead like 10. For Momentum: run size like 8.',
+  example: 'Moneyline +150 means underdog odds of +150',
+}
+
+direction: {
+  title: 'Trigger Direction',
+  description: 'Determines when your alert fires. "At or above" triggers when the value is greater than or equal to your target. "At or below" triggers when less than or equal.',
+  example: '"At or above +3" alerts when spread is +3, +3.5, +4...',
+}
+
+marketType: {
+  title: 'Market Type',
+  description: 'For Line Surge alerts, choose which betting market to monitor. Moneyline = who wins outright. Spread = point margin. Over/Under = total combined points.',
+  example: 'Track ML surges to catch sharp money movement',
+}
+
+surgeWindow: {
+  title: 'Surge Detection Window',
+  description: 'How quickly the line must move to trigger a surge alert. Shorter windows catch sharper, more sudden movements. Longer windows catch gradual drifts.',
+  example: '5 min catches sharp moves, 30 min catches gradual shifts',
+}
+
+runWindow: {
+  title: 'Scoring Run Window',
+  description: 'Time frame to track unanswered points. Detects when one team goes on a scoring run without the opponent scoring.',
+  example: '5 min window catches 10-0 runs within 5 minutes',
+}
+
+gamePeriod: {
+  title: 'Game Period',
+  description: 'Which part of the game to monitor. "Full Game" tracks the entire game. Quarter/Half/Period options focus on specific segments.',
+  example: 'Track 4th quarter momentum to catch late-game swings',
+}
+
+timeWindow: {
+  title: 'Alert Timing',
+  description: 'When your alert can trigger. "Pregame" = only before the game starts. "Live" = only during the game. "Pregame & Live" = anytime.',
+  example: 'Use "Live-only" to ignore pregame line movements',
+}
+
+teamSide: {
+  title: 'Team Selection',
+  description: 'Which team to track for this alert. The alert monitors this team\'s odds, spread, or score depending on your alert type.',
+}
+```
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/types/alerts.ts` | Remove crosses directions, update Line Surge config, fix quick template |
-| `src/components/alerts/AlertDirectionSelector.tsx` | Simplify to only "at or above/below" for markets |
-| `src/components/alerts/AlertThresholdInput.tsx` | Add smart validation, auto +/- formatting |
-| `src/components/alerts/AlertSummary.tsx` | Update summary generation to remove crosses references |
+| `src/components/alerts/AlertFieldHelp.tsx` | Make visible and tappable on mobile |
+| `src/components/alerts/AlertNotificationChannels.tsx` | Replace Tooltip with Popover for tap support |
+| `src/types/alerts.ts` | Update FIELD_HELP_CONTENT with accurate descriptions |
 
-## Technical Implementation
+## Visual Changes
 
-### Updated DirectionType
+### Mobile Help Icons (Before)
 ```text
-type DirectionType = 'at_or_above' | 'at_or_below' | 'exactly';
+[Label Field]           <- No help icon visible on mobile
+[Input]
 ```
 
-### Updated DIRECTION_OPTIONS
+### Mobile Help Icons (After)
 ```text
-[
-  { id: 'at_or_above', name: 'At or above' },
-  { id: 'at_or_below', name: 'At or below' },
-  { id: 'exactly', name: 'Exactly at' },
-]
+[Label Field]     (?) <- Tappable help icon
+[Input]
 ```
 
-### Updated Line Surge Field Config
+### Notification Channels (Before - hover only)
 ```text
-timed_surge: {
-  showMarketToggle: true,
-  showTeamSelector: true,
-  showThreshold: true,  // Changed from false
-  showDirection: false,
-  showTimeWindow: false,
-  showSurgeWindow: true,
-  showRunWindow: false,
-  showGamePeriod: true,
-  forceTimeWindow: 'live',
-  thresholdLabel: 'Target Value',
-  thresholdPlaceholder: 'Enter target line',
-}
+[Email]  [Push]  [SMS]  <- Hover shows tooltip (doesn't work on mobile)
 ```
 
-### Threshold Input Validation Logic
+### Notification Channels (After - tap friendly)
 ```text
-For Moneyline:
-- Pattern: /^-?\d+$/  (integers only)
-- On blur: prepend + if positive
-- inputMode: "numeric"
-
-For Spread:
-- Pattern: /^-?\d+\.?\d*$/  (decimals allowed)
-- On blur: prepend + if positive
-- inputMode: "decimal"
-
-For O/U:
-- Pattern: /^-?\d+\.?\d*$/  (decimals allowed)
-- No sign formatting
-- inputMode: "decimal"
-
-For Points (Margin/Momentum):
-- Pattern: /^\d+$/  (positive integers only)
-- No sign formatting
-- inputMode: "numeric"
+[Email ▾]  [Push ▾]  [SMS ▾]  <- Tap shows popover with description
 ```
 
-## Visual Examples
+## Accessibility Improvements
+- All interactive help elements work with touch/tap
+- Minimum 44x44px touch targets for mobile
+- ARIA labels for screen readers
+- Focus states preserved for keyboard navigation
 
-**Before (Moneyline input):**
-```text
-[          ] placeholder: "+150 or -110"
-User types: 200
-Display stays: 200
-```
-
-**After (Moneyline input):**
-```text
-[          ] placeholder: "+150 or -110"
-User types: 200
-On blur displays: +200
-User types: -110
-On blur displays: -110
-```
-
-**Before (Spread input):**
-```text
-[          ] placeholder: "+3.5 or -7"
-User types: 7.5
-Display stays: 7.5
-```
-
-**After (Spread input):**
-```text
-[          ] placeholder: "+3.5 or -7"
-User types: 7.5
-On blur displays: +7.5
-User types: -2.5
-On blur displays: -2.5
-```
-
-## Impact Assessment
-- These are UI-only changes - no database schema changes needed
-- Existing alerts in database with "crosses_above" or "crosses_below" direction would need to be handled (could be migrated to "at_or_above"/"at_or_below")
-- No breaking changes to the alert creation flow
