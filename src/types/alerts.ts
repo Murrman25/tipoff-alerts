@@ -320,46 +320,46 @@ export const QUICK_ALERT_TEMPLATES: QuickAlertTemplate[] = [
 export const FIELD_HELP_CONTENT: Record<string, { title: string; description: string; example?: string }> = {
   ruleType: {
     title: 'Alert Type',
-    description: 'Choose your alert type. Moneyline and Spread track betting lines. Score Margin and Momentum track game flow.',
-    example: 'Use Spread Alert to watch for line movement to +3.5',
+    description: 'Choose how to monitor the game. Moneyline, Spread, and O/U track betting lines. Score Margin tracks point differentials. Line Surge detects rapid line movement. Momentum tracks scoring runs.',
+    example: 'Use "Spread" to watch for line movement to +3.5',
+  },
+  threshold: {
+    title: 'Target Value',
+    description: 'The value that triggers your alert. For Moneyline: odds like +150 or -110. For Spread: points like +3.5 or -7. For O/U: total points like 224.5. For Score Margin: point lead like 10. For Momentum: run size like 8.',
+    example: 'Moneyline +150 means underdog odds of +150',
+  },
+  direction: {
+    title: 'Trigger Direction',
+    description: 'Determines when your alert fires. "At or above" triggers when the value is greater than or equal to your target. "At or below" triggers when less than or equal.',
+    example: '"At or above +3" alerts when spread is +3, +3.5, +4...',
   },
   marketType: {
     title: 'Market Type',
-    description: 'Moneyline = who wins. Spread = margin of victory. Over/Under = total points scored.',
-    example: 'Spread of -7 means team must win by 7+',
-  },
-  direction: {
-    title: 'Direction',
-    description: 'Above/below determines which direction triggers the alert relative to your threshold.',
-    example: '"At or above +3" alerts when line is +3, +3.5, +4...',
-  },
-  timeWindow: {
-    title: 'Time Window',
-    description: 'Pregame = before game starts. Live = during the game. Both = either phase.',
-    example: 'Live-only alerts ignore pregame line movements',
-  },
-  threshold: {
-    title: 'Threshold Value',
-    description: 'The specific line or odds value that triggers your alert.',
-    example: 'Enter -110 for odds or +3.5 for spread',
-  },
-  teamSide: {
-    title: 'Team Selection',
-    description: 'Select which team\'s line you want to track.',
+    description: 'For Line Surge alerts, choose which betting market to monitor. Moneyline = who wins outright. Spread = point margin. Over/Under = total combined points.',
+    example: 'Track ML surges to catch sharp money movement',
   },
   surgeWindow: {
-    title: 'Surge Window',
-    description: 'How quickly the line must move to trigger a surge alert.',
-    example: 'A 15-minute window catches rapid line movement',
+    title: 'Surge Detection Window',
+    description: 'How quickly the line must move to trigger a surge alert. Shorter windows catch sharper, more sudden movements. Longer windows catch gradual drifts.',
+    example: '5 min catches sharp moves, 30 min catches gradual shifts',
   },
   runWindow: {
-    title: 'Run Window',
-    description: 'Time frame to track unanswered points.',
-    example: 'A 5-minute window tracks scoring runs',
+    title: 'Scoring Run Window',
+    description: 'Time frame to track unanswered points. Detects when one team goes on a scoring run without the opponent scoring.',
+    example: '5 min window catches 10-0 runs within 5 minutes',
   },
   gamePeriod: {
     title: 'Game Period',
-    description: 'Which part of the game to monitor.',
-    example: 'Track 4th quarter momentum shifts',
+    description: 'Which part of the game to monitor. "Full Game" tracks the entire game. Quarter/Half/Period options focus on specific segments.',
+    example: 'Track 4th quarter momentum to catch late-game swings',
+  },
+  timeWindow: {
+    title: 'Alert Timing',
+    description: 'When your alert can trigger. "Pregame" = only before the game starts. "Live" = only during the game. "Pregame & Live" = anytime.',
+    example: 'Use "Live-only" to ignore pregame line movements',
+  },
+  teamSide: {
+    title: 'Team Selection',
+    description: 'Which team to track for this alert. The alert monitors this team\'s odds, spread, or score depending on your alert type.',
   },
 };

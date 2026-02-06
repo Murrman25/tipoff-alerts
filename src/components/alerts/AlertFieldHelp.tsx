@@ -24,14 +24,15 @@ export const AlertFieldHelp = ({ fieldKey, showHelp, className }: AlertFieldHelp
         <button
           type="button"
           className={cn(
-            "hidden sm:inline-flex items-center justify-center w-4 h-4 rounded-full",
+            "inline-flex items-center justify-center min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0",
+            "w-6 h-6 sm:w-4 sm:h-4 rounded-full -m-2.5 sm:m-0",
             "text-muted-foreground hover:text-foreground hover:bg-secondary/50",
             "transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             className
           )}
           aria-label={`Help for ${content.title}`}
         >
-          <HelpCircle className="w-3.5 h-3.5" />
+          <HelpCircle className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
         </button>
       </PopoverTrigger>
       <PopoverContent 
