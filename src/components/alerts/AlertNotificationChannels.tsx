@@ -1,11 +1,10 @@
 import { Mail, Bell, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export type NotificationChannel = "email" | "push" | "sms";
@@ -55,46 +54,51 @@ export const AlertNotificationChannels = ({
         <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
           Notify via
         </span>
-        <TooltipProvider delayDuration={200}>
-          <div className="flex items-center gap-2">
-            {channels.map((channel) => {
-              const Icon = channel.icon;
-              const isSelected = selectedChannels.includes(channel.id);
-              
-              return (
-                <Tooltip key={channel.id}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggle(channel.id)}
-                      aria-pressed={isSelected}
-                      aria-label={`Toggle ${channel.label} notifications`}
-                      className={cn(
-                        "h-10 sm:h-9 px-4 sm:px-3 gap-2 sm:gap-1.5 transition-all duration-200",
-                        isSelected 
-                          ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground" 
-                          : "bg-transparent hover:bg-secondary/50"
-                      )}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-sm font-medium">{channel.label}</span>
-                      {channel.badge && (
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-amber-gradient text-primary-foreground font-medium ml-0.5">
-                          {channel.badge}
-                        </span>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    {channel.description}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </div>
-        </TooltipProvider>
+        <div className="flex items-center gap-2">
+          {channels.map((channel) => {
+            const Icon = channel.icon;
+            const isSelected = selectedChannels.includes(channel.id);
+            
+            return (
+              <Popover key={channel.id}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleToggle(channel.id);
+                    }}
+                    aria-pressed={isSelected}
+                    aria-label={`Toggle ${channel.label} notifications. ${channel.description}`}
+                    className={cn(
+                      "h-10 sm:h-9 px-4 sm:px-3 gap-2 sm:gap-1.5 transition-all duration-200",
+                      isSelected 
+                        ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground" 
+                        : "bg-transparent hover:bg-secondary/50"
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-sm font-medium">{channel.label}</span>
+                    {channel.badge && (
+                      <span className="text-[10px] px-1 py-0.5 rounded bg-amber-gradient text-primary-foreground font-medium ml-0.5">
+                        {channel.badge}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  side="bottom" 
+                  align="center"
+                  className="w-auto p-2 text-xs"
+                >
+                  {channel.description}
+                </PopoverContent>
+              </Popover>
+            );
+          })}
+        </div>
       </div>
       {selectedChannels.length === 0 && (
         <p className="text-xs text-amber-500">Select at least one notification channel</p>
