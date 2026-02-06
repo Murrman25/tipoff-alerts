@@ -5,14 +5,19 @@ interface AlertThresholdInputProps {
   value: number | null;
   onChange: (value: number | null) => void;
   marketType: MarketType;
+  label?: string;
+  placeholder?: string;
 }
 
 export const AlertThresholdInput = ({
   value,
   onChange,
   marketType,
+  label,
+  placeholder,
 }: AlertThresholdInputProps) => {
   const getPlaceholder = () => {
+    if (placeholder) return placeholder;
     switch (marketType) {
       case "ml":
         return "+150 or -110";
@@ -40,7 +45,7 @@ export const AlertThresholdInput = ({
   return (
     <div className="space-y-2">
       <label className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
-        Threshold
+        {label || "Threshold"}
       </label>
       <Input
         type="text"

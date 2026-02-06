@@ -1,4 +1,4 @@
-import { AlertCondition, MARKET_OPTIONS, DIRECTION_OPTIONS } from "@/types/alerts";
+import { AlertCondition, MARKET_OPTIONS, DIRECTION_OPTIONS, SPORT_PERIODS, GamePeriod } from "@/types/alerts";
 import { GameEvent } from "@/types/games";
 import { NotificationChannel } from "./AlertNotificationChannels";
 import { cn } from "@/lib/utils";
@@ -14,65 +14,91 @@ interface AlertSummaryProps {
 export const AlertSummary = ({ condition, selectedGame, notificationChannels, isVisible }: AlertSummaryProps) => {
   if (!isVisible) return null;
 
-  const generateSummary = (): string => {
-    // Get team name
-    const teamName = selectedGame && condition.teamSide
-      ? (condition.teamSide === "home" 
-          ? selectedGame.teams.home.name || selectedGame.teams.home.abbreviation 
-          : selectedGame.teams.away.name || selectedGame.teams.away.abbreviation)
-      : "[team]";
+  const getTeamName = (): string => {
+    if (!selectedGame || !condition.teamSide) return "[team]";
+    return condition.teamSide === "home" 
+      ? selectedGame.teams.home.name || selectedGame.teams.home.abbreviation || "Home"
+      : selectedGame.teams.away.name || selectedGame.teams.away.abbreviation || "Away";
+  };
 
-    // Get market name
+  const getMarketName = (): string => {
     const market = MARKET_OPTIONS.find((m) => m.id === condition.marketType);
-    const marketName = market?.name.toLowerCase() || "market";
+    return market?.name.toLowerCase() || "market";
+  };
 
-    // Handle different rule types
-    if (condition.ruleType === "timed_surge") {
-      return `Alert me when ${teamName} ${marketName} line surges aggressively`;
-    }
-    
-    if (condition.ruleType === "momentum_run") {
-      return `Alert me when ${teamName} goes on a momentum run`;
-    }
-
-    // Threshold-based rules
+  const getDirectionText = (context: 'odds' | 'spread' | 'total' | 'margin'): string => {
     const direction = DIRECTION_OPTIONS.find((d) => d.id === condition.direction);
-    const thresholdFormatted = condition.threshold !== null
-      ? (condition.threshold >= 0 ? `+${condition.threshold}` : condition.threshold.toString())
-      : "[value]";
-
-    if (condition.ruleType === "ml_threshold") {
-      const directionText = direction?.id === "at_or_above" ? "or better" : 
-                           direction?.id === "at_or_below" ? "or lower" : 
-                           direction?.id === "crosses_above" ? "crosses above" :
-                           direction?.id === "crosses_below" ? "crosses below" : "";
-      return `Alert me when ${teamName} moneyline reaches ${thresholdFormatted} ${directionText}`.trim();
+    if (!direction) return "";
+    
+    switch (context) {
+      case 'odds':
+        return direction.id === "at_or_above" ? "or better" : 
+               direction.id === "at_or_below" ? "or worse" : 
+               direction.id === "crosses_above" ? "crosses above" :
+               direction.id === "crosses_below" ? "crosses below" : "";
+      case 'spread':
+        return direction.id === "at_or_above" ? "or better" : 
+               direction.id === "at_or_below" ? "or worse" : 
+               direction.id === "crosses_above" ? "crosses above" :
+               direction.id === "crosses_below" ? "crosses below" : "";
+      case 'total':
+        return direction.id === "at_or_above" ? "or higher" : 
+               direction.id === "at_or_below" ? "or lower" : 
+               direction.id === "crosses_above" ? "crosses above" :
+               direction.id === "crosses_below" ? "crosses below" : "";
+      case 'margin':
+        return direction.id === "at_or_above" ? "or more" : 
+               direction.id === "at_or_below" ? "or fewer" : 
+               direction.id === "exactly" ? "exactly" : "";
+      default:
+        return "";
     }
+  };
 
-    if (condition.ruleType === "spread_threshold") {
-      const directionText = direction?.id === "at_or_above" ? "or better" : 
-                           direction?.id === "at_or_below" ? "or lower" : 
-                           direction?.id === "crosses_above" ? "crosses above" :
-                           direction?.id === "crosses_below" ? "crosses below" : "";
-      return `Alert me when ${teamName} spread reaches ${thresholdFormatted} ${directionText}`.trim();
+  const formatThreshold = (): string => {
+    if (condition.threshold === null) return "[value]";
+    return condition.threshold >= 0 ? `+${condition.threshold}` : condition.threshold.toString();
+  };
+
+  const getPeriodName = (): string => {
+    if (!condition.gamePeriod || !selectedGame) return "";
+    const periods = SPORT_PERIODS[selectedGame.sportID] || SPORT_PERIODS.BASKETBALL;
+    const period = periods.find((p) => p.id === condition.gamePeriod);
+    return period ? ` during ${period.name.toLowerCase()}` : "";
+  };
+
+  const generateSummary = (): string => {
+    const teamName = getTeamName();
+    const thresholdFormatted = formatThreshold();
+
+    switch (condition.ruleType) {
+      case "ml_threshold":
+        return `Alert me when ${teamName} moneyline reaches ${thresholdFormatted} ${getDirectionText('odds')}`.trim();
+      
+      case "spread_threshold":
+        return `Alert me when ${teamName} spread reaches ${thresholdFormatted} ${getDirectionText('spread')}`.trim();
+      
+      case "ou_threshold":
+        return `Alert me when total reaches ${thresholdFormatted} ${getDirectionText('total')}`.trim();
+      
+      case "score_margin":
+        return `Alert me when ${teamName} leads by ${thresholdFormatted} points ${getDirectionText('margin')}${getPeriodName()}`.trim();
+      
+      case "timed_surge": {
+        const marketName = getMarketName();
+        const windowText = condition.surgeWindowMinutes ? ` within ${condition.surgeWindowMinutes} minutes` : "";
+        return `Alert me when ${teamName} ${marketName} line surges aggressively${windowText}${getPeriodName()}`.trim();
+      }
+      
+      case "momentum_run": {
+        const windowText = condition.runWindowMinutes ? ` within ${condition.runWindowMinutes} minutes` : "";
+        const runSize = condition.threshold !== null ? condition.threshold : "X";
+        return `Alert me when ${teamName} goes on a ${runSize}-0 run${windowText}${getPeriodName()}`.trim();
+      }
+      
+      default:
+        return `Alert me when ${teamName} ${getMarketName()} reaches ${thresholdFormatted}`;
     }
-
-    if (condition.ruleType === "ou_threshold") {
-      const directionText = direction?.id === "at_or_above" ? "or higher" : 
-                           direction?.id === "at_or_below" ? "or lower" : 
-                           direction?.id === "crosses_above" ? "crosses above" :
-                           direction?.id === "crosses_below" ? "crosses below" : "";
-      return `Alert me when total reaches ${thresholdFormatted} ${directionText}`.trim();
-    }
-
-    if (condition.ruleType === "score_margin") {
-      const directionText = direction?.id === "at_or_above" ? "or more" : 
-                           direction?.id === "at_or_below" ? "or less" : 
-                           direction?.id === "exactly" ? "exactly" : "";
-      return `Alert me when ${teamName} score margin is ${thresholdFormatted} ${directionText}`.trim();
-    }
-
-    return `Alert me when ${teamName} ${marketName} reaches ${thresholdFormatted}`;
   };
 
   const getNotificationSuffix = (): string => {
