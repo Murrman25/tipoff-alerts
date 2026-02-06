@@ -1,4 +1,4 @@
-import { Target, ArrowUpDown, TrendingUp, Percent, Trophy, Shuffle, Lock } from "lucide-react";
+import { Target, GitCompareArrows, ChartNoAxesCombined, Timer, Zap, Lock } from "lucide-react";
 import { RuleType, PlanTier } from "@/types/alerts";
 import { cn } from "@/lib/utils";
 
@@ -13,16 +13,16 @@ interface RuleTypeCardProps {
 }
 
 const ruleTypeIcons: Record<RuleType, React.ElementType> = {
-  threshold_at: Target,
-  threshold_cross: ArrowUpDown,
-  value_change: TrendingUp,
-  percentage_move: Percent,
-  best_available: Trophy,
-  arbitrage: Shuffle,
+  ml_threshold: Target,
+  spread_threshold: GitCompareArrows,
+  ou_threshold: ChartNoAxesCombined,
+  score_margin: Target,
+  timed_surge: Timer,
+  momentum_run: Zap,
 };
 
 const tierLabels: Record<PlanTier, string> = {
-  free: "Free",
+  rookie: "Rookie",
   pro: "Pro",
   legend: "Legend",
 };

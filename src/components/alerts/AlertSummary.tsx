@@ -27,16 +27,12 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
     const marketName = market?.name.toLowerCase() || "market";
 
     // Handle different rule types
-    if (condition.ruleType === "arbitrage") {
-      return "Alert me when an arbitrage opportunity is detected";
+    if (condition.ruleType === "timed_surge") {
+      return `Alert me when ${teamName} ${marketName} line surges aggressively`;
     }
     
-    if (condition.ruleType === "best_available") {
-      return `Alert me when ${teamName} has the best available ${marketName}`;
-    }
-    
-    if (condition.ruleType === "value_change") {
-      return `Alert me when any ${teamName} ${marketName} movement occurs`;
+    if (condition.ruleType === "momentum_run") {
+      return `Alert me when ${teamName} goes on a momentum run`;
     }
 
     // Threshold-based rules
@@ -45,21 +41,35 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
       ? (condition.threshold >= 0 ? `+${condition.threshold}` : condition.threshold.toString())
       : "[value]";
 
-    if (condition.ruleType === "threshold_at") {
+    if (condition.ruleType === "ml_threshold") {
       const directionText = direction?.id === "at_or_above" ? "or better" : 
                            direction?.id === "at_or_below" ? "or lower" : 
+                           direction?.id === "crosses_above" ? "crosses above" :
+                           direction?.id === "crosses_below" ? "crosses below" : "";
+      return `Alert me when ${teamName} moneyline reaches ${thresholdFormatted} ${directionText}`.trim();
+    }
+
+    if (condition.ruleType === "spread_threshold") {
+      const directionText = direction?.id === "at_or_above" ? "or better" : 
+                           direction?.id === "at_or_below" ? "or lower" : 
+                           direction?.id === "crosses_above" ? "crosses above" :
+                           direction?.id === "crosses_below" ? "crosses below" : "";
+      return `Alert me when ${teamName} spread reaches ${thresholdFormatted} ${directionText}`.trim();
+    }
+
+    if (condition.ruleType === "ou_threshold") {
+      const directionText = direction?.id === "at_or_above" ? "or higher" : 
+                           direction?.id === "at_or_below" ? "or lower" : 
+                           direction?.id === "crosses_above" ? "crosses above" :
+                           direction?.id === "crosses_below" ? "crosses below" : "";
+      return `Alert me when total reaches ${thresholdFormatted} ${directionText}`.trim();
+    }
+
+    if (condition.ruleType === "score_margin") {
+      const directionText = direction?.id === "at_or_above" ? "or more" : 
+                           direction?.id === "at_or_below" ? "or less" : 
                            direction?.id === "exactly" ? "exactly" : "";
-      return `Alert me when ${teamName} ${marketName} reaches ${thresholdFormatted} ${directionText}`.trim();
-    }
-
-    if (condition.ruleType === "threshold_cross") {
-      const crossDirection = direction?.id === "crosses_above" ? "crosses above" : 
-                            direction?.id === "crosses_below" ? "crosses below" : "crosses";
-      return `Alert me when ${teamName} ${marketName} ${crossDirection} ${thresholdFormatted}`;
-    }
-
-    if (condition.ruleType === "percentage_move") {
-      return `Alert me when ${teamName} ${marketName} moves by ${thresholdFormatted}%`;
+      return `Alert me when ${teamName} score margin is ${thresholdFormatted} ${directionText}`.trim();
     }
 
     return `Alert me when ${teamName} ${marketName} reaches ${thresholdFormatted}`;

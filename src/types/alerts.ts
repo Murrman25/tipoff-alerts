@@ -1,10 +1,10 @@
 export type RuleType = 
-  | 'threshold_at' 
-  | 'threshold_cross' 
-  | 'value_change' 
-  | 'percentage_move' 
-  | 'best_available' 
-  | 'arbitrage';
+  | 'ml_threshold' 
+  | 'spread_threshold' 
+  | 'ou_threshold' 
+  | 'score_margin' 
+  | 'timed_surge' 
+  | 'momentum_run';
 
 export type MarketType = 'ml' | 'sp' | 'ou';
 
@@ -17,7 +17,7 @@ export type DirectionType =
 
 export type TimeWindow = 'pregame' | 'live' | 'both';
 
-export type PlanTier = 'free' | 'pro' | 'legend';
+export type PlanTier = 'rookie' | 'pro' | 'legend';
 
 export interface AlertCondition {
   ruleType: RuleType;
@@ -38,39 +38,39 @@ export interface RuleTypeOption {
 
 export const RULE_TYPE_OPTIONS: RuleTypeOption[] = [
   {
-    id: 'threshold_at',
-    name: 'Threshold At',
-    description: 'Alert when a value reaches a specific number',
-    planRequired: 'free',
+    id: 'ml_threshold',
+    name: 'Moneyline Alerts',
+    description: 'Set your number and let TipOff HQ watch the line. Get alerted the moment moneyline odds hit your target.',
+    planRequired: 'rookie',
   },
   {
-    id: 'threshold_cross',
-    name: 'Threshold Cross',
-    description: 'Alert when a value crosses above or below a line',
-    planRequired: 'free',
+    id: 'spread_threshold',
+    name: 'Spread Alerts',
+    description: 'Don\'t force the number — wait for it. Spread Alerts notify you when live spreads move into your predefined range.',
+    planRequired: 'rookie',
   },
   {
-    id: 'value_change',
-    name: 'Value Change',
-    description: 'Alert on any movement in odds or lines',
+    id: 'ou_threshold',
+    name: 'O/U Alerts',
+    description: 'Set the total you want and let TipOff HQ track live scoring for you. Get alerted the moment the live total reaches or crosses your target.',
     planRequired: 'pro',
   },
   {
-    id: 'percentage_move',
-    name: 'Percentage Move',
-    description: 'Alert when odds shift by a percentage',
+    id: 'score_margin',
+    name: 'Score Margin Alert',
+    description: 'Watch the scoreboard — without watching the scoreboard. Score Margin Alerts notify you when game flow reaches your predefined differential.',
     planRequired: 'pro',
   },
   {
-    id: 'best_available',
-    name: 'Best Available',
-    description: 'Alert when a line becomes best across books',
-    planRequired: 'pro',
+    id: 'timed_surge',
+    name: 'Line Surge Alert',
+    description: 'Get alerted when odds move aggressively in a short time window. TipOff HQ tracks sharp line changes and notifies you when a surge occurs.',
+    planRequired: 'legend',
   },
   {
-    id: 'arbitrage',
-    name: 'Arbitrage',
-    description: 'Alert on arbitrage opportunities',
+    id: 'momentum_run',
+    name: 'Momentum Run Alert',
+    description: 'Track scoring runs and momentum swings in real time. TipOff HQ alerts you when one team goes on a defined run within a given amount of time.',
     planRequired: 'legend',
   },
 ];
@@ -104,23 +104,23 @@ export interface QuickAlertTemplate {
 export const QUICK_ALERT_TEMPLATES: QuickAlertTemplate[] = [
   {
     id: 'line_move',
-    name: 'Line Move',
-    description: 'Alert on any spread movement',
-    icon: 'TrendingUp',
+    name: 'Spread Move',
+    description: 'Alert on spread movement',
+    icon: 'GitCompareArrows',
     defaults: {
-      ruleType: 'value_change',
+      ruleType: 'spread_threshold',
       marketType: 'sp',
       timeWindow: 'both',
     },
-    requiredFields: ['eventID', 'teamSide'],
+    requiredFields: ['eventID', 'teamSide', 'threshold', 'direction'],
   },
   {
     id: 'odds_drop',
     name: 'Odds Drop',
     description: 'Moneyline drops below target',
-    icon: 'TrendingDown',
+    icon: 'Target',
     defaults: {
-      ruleType: 'threshold_cross',
+      ruleType: 'ml_threshold',
       marketType: 'ml',
       direction: 'crosses_below',
       timeWindow: 'pregame',
@@ -129,35 +129,35 @@ export const QUICK_ALERT_TEMPLATES: QuickAlertTemplate[] = [
   },
   {
     id: 'best_price',
-    name: 'Best Price',
-    description: 'Best odds across all books',
-    icon: 'Trophy',
+    name: 'Score Margin',
+    description: 'Track game flow differential',
+    icon: 'Target',
     defaults: {
-      ruleType: 'best_available',
-      timeWindow: 'both',
+      ruleType: 'score_margin',
+      timeWindow: 'live',
     },
-    requiredFields: ['eventID', 'teamSide', 'marketType'],
+    requiredFields: ['eventID', 'teamSide', 'threshold', 'direction'],
   },
   {
     id: 'going_live',
-    name: 'Going Live',
-    description: 'Game starts live betting',
-    icon: 'Radio',
+    name: 'Line Surge',
+    description: 'Sharp odds movement detected',
+    icon: 'Timer',
     defaults: {
-      ruleType: 'value_change',
+      ruleType: 'timed_surge',
       marketType: 'ml',
       timeWindow: 'live',
     },
-    requiredFields: ['eventID'],
+    requiredFields: ['eventID', 'teamSide'],
   },
 ];
 
 // Help content for fields
 export const FIELD_HELP_CONTENT: Record<string, { title: string; description: string; example?: string }> = {
   ruleType: {
-    title: 'Alert Trigger',
-    description: 'Choose when to trigger your alert. "Threshold At" fires when a line reaches a value. "Value Change" fires on any movement.',
-    example: 'Use Threshold At to alert when spread hits +3.5',
+    title: 'Alert Type',
+    description: 'Choose your alert type. Moneyline and Spread track betting lines. Score Margin and Momentum track game flow.',
+    example: 'Use Spread Alert to watch for line movement to +3.5',
   },
   marketType: {
     title: 'Market Type',

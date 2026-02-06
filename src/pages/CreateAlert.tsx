@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Zap, HelpCircle, Target, TrendingUp, BarChart3, Percent, Scale, Award, Mail, Bell, MessageSquare } from "lucide-react";
+import { ArrowLeft, Zap, HelpCircle, Target, GitCompareArrows, ChartNoAxesCombined, Timer, Mail, Bell, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import {
@@ -45,7 +45,7 @@ const CreateAlert = () => {
   const { showHelp, toggleHelp } = useFirstTimeVisit("create_alert");
 
   const [condition, setCondition] = useState<AlertCondition>({
-    ruleType: "threshold_at",
+    ruleType: "ml_threshold",
     eventID: preSelectedEventID || null,
     marketType: "sp",
     teamSide: null,
@@ -127,11 +127,12 @@ const CreateAlert = () => {
     }));
   };
 
-  // Check if threshold is needed
+  // Check if threshold is needed (market-based alerts need threshold)
   const needsThreshold =
-    condition.ruleType === "threshold_at" ||
-    condition.ruleType === "threshold_cross" ||
-    condition.ruleType === "percentage_move";
+    condition.ruleType === "ml_threshold" ||
+    condition.ruleType === "spread_threshold" ||
+    condition.ruleType === "ou_threshold" ||
+    condition.ruleType === "score_margin";
 
   // Direction is required when threshold is needed - selecting direction triggers auto-collapse
   const needsDirection = needsThreshold;
@@ -181,12 +182,12 @@ const CreateAlert = () => {
   const getRuleTypeIcon = (ruleType: string) => {
     const iconProps = { size: 14, className: "text-primary" };
     switch (ruleType) {
-      case "threshold_at": return <Target {...iconProps} />;
-      case "threshold_cross": return <TrendingUp {...iconProps} />;
-      case "value_change": return <BarChart3 {...iconProps} />;
-      case "percentage_move": return <Percent {...iconProps} />;
-      case "arbitrage": return <Scale {...iconProps} />;
-      case "best_available": return <Award {...iconProps} />;
+      case "ml_threshold": return <Target {...iconProps} />;
+      case "spread_threshold": return <GitCompareArrows {...iconProps} />;
+      case "ou_threshold": return <ChartNoAxesCombined {...iconProps} />;
+      case "score_margin": return <Target {...iconProps} />;
+      case "timed_surge": return <Timer {...iconProps} />;
+      case "momentum_run": return <Zap {...iconProps} />;
       default: return <Target {...iconProps} />;
     }
   };
@@ -239,13 +240,11 @@ const CreateAlert = () => {
     condition.teamSide !== null &&
     notificationChannels.length > 0 &&
     (condition.threshold !== null ||
-      condition.ruleType === "value_change" ||
-      condition.ruleType === "arbitrage" ||
-      condition.ruleType === "best_available") &&
+      condition.ruleType === "timed_surge" ||
+      condition.ruleType === "momentum_run") &&
     (condition.direction !== null ||
-      condition.ruleType === "value_change" ||
-      condition.ruleType === "arbitrage" ||
-      condition.ruleType === "best_available");
+      condition.ruleType === "timed_surge" ||
+      condition.ruleType === "momentum_run");
 
   const saveAlertToDatabase = async () => {
     if (!user) return;
@@ -480,8 +479,8 @@ const CreateAlert = () => {
                   </div>
                 )}
 
-                {/* Time Window */}
-                {condition.ruleType !== "arbitrage" && (
+                {/* Time Window - always show it */}
+                {true && (
                   <div className="flex items-start gap-2">
                     <div className="flex-1">
                       <AlertTimeWindow
