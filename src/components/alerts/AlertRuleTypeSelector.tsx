@@ -30,22 +30,24 @@ export const AlertRuleTypeSelector = ({
       <label className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
         Alert Type
       </label>
-      <div className="flex flex-wrap gap-2">
-        {RULE_TYPE_OPTIONS.map((option) => (
-          <RuleTypeCard
-            key={option.id}
-            ruleType={option.id}
-            name={option.name}
-            planRequired={option.planRequired}
-            isSelected={value === option.id}
-            isLocked={isLocked(option.planRequired)}
-            onSelect={() => {
-              if (!isLocked(option.planRequired)) {
-                onChange(option.id);
-              }
-            }}
-          />
-        ))}
+      <div className="relative -mx-4 px-4 md:mx-0 md:px-0">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:flex-wrap md:overflow-visible md:pb-0">
+          {RULE_TYPE_OPTIONS.map((option) => (
+            <RuleTypeCard
+              key={option.id}
+              ruleType={option.id}
+              name={option.name}
+              planRequired={option.planRequired}
+              isSelected={value === option.id}
+              isLocked={isLocked(option.planRequired)}
+              onSelect={() => {
+                if (!isLocked(option.planRequired)) {
+                  onChange(option.id);
+                }
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
