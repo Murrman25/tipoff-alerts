@@ -23,7 +23,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     name: "Moneyline Alerts",
     shortName: "Moneyline",
     description:
-      "Get notified when moneyline odds reach or cross your target value. Perfect for finding value when favorites become underdogs or lines move in your favor.",
+      "Set your number and let TipOff HQ watch the line. Get alerted instantly when live moneyline odds hit your target.",
     icon: Target,
     examples: [
       "Alert when Bulls ML reaches +150 or better",
