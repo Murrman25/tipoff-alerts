@@ -1,216 +1,99 @@
 
-
-# Remove SMS, Move Priority Delivery to Legend, Add Feature Tooltips
+# Plan: Align Alert Types Between Landing Page and Create Alert Page
 
 ## Overview
+The Create Alert page currently uses a different set of alert types (rule-based: Threshold At, Threshold Cross, etc.) compared to the landing page (market-based: Moneyline, Spread, O/U, etc.). This plan updates the Create Alert page's "Set Condition" section to match the landing page's alert types exactly.
 
-This update will:
-1. Remove SMS notifications entirely from both the pricing cards and feature comparison table
-2. Move "Priority Delivery" from Pro tier to Legend tier (exclusive)
-3. Add helpful tooltips to all features in the "Features" category section
+## Current State Comparison
 
----
+| Landing Page | Create Alert Page (Current) |
+|---|---|
+| Moneyline (Target) | Threshold At (Target) |
+| Spread (GitCompareArrows) | Threshold Cross (ArrowUpDown) |
+| O/U (ChartNoAxesCombined) | Value Change (TrendingUp) |
+| Score Margin (Target) | Percentage Move (Percent) |
+| Line Surge (Timer) | Best Available (Trophy) |
+| Momentum (Zap) | Arbitrage (Shuffle) |
 
-## Changes
+## Changes Required
 
-### 1. Remove SMS Notifications
+### 1. Update `src/types/alerts.ts`
+- **Replace `RuleType` union** with new alert type IDs:
+  - `ml_threshold`, `spread_threshold`, `ou_threshold`, `score_margin`, `timed_surge`, `momentum_run`
+- **Update tier names** from `free`/`pro`/`legend` to `rookie`/`pro`/`legend` to match landing page
+- **Replace `RULE_TYPE_OPTIONS` array** with the 6 new alert types matching landing page:
+  - Moneyline Alerts (Rookie)
+  - Spread Alerts (Rookie)
+  - O/U Alerts (Pro)
+  - Score Margin Alert (Pro)
+  - Line Surge Alert (Legend)
+  - Momentum Run Alert (Legend)
+- **Update descriptions** to match the exact landing page wording
 
-**Pricing.tsx - Legend plan features array:**
-- Remove: `"SMS notifications"`
+### 2. Update `src/components/alerts/RuleTypeCard.tsx`
+- **Update icon mapping** to use the correct icons for each new alert type:
+  - `ml_threshold` → Target
+  - `spread_threshold` → GitCompareArrows
+  - `ou_threshold` → ChartNoAxesCombined
+  - `score_margin` → Target
+  - `timed_surge` → Timer
+  - `momentum_run` → Zap
+- **Update tier labels** from "Free" to "Rookie"
 
-**FeatureComparisonTable.tsx - Notifications category:**
-- Remove the entire SMS row: `{ name: "SMS Notifications", rookie: false, pro: false, legend: true, legendExclusive: true }`
+### 3. Update `src/pages/CreateAlert.tsx`
+- **Update `getRuleTypeIcon` function** to return correct icons for new rule types
+- **Update default condition** from `threshold_at` to `ml_threshold`
+- **Update form validation logic** to handle new rule types appropriately
 
-### 2. Move Priority Delivery to Legend
+### 4. Update `src/components/alerts/AlertDirectionSelector.tsx`
+- **Update direction filtering logic** to work with new rule types (market-based rather than condition-based)
 
-**Pricing.tsx:**
-- Remove from Pro: `"Priority delivery"`
-- Add to Legend: `"Priority delivery"` (after "Timed Line Surge & Momentum alerts")
+### 5. Update Related Components
+- Review and update any other components that reference the old rule types
 
-**FeatureComparisonTable.tsx - Notifications category:**
-- Update Priority Delivery row:
-  - Change `pro: true` → `pro: false`
-  - Add `legendExclusive: true`
+## Technical Details
 
-### 3. Add Tooltips to All Features
-
-Add descriptive tooltips to each feature in the "Features" category:
-
-| Feature | Tooltip |
-|---------|---------|
-| Basic Alert Builder | Create simple threshold-based alerts with our intuitive step-by-step builder. |
-| Multi-condition Logic | Combine multiple conditions with AND/OR operators for precise alert triggers. |
-| Alert Templates | Save and reuse your favorite alert configurations to set up new alerts quickly. |
-| Line Movement History | View historical line changes and trends to make more informed decisions. |
-| Auto-rearm Alerts | Automatically reactivate alerts after they trigger so you never miss a repeat opportunity. |
-| Custom Notification Channels | Route different alerts to different devices or channels based on your preferences. |
-
----
-
-## Technical Implementation
-
-### File: `src/components/landing/Pricing.tsx`
-
-**Pro plan features (lines 28-35):**
-```tsx
-features: [
-  "Up to 5 active alerts",
-  "Over/Under & Score Margin alerts",
-  "Multi-condition logic (AND/OR)",
-  "Email & push notifications",
-  // Remove: "Priority delivery"
-  "Line movement history",
-],
+### New RuleType Definition
+```text
+type RuleType = 
+  | 'ml_threshold' 
+  | 'spread_threshold' 
+  | 'ou_threshold' 
+  | 'score_margin' 
+  | 'timed_surge' 
+  | 'momentum_run';
 ```
 
-**Legend plan features (lines 45-51):**
-```tsx
-features: [
-  "All Pro features",
-  "Unlimited active alerts",
-  "Timed Line Surge & Momentum alerts",
-  "Priority delivery",  // Add here
-  // Remove: "SMS notifications"
-  "Auto-rearm alerts",
-  "Custom notification channels",
-],
+### New PlanTier Definition
+```text
+type PlanTier = 'rookie' | 'pro' | 'legend';
 ```
 
-### File: `src/components/landing/FeatureComparisonTable.tsx`
-
-**Notifications category (lines 74-80):**
-```tsx
-{
-  category: "Notifications",
-  features: [
-    { name: "Push Notifications", rookie: true, pro: true, legend: true },
-    { name: "Email Notifications", rookie: false, pro: true, legend: true },
-    // Remove SMS row entirely
-    { 
-      name: "Priority Delivery", 
-      rookie: false, 
-      pro: false,  // Changed from true
-      legend: true, 
-      legendExclusive: true  // Added
-    },
-  ],
-},
+### Icon Mapping
+```text
+ml_threshold    → Target (lucide-react)
+spread_threshold → GitCompareArrows (lucide-react)
+ou_threshold    → ChartNoAxesCombined (lucide-react)
+score_margin    → Target (lucide-react)
+timed_surge     → Timer (lucide-react)
+momentum_run    → Zap (lucide-react)
 ```
 
-**Features category with tooltips (lines 83-91):**
-```tsx
-{
-  category: "Features",
-  features: [
-    { 
-      name: "Basic Alert Builder", 
-      rookie: true, 
-      pro: true, 
-      legend: true,
-      tooltip: {
-        rookie: "Create simple threshold-based alerts with our intuitive step-by-step builder.",
-        pro: "Create simple threshold-based alerts with our intuitive step-by-step builder.",
-        legend: "Create simple threshold-based alerts with our intuitive step-by-step builder.",
-      }
-    },
-    { 
-      name: "Multi-condition Logic", 
-      rookie: false, 
-      pro: true, 
-      legend: true,
-      tooltip: {
-        pro: "Combine multiple conditions with AND/OR operators for precise alert triggers.",
-        legend: "Combine multiple conditions with AND/OR operators for precise alert triggers.",
-      }
-    },
-    { 
-      name: "Alert Templates", 
-      rookie: false, 
-      pro: true, 
-      legend: true,
-      tooltip: {
-        pro: "Save and reuse your favorite alert configurations to set up new alerts quickly.",
-        legend: "Save and reuse your favorite alert configurations to set up new alerts quickly.",
-      }
-    },
-    { 
-      name: "Line Movement History", 
-      rookie: false, 
-      pro: true, 
-      legend: true,
-      tooltip: {
-        pro: "View historical line changes and trends to make more informed decisions.",
-        legend: "View historical line changes and trends to make more informed decisions.",
-      }
-    },
-    { 
-      name: "Auto-rearm Alerts", 
-      rookie: false, 
-      pro: false, 
-      legend: true, 
-      legendExclusive: true,
-      tooltip: {
-        legend: "Automatically reactivate alerts after they trigger so you never miss a repeat opportunity.",
-      }
-    },
-    { 
-      name: "Custom Notification Channels", 
-      rookie: false, 
-      pro: false, 
-      legend: true, 
-      legendExclusive: true,
-      tooltip: {
-        legend: "Route different alerts to different devices or channels based on your preferences.",
-      }
-    },
-  ],
-},
+### Tier Mapping
+```text
+Rookie: ml_threshold, spread_threshold
+Pro: ou_threshold, score_margin
+Legend: timed_surge, momentum_run
 ```
-
-**Update FeatureCell to show tooltip icon for boolean values with tooltips:**
-
-The current implementation only shows tooltips for string values. We need to update the FeatureCell component to also display a HelpCircle icon next to the feature name when tooltips exist. 
-
-Add a new component or modify the TableCell for feature names to include tooltip support:
-
-```tsx
-<TableCell className="font-medium text-sm py-3">
-  {feature.tooltip ? (
-    <Tooltip>
-      <TooltipTrigger className="inline-flex items-center gap-1.5">
-        {feature.name}
-        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
-      </TooltipTrigger>
-      <TooltipContent side="right" className="max-w-xs">
-        {/* Show description based on available tiers */}
-        {feature.tooltip.legend || feature.tooltip.pro || feature.tooltip.rookie}
-      </TooltipContent>
-    </Tooltip>
-  ) : (
-    feature.name
-  )}
-</TableCell>
-```
-
----
-
-## Visual Result
-
-### Pricing Cards
-- **Pro**: 5 features (removed Priority delivery)
-- **Legend**: 5 features (removed SMS, added Priority delivery)
-
-### Feature Comparison Table
-- **Notifications section**: 3 rows (Push, Email, Priority Delivery)
-  - Priority Delivery now shows checkmark only in Legend column
-- **Features section**: All 6 features have info icon with tooltip on hover
-
----
 
 ## Files to Modify
+1. `src/types/alerts.ts` - Core type definitions and options
+2. `src/components/alerts/RuleTypeCard.tsx` - Icon mapping and tier labels
+3. `src/pages/CreateAlert.tsx` - Default values and icon helper function
+4. `src/components/alerts/AlertDirectionSelector.tsx` - Direction filtering logic
+5. `src/components/alerts/AlertRuleTypeSelector.tsx` - Minor updates if needed
 
-| File | Changes |
-|------|---------|
-| `src/components/landing/Pricing.tsx` | Remove SMS from Legend, move Priority delivery from Pro to Legend |
-| `src/components/landing/FeatureComparisonTable.tsx` | Remove SMS row, update Priority Delivery to Legend-only, add tooltips to all Features |
-
+## Impact Assessment
+- This is a significant change to the alert creation flow
+- Database schema may need to be checked to ensure `rule_type` column accepts the new values
+- Existing alerts in the database would use old rule type values
