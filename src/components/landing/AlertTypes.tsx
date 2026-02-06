@@ -37,7 +37,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     name: "Spread Alerts",
     shortName: "Spread",
     description:
-      "Monitor point spread movements and get alerted when lines hit your desired number. Essential for bettors looking for a specific spread.",
+      "Don't force the number — wait for it. Spread Alerts notify you when live spreads move into your predefined range. Set your target line and TipOff HQ tracks the market until it's there.",
     icon: GitCompareArrows,
     examples: [
       "Alert when Chiefs spread reaches +3.5",
@@ -51,7 +51,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     name: "Over/Under Alerts",
     shortName: "O/U",
     description:
-      "Track over/under lines and get notified when they move above or below your target. Great for total bettors watching weather or injury news pregame.",
+      "Set the total you want and let TipOff HQ track live scoring for you. Get alerted the moment the live total reaches or crosses your target. Perfect for waiting out hot or cold starts before betting.",
     icon: ChartNoAxesCombined,
     examples: [
       "Alert when O/U drops below 42.5",
@@ -65,7 +65,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     name: "Score Margin Alert",
     shortName: "Score Margin",
     description:
-      "Live in-game alerts when the score margin reaches specific thresholds. Perfect for live betting opportunities when games get close or blow out.",
+      "Watch the scoreboard — without watching the scoreboard. Score Margin Alerts notify you when game flow reaches your predefined differential, helping you time live entries with precision.",
     icon: Target,
     examples: [
       "Alert when margin reaches 10+ points",
@@ -79,7 +79,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     name: "Timed Line Surge Alert",
     shortName: "Line Surge",
     description:
-      "Get notified when lines move rapidly within a short time window. Catch sharp money movements and steam moves before the market adjusts.",
+      "Get alerted when odds move aggressively in a short time window. TipOff HQ tracks sharp line changes and notifies you when a surge occurs. Built for identifying sudden market shifts.",
     icon: Timer,
     examples: [
       "Alert on 3+ point swing in 30 minutes",
@@ -93,7 +93,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
     name: "Momentum Run Alert",
     shortName: "Momentum",
     description:
-      "Live alerts triggered by scoring runs and momentum shifts. Know instantly when a team goes on a run that could swing the game.",
+      "Track scoring runs and momentum swings in real time. TipOff HQ alerts you when one team goes on a defined run within a given amount of time. Built for reacting to game flow, not box scores.",
     icon: Zap,
     examples: [
       "Alert on 10-0 scoring runs",
