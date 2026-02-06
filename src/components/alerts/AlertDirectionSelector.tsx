@@ -20,12 +20,18 @@ export const AlertDirectionSelector = ({
 }: AlertDirectionSelectorProps) => {
   // Filter options based on rule type
   const getAvailableOptions = () => {
-    if (ruleType === "threshold_cross") {
+    // Market-based alerts use threshold directions
+    if (ruleType === "ml_threshold" || ruleType === "spread_threshold" || ruleType === "ou_threshold") {
       return DIRECTION_OPTIONS.filter(
-        (opt) => opt.id === "crosses_above" || opt.id === "crosses_below"
+        (opt) =>
+          opt.id === "at_or_above" ||
+          opt.id === "at_or_below" ||
+          opt.id === "crosses_above" ||
+          opt.id === "crosses_below"
       );
     }
-    if (ruleType === "threshold_at") {
+    // Score margin uses at/above/below
+    if (ruleType === "score_margin") {
       return DIRECTION_OPTIONS.filter(
         (opt) =>
           opt.id === "at_or_above" ||
@@ -33,6 +39,7 @@ export const AlertDirectionSelector = ({
           opt.id === "exactly"
       );
     }
+    // Surge and momentum don't need direction (handled by form validation)
     return DIRECTION_OPTIONS;
   };
 

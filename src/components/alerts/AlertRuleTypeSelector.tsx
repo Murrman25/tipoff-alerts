@@ -4,18 +4,25 @@ import { RuleTypeCard } from "./RuleTypeCard";
 interface AlertRuleTypeSelectorProps {
   value: RuleType;
   onChange: (value: RuleType) => void;
-  userTier?: PlanTier;
+  userTier?: PlanTier | "free"; // Accept "free" for backwards compatibility
 }
+
+// Helper to handle legacy tier values from database
+const normalizeTier = (tier: string): PlanTier => {
+  if (tier === "free") return "rookie";
+  return tier as PlanTier;
+};
 
 export const AlertRuleTypeSelector = ({
   value,
   onChange,
   userTier = "free",
 }: AlertRuleTypeSelectorProps) => {
-  const tierOrder: PlanTier[] = ["free", "pro", "legend"];
+  const tierOrder: PlanTier[] = ["rookie", "pro", "legend"];
+  const normalizedUserTier = normalizeTier(userTier);
 
   const isLocked = (tier: PlanTier): boolean => {
-    return tierOrder.indexOf(tier) > tierOrder.indexOf(userTier);
+    return tierOrder.indexOf(tier) > tierOrder.indexOf(normalizedUserTier);
   };
 
   return (

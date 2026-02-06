@@ -42,6 +42,13 @@ const formatDirection = (direction: string): string => {
 
 const formatRuleType = (type: string): string => {
   const ruleTypes: Record<string, string> = {
+    ml_threshold: "Moneyline Alert",
+    spread_threshold: "Spread Alert",
+    ou_threshold: "O/U Alert",
+    score_margin: "Score Margin Alert",
+    timed_surge: "Line Surge Alert",
+    momentum_run: "Momentum Run Alert",
+    // Legacy support
     threshold_at: "Threshold Alert",
     threshold_cross: "Threshold Cross",
     value_change: "Value Change",
