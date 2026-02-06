@@ -429,7 +429,7 @@ const CreateAlert = () => {
                     <AlertRuleTypeSelector
                       value={condition.ruleType}
                       onChange={(v) => updateCondition("ruleType", v)}
-                      userTier="pro"
+                      userTier="legend"
                     />
                   </div>
                   <AlertFieldHelp fieldKey="ruleType" showHelp={showHelp} className="mt-7" />
