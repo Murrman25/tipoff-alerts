@@ -46,6 +46,54 @@ export type Database = {
           },
         ]
       }
+      alert_templates: {
+        Row: {
+          created_at: string
+          direction: string | null
+          game_period: string | null
+          id: string
+          market_type: string
+          name: string
+          rule_type: string
+          run_window_minutes: number | null
+          surge_window_minutes: number | null
+          threshold: number | null
+          time_window: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction?: string | null
+          game_period?: string | null
+          id?: string
+          market_type?: string
+          name: string
+          rule_type: string
+          run_window_minutes?: number | null
+          surge_window_minutes?: number | null
+          threshold?: number | null
+          time_window?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string | null
+          game_period?: string | null
+          id?: string
+          market_type?: string
+          name?: string
+          rule_type?: string
+          run_window_minutes?: number | null
+          surge_window_minutes?: number | null
+          threshold?: number | null
+          time_window?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           created_at: string

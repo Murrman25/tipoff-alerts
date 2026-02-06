@@ -316,6 +316,26 @@ export const QUICK_ALERT_TEMPLATES: QuickAlertTemplate[] = [
   },
 ];
 
+// User-created alert template (stored in database)
+export interface AlertTemplate {
+  id: string;
+  user_id: string;
+  name: string;
+  rule_type: RuleType;
+  market_type: MarketType;
+  threshold: number | null;
+  direction: DirectionType | null;
+  surge_window_minutes: number | null;
+  run_window_minutes: number | null;
+  game_period: GamePeriod | null;
+  time_window: TimeWindow;
+  created_at: string;
+  updated_at: string;
+}
+
+// Input type for creating/updating templates (excludes auto-generated fields)
+export type AlertTemplateInput = Omit<AlertTemplate, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+
 // Help content for fields
 export const FIELD_HELP_CONTENT: Record<string, { title: string; description: string; example?: string }> = {
   ruleType: {

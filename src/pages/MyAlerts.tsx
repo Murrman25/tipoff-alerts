@@ -1,15 +1,27 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Zap, Plus, Bell, Trash2, ToggleLeft, ToggleRight, Loader2 } from "lucide-react";
+import { ArrowLeft, Zap, Plus, Bell, Trash2, ToggleLeft, ToggleRight, Loader2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockGames } from "@/data/mockGames";
-import { MARKET_OPTIONS, RULE_TYPE_OPTIONS } from "@/types/alerts";
+import { MARKET_OPTIONS, RULE_TYPE_OPTIONS, AlertTemplate, AlertTemplateInput } from "@/types/alerts";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { TemplateCard, CreateTemplateModal } from "@/components/alerts";
+import { useAlertTemplates, useCreateTemplate, useUpdateTemplate, useDeleteTemplate } from "@/hooks/useAlertTemplates";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Alert {
   id: string;
@@ -30,6 +42,15 @@ const MyAlerts = () => {
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Template state
+  const { data: templates = [], isLoading: templatesLoading } = useAlertTemplates();
+  const createTemplate = useCreateTemplate();
+  const updateTemplate = useUpdateTemplate();
+  const deleteTemplate = useDeleteTemplate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<AlertTemplate | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -149,6 +170,45 @@ const MyAlerts = () => {
       setAlerts((prev) => [...prev, alertToDelete]);
       toast.error("Failed to delete alert");
     }
+  };
+
+  // Template handlers
+  const handleEditTemplate = (template: AlertTemplate) => {
+    setEditingTemplate(template);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteTemplate = (id: string) => {
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDeleteTemplate = () => {
+    if (deleteConfirmId) {
+      deleteTemplate.mutate(deleteConfirmId);
+      setDeleteConfirmId(null);
+    }
+  };
+
+  const handleSaveTemplate = (input: AlertTemplateInput) => {
+    if (editingTemplate) {
+      updateTemplate.mutate({ id: editingTemplate.id, ...input }, {
+        onSuccess: () => {
+          setIsModalOpen(false);
+          setEditingTemplate(null);
+        }
+      });
+    } else {
+      createTemplate.mutate(input, {
+        onSuccess: () => {
+          setIsModalOpen(false);
+        }
+      });
+    }
+  };
+
+  const handleOpenNewTemplate = () => {
+    setEditingTemplate(null);
+    setIsModalOpen(true);
   };
 
   const activeAlerts = alerts.filter((a) => a.is_active);
@@ -284,59 +344,131 @@ const MyAlerts = () => {
 
       {/* Main Content */}
       <main className="container px-4 md:px-6 py-8 max-w-2xl mx-auto">
-        {alerts.length === 0 ? (
-          <Card className="bg-card border-border">
-            <CardContent className="p-12 text-center">
-              <Bell className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h2 className="text-lg font-semibold mb-2">No alerts yet</h2>
-              <p className="text-muted-foreground mb-6">
-                Create your first alert to get notified when odds move.
-              </p>
-              <Link to="/alerts/create">
-                <Button className="bg-amber-gradient text-primary-foreground hover:opacity-90">
-                  <Zap className="w-4 h-4 mr-2" />
-                  Create Alert
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ) : (
-          <Tabs defaultValue="active" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 bg-secondary/50">
-              <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Active ({activeAlerts.length})
-              </TabsTrigger>
-              <TabsTrigger value="inactive" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Inactive ({inactiveAlerts.length})
-              </TabsTrigger>
-            </TabsList>
+        <Tabs defaultValue="active" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3 bg-secondary/50">
+            <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Active ({activeAlerts.length})
+            </TabsTrigger>
+            <TabsTrigger value="inactive" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Inactive ({inactiveAlerts.length})
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Templates ({templates.length})
+            </TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="active" className="space-y-3">
-              {activeAlerts.length === 0 ? (
-                <Card className="bg-card border-border">
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    No active alerts
-                  </CardContent>
-                </Card>
-              ) : (
-                activeAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} />)
-              )}
-            </TabsContent>
+          <TabsContent value="active" className="space-y-3">
+            {activeAlerts.length === 0 ? (
+              <Card className="bg-card border-border">
+                <CardContent className="p-8 text-center">
+                  <Bell className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground mb-4">No active alerts</p>
+                  <Link to="/alerts/create">
+                    <Button className="bg-amber-gradient text-primary-foreground hover:opacity-90">
+                      <Zap className="w-4 h-4 mr-2" />
+                      Create Alert
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ) : (
+              activeAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} />)
+            )}
+          </TabsContent>
 
-            <TabsContent value="inactive" className="space-y-3">
-              {inactiveAlerts.length === 0 ? (
-                <Card className="bg-card border-border">
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    No inactive alerts
-                  </CardContent>
-                </Card>
-              ) : (
-                inactiveAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} />)
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
+          <TabsContent value="inactive" className="space-y-3">
+            {inactiveAlerts.length === 0 ? (
+              <Card className="bg-card border-border">
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  No inactive alerts
+                </CardContent>
+              </Card>
+            ) : (
+              inactiveAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} />)
+            )}
+          </TabsContent>
+
+          <TabsContent value="templates" className="space-y-3">
+            {templatesLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : templates.length === 0 ? (
+              <Card className="bg-card border-border">
+                <CardContent className="p-8 text-center">
+                  <FileText className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                  <h3 className="font-medium mb-2">No templates yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create templates for one-tap alert setup
+                  </p>
+                  <Button 
+                    onClick={handleOpenNewTemplate}
+                    className="bg-amber-gradient text-primary-foreground hover:opacity-90"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Template
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="flex justify-end mb-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleOpenNewTemplate}
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    New Template
+                  </Button>
+                </div>
+                {templates.map((template) => (
+                  <TemplateCard
+                    key={template.id}
+                    template={template}
+                    onEdit={handleEditTemplate}
+                    onDelete={handleDeleteTemplate}
+                  />
+                ))}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
+
+      {/* Create/Edit Template Modal */}
+      <CreateTemplateModal
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          if (!open) setEditingTemplate(null);
+        }}
+        editingTemplate={editingTemplate}
+        onSave={handleSaveTemplate}
+        isSaving={createTemplate.isPending || updateTemplate.isPending}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the template.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteTemplate}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
