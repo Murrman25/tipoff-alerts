@@ -581,14 +581,6 @@ const CreateAlert = () => {
                   </div>
                 )}
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openStep(3)}
-                  className="w-full"
-                >
-                  Continue to Notifications
-                </Button>
               </div>
             </AlertStep>
 
