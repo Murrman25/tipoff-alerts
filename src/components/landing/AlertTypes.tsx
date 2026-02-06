@@ -294,7 +294,7 @@ export const AlertTypes = () => {
                     TIER_DISPLAY[selectedAlert.minTier].color,
                   )}
                 >
-                  {TIER_DISPLAY[selectedAlert.minTier].label}+
+                  {TIER_DISPLAY[selectedAlert.minTier].label}
                 </Badge>
               </div>
             </div>
