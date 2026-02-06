@@ -19,3 +19,5 @@ export { TeamSelectCards } from "./TeamSelectCards";
 export { AlertSurgeWindowSelector } from "./AlertSurgeWindowSelector";
 export { AlertRunWindowSelector } from "./AlertRunWindowSelector";
 export { AlertGamePeriodSelector } from "./AlertGamePeriodSelector";
+export { TemplateCard } from "./TemplateCard";
+export { CreateTemplateModal } from "./CreateTemplateModal";
