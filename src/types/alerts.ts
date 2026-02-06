@@ -13,9 +13,7 @@ export type MarketType = 'ml' | 'sp' | 'ou';
 export type DirectionType = 
   | 'at_or_above' 
   | 'at_or_below' 
-  | 'exactly' 
-  | 'crosses_above' 
-  | 'crosses_below';
+  | 'exactly';
 
 export type TimeWindow = 'pregame' | 'live' | 'both';
 
@@ -97,8 +95,6 @@ export const DIRECTION_OPTIONS = [
   { id: 'at_or_above' as DirectionType, name: 'At or above' },
   { id: 'at_or_below' as DirectionType, name: 'At or below' },
   { id: 'exactly' as DirectionType, name: 'Exactly at' },
-  { id: 'crosses_above' as DirectionType, name: 'Crosses above' },
-  { id: 'crosses_below' as DirectionType, name: 'Crosses below' },
 ];
 
 // Alert Type Field Configuration
@@ -173,13 +169,15 @@ export const ALERT_TYPE_FIELD_CONFIG: Record<RuleType, AlertTypeFieldConfig> = {
   timed_surge: {
     showMarketToggle: true,
     showTeamSelector: true,
-    showThreshold: false,
+    showThreshold: true,
     showDirection: false,
     showTimeWindow: false,
     showSurgeWindow: true,
     showRunWindow: false,
     showGamePeriod: true,
     forceTimeWindow: 'live',
+    thresholdLabel: 'Target Value',
+    thresholdPlaceholder: 'Enter target line',
   },
   momentum_run: {
     showMarketToggle: false,
@@ -285,7 +283,7 @@ export const QUICK_ALERT_TEMPLATES: QuickAlertTemplate[] = [
     defaults: {
       ruleType: 'ml_threshold',
       marketType: 'ml',
-      direction: 'crosses_below',
+      direction: 'at_or_below',
       timeWindow: 'pregame',
     },
     requiredFields: ['eventID', 'teamSide', 'threshold'],
