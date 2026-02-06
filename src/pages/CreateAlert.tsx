@@ -24,12 +24,16 @@ import {
   CreateAlertStepper,
   AlertStep,
   AlertSummary,
+  AlertSurgeWindowSelector,
+  AlertRunWindowSelector,
+  AlertGamePeriodSelector,
 } from "@/components/alerts";
 import { AuthModal } from "@/components/auth";
 import { TeamLogo } from "@/components/TeamLogo";
 import {
   AlertCondition,
   QuickAlertTemplateId,
+  ALERT_TYPE_FIELD_CONFIG,
 } from "@/types/alerts";
 import { GameEvent } from "@/types/games";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,11 +51,14 @@ const CreateAlert = () => {
   const [condition, setCondition] = useState<AlertCondition>({
     ruleType: "ml_threshold",
     eventID: preSelectedEventID || null,
-    marketType: "sp",
+    marketType: "ml",
     teamSide: null,
     threshold: null,
     direction: null,
     timeWindow: "both",
+    surgeWindowMinutes: undefined,
+    runWindowMinutes: undefined,
+    gamePeriod: undefined,
   });
   const [selectedGame, setSelectedGame] = useState<GameEvent | null>(null);
   const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>(["email"]);
@@ -92,13 +99,55 @@ const CreateAlert = () => {
       if (key === "eventID") {
         updated.teamSide = null;
         updated.threshold = null;
-        updated.marketType = "sp";
         updated.direction = null;
+        updated.surgeWindowMinutes = undefined;
+        updated.runWindowMinutes = undefined;
+        updated.gamePeriod = undefined;
       }
       
-      // When rule type changes, reset direction so user must explicitly select
+      // When rule type changes, apply field config defaults
       if (key === "ruleType") {
+        const config = ALERT_TYPE_FIELD_CONFIG[value as AlertCondition['ruleType']];
         updated.direction = null;
+        
+        // Auto-set market type if forced by rule type
+        if (config.forceMarketType) {
+          updated.marketType = config.forceMarketType;
+        }
+        
+        // Auto-set time window if forced by rule type
+        if (config.forceTimeWindow) {
+          updated.timeWindow = config.forceTimeWindow;
+        }
+        
+        // Reset fields that are hidden for the new rule type
+        if (!config.showThreshold) {
+          updated.threshold = null;
+        }
+        if (!config.showDirection) {
+          updated.direction = null;
+        }
+        if (!config.showSurgeWindow) {
+          updated.surgeWindowMinutes = undefined;
+        }
+        if (!config.showRunWindow) {
+          updated.runWindowMinutes = undefined;
+        }
+        if (!config.showGamePeriod) {
+          updated.gamePeriod = undefined;
+        } else {
+          // Default to full_game when game period is shown
+          updated.gamePeriod = 'full_game';
+        }
+        
+        // Set default surge window for timed_surge
+        if (value === 'timed_surge') {
+          updated.surgeWindowMinutes = 15;
+        }
+        // Set default run window for momentum_run
+        if (value === 'momentum_run') {
+          updated.runWindowMinutes = 5;
+        }
       }
       
       return updated;
@@ -127,23 +176,17 @@ const CreateAlert = () => {
     }));
   };
 
-  // Check if threshold is needed (market-based alerts need threshold)
-  const needsThreshold =
-    condition.ruleType === "ml_threshold" ||
-    condition.ruleType === "spread_threshold" ||
-    condition.ruleType === "ou_threshold" ||
-    condition.ruleType === "score_margin";
-
-  // Direction is required when threshold is needed - selecting direction triggers auto-collapse
-  const needsDirection = needsThreshold;
+  // Get field configuration for current rule type
+  const fieldConfig = ALERT_TYPE_FIELD_CONFIG[condition.ruleType];
 
   // Step completion checks
   const isStep1Complete = condition.eventID !== null;
   const isStep2Complete = isStep1Complete && 
-    condition.teamSide !== null && 
-    (!needsThreshold || condition.threshold !== null) &&
-    (!needsDirection || condition.direction !== null);
+    (!fieldConfig.showTeamSelector || condition.teamSide !== null) && 
+    (!fieldConfig.showThreshold || condition.threshold !== null) &&
+    (!fieldConfig.showDirection || condition.direction !== null);
   const isStep3Complete = notificationChannels.length > 0;
+
 
   // Track previous step 2 completion state for auto-collapse
   const prevStep2Complete = useRef(isStep2Complete);
@@ -237,14 +280,10 @@ const CreateAlert = () => {
 
   const isFormValid =
     condition.eventID !== null &&
-    condition.teamSide !== null &&
+    (!fieldConfig.showTeamSelector || condition.teamSide !== null) &&
     notificationChannels.length > 0 &&
-    (condition.threshold !== null ||
-      condition.ruleType === "timed_surge" ||
-      condition.ruleType === "momentum_run") &&
-    (condition.direction !== null ||
-      condition.ruleType === "timed_surge" ||
-      condition.ruleType === "momentum_run");
+    (!fieldConfig.showThreshold || condition.threshold !== null) &&
+    (!fieldConfig.showDirection || condition.direction !== null);
 
   const saveAlertToDatabase = async () => {
     if (!user) return;
@@ -435,8 +474,8 @@ const CreateAlert = () => {
                   <AlertFieldHelp fieldKey="ruleType" showHelp={showHelp} className="mt-7" />
                 </div>
 
-                {/* Market + Team Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Market Toggle - only show when configured */}
+                {fieldConfig.showMarketToggle && (
                   <div className="flex items-start gap-2">
                     <div className="flex-1">
                       <AlertMarketSelector
@@ -446,41 +485,91 @@ const CreateAlert = () => {
                     </div>
                     <AlertFieldHelp fieldKey="marketType" showHelp={showHelp} className="mt-7" />
                   </div>
+                )}
+
+                {/* Team Selector - only show when configured */}
+                {fieldConfig.showTeamSelector && (
                   <AlertTeamSelector
                     game={selectedGame}
                     value={condition.teamSide}
                     onChange={(v) => updateCondition("teamSide", v)}
                   />
-                </div>
+                )}
 
-                {/* Threshold and Direction */}
-                {needsThreshold && (
+                {/* Threshold and Direction Row */}
+                {(fieldConfig.showThreshold || fieldConfig.showDirection) && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1">
-                        <AlertThresholdInput
-                          value={condition.threshold}
-                          onChange={(v) => updateCondition("threshold", v)}
-                          marketType={condition.marketType}
-                        />
+                    {fieldConfig.showThreshold && (
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1">
+                          <AlertThresholdInput
+                            value={condition.threshold}
+                            onChange={(v) => updateCondition("threshold", v)}
+                            marketType={condition.marketType}
+                            label={fieldConfig.thresholdLabel}
+                            placeholder={fieldConfig.thresholdPlaceholder}
+                          />
+                        </div>
+                        <AlertFieldHelp fieldKey="threshold" showHelp={showHelp} className="mt-7" />
                       </div>
-                      <AlertFieldHelp fieldKey="threshold" showHelp={showHelp} className="mt-7" />
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1">
-                        <AlertDirectionSelector
-                          value={condition.direction}
-                          onChange={(v) => updateCondition("direction", v)}
-                          ruleType={condition.ruleType}
-                        />
+                    )}
+                    {fieldConfig.showDirection && (
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1">
+                          <AlertDirectionSelector
+                            value={condition.direction}
+                            onChange={(v) => updateCondition("direction", v)}
+                            ruleType={condition.ruleType}
+                          />
+                        </div>
+                        <AlertFieldHelp fieldKey="direction" showHelp={showHelp} className="mt-7" />
                       </div>
-                      <AlertFieldHelp fieldKey="direction" showHelp={showHelp} className="mt-7" />
-                    </div>
+                    )}
                   </div>
                 )}
 
-                {/* Time Window - always show it */}
-                {true && (
+                {/* Surge Window - for Line Surge alerts */}
+                {fieldConfig.showSurgeWindow && (
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1">
+                      <AlertSurgeWindowSelector
+                        value={condition.surgeWindowMinutes}
+                        onChange={(v) => updateCondition("surgeWindowMinutes", v)}
+                      />
+                    </div>
+                    <AlertFieldHelp fieldKey="surgeWindow" showHelp={showHelp} className="mt-7" />
+                  </div>
+                )}
+
+                {/* Run Window - for Momentum alerts */}
+                {fieldConfig.showRunWindow && (
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1">
+                      <AlertRunWindowSelector
+                        value={condition.runWindowMinutes}
+                        onChange={(v) => updateCondition("runWindowMinutes", v)}
+                      />
+                    </div>
+                    <AlertFieldHelp fieldKey="runWindow" showHelp={showHelp} className="mt-7" />
+                  </div>
+                )}
+
+                {/* Game Period - for Score Margin, Line Surge, Momentum */}
+                {fieldConfig.showGamePeriod && (
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1">
+                      <AlertGamePeriodSelector
+                        value={condition.gamePeriod}
+                        onChange={(v) => updateCondition("gamePeriod", v)}
+                        sportID={selectedGame?.sportID}
+                      />
+                    </div>
+                    <AlertFieldHelp fieldKey="gamePeriod" showHelp={showHelp} className="mt-7" />
+                  </div>
+                )}
+
+                {/* Time Window - only show when configured */}
+                {fieldConfig.showTimeWindow && (
                   <div className="flex items-start gap-2">
                     <div className="flex-1">
                       <AlertTimeWindow
