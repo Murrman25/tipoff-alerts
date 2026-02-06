@@ -61,7 +61,7 @@ const CreateAlert = () => {
     gamePeriod: undefined,
   });
   const [selectedGame, setSelectedGame] = useState<GameEvent | null>(null);
-  const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>(["email"]);
+  const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>(["push"]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<QuickAlertTemplateId | null>(null);

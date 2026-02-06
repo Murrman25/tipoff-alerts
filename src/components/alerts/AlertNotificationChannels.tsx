@@ -1,4 +1,4 @@
-import { Mail, Bell, MessageSquare } from "lucide-react";
+import { Mail, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -16,23 +16,17 @@ interface AlertNotificationChannelsProps {
 
 const channels = [
   {
-    id: "email" as NotificationChannel,
-    label: "Email",
-    description: "Get notified via email",
-    icon: Mail,
-  },
-  {
     id: "push" as NotificationChannel,
     label: "Push",
     description: "In-app and browser notifications",
     icon: Bell,
   },
   {
-    id: "sms" as NotificationChannel,
-    label: "SMS",
-    description: "Text message alerts",
-    icon: MessageSquare,
-    badge: "Pro",
+    id: "email" as NotificationChannel,
+    label: "Email",
+    description: "Get notified via email",
+    icon: Mail,
+    badge: "Legend",
   },
 ];
 
@@ -82,7 +76,7 @@ export const AlertNotificationChannels = ({
                     <Icon className="w-4 h-4" />
                     <span className="text-sm font-medium">{channel.label}</span>
                     {channel.badge && (
-                      <span className="text-[10px] px-1 py-0.5 rounded bg-amber-gradient text-primary-foreground font-medium ml-0.5">
+                      <span className="text-[10px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium ml-0.5">
                         {channel.badge}
                       </span>
                     )}
