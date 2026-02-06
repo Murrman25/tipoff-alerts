@@ -567,20 +567,6 @@ const CreateAlert = () => {
                     <AlertFieldHelp fieldKey="gamePeriod" showHelp={showHelp} className="mt-7" />
                   </div>
                 )}
-
-                {/* Time Window - only show when configured */}
-                {fieldConfig.showTimeWindow && (
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1">
-                      <AlertTimeWindow
-                        value={condition.timeWindow}
-                        onChange={(v) => updateCondition("timeWindow", v)}
-                      />
-                    </div>
-                    <AlertFieldHelp fieldKey="timeWindow" showHelp={showHelp} className="mt-7" />
-                  </div>
-                )}
-
               </div>
             </AlertStep>
 
