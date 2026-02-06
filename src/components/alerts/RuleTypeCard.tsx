@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 interface RuleTypeCardProps {
   ruleType: RuleType;
   name: string;
-  description: string;
+  description?: string; // Optional, not used in compact mode
   planRequired: PlanTier;
   isSelected: boolean;
   isLocked: boolean;
@@ -30,13 +30,19 @@ const tierLabels: Record<PlanTier, string> = {
 export const RuleTypeCard = ({
   ruleType,
   name,
-  description,
   planRequired,
   isSelected,
   isLocked,
   onSelect,
 }: RuleTypeCardProps) => {
   const Icon = ruleTypeIcons[ruleType];
+  const tierDisplay = tierLabels[planRequired];
+  const tierColors = {
+    rookie: { bg: "bg-secondary", text: "text-muted-foreground" },
+    pro: { bg: "bg-amber-500/20", text: "text-amber-400" },
+    legend: { bg: "bg-purple-500/20", text: "text-purple-400" },
+  };
+  const colors = tierColors[planRequired];
 
   return (
     <button
@@ -44,9 +50,8 @@ export const RuleTypeCard = ({
       onClick={onSelect}
       disabled={isLocked}
       className={cn(
-        "relative flex flex-col items-start p-3 rounded-lg border transition-all duration-200",
+        "relative flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        "text-left min-h-[88px]",
         isLocked
           ? "opacity-50 cursor-not-allowed bg-muted/30 border-border"
           : isSelected
@@ -54,46 +59,43 @@ export const RuleTypeCard = ({
           : "border-border bg-secondary/30 hover:bg-secondary/50 hover:border-muted-foreground/30"
       )}
     >
-      {/* Lock indicator for premium tiers */}
+      {/* Icon */}
+      <div
+        className={cn(
+          "flex items-center justify-center w-7 h-7 rounded-md shrink-0",
+          isSelected
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-muted-foreground"
+        )}
+      >
+        <Icon className="w-3.5 h-3.5" />
+      </div>
+
+      {/* Name */}
+      <span className={cn(
+        "text-xs font-medium",
+        isSelected ? "text-foreground" : "text-foreground/80"
+      )}>
+        {name}
+      </span>
+
+      {/* Tier badge for locked items */}
       {isLocked && (
-        <div className="absolute top-2 right-2 flex items-center gap-1">
+        <div className="flex items-center gap-1 ml-auto">
           <Lock className="w-3 h-3 text-muted-foreground" />
-          <span className="text-[10px] uppercase font-medium text-muted-foreground">
-            {tierLabels[planRequired]}
+          <span className={cn(
+            "text-[9px] uppercase font-semibold px-1 py-0.5 rounded",
+            colors.bg,
+            colors.text
+          )}>
+            {tierDisplay}
           </span>
         </div>
       )}
 
-      {/* Icon + Name */}
-      <div className="flex items-center gap-2 mb-1.5">
-        <div
-          className={cn(
-            "flex items-center justify-center w-7 h-7 rounded-md",
-            isSelected
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground"
-          )}
-        >
-          <Icon className="w-4 h-4" />
-        </div>
-        <span className={cn(
-          "text-sm font-medium",
-          isSelected ? "text-foreground" : "text-foreground/80"
-        )}>
-          {name}
-        </span>
-      </div>
-
-      {/* Description */}
-      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-        {description}
-      </p>
-
       {/* Selected indicator */}
       {isSelected && !isLocked && (
-        <div className="absolute bottom-2 right-2">
-          <div className="w-2 h-2 rounded-full bg-primary" />
-        </div>
+        <div className="w-1.5 h-1.5 rounded-full bg-primary ml-auto shrink-0" />
       )}
     </button>
   );
