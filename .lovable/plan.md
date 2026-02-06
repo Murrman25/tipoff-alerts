@@ -1,158 +1,194 @@
 
 
-# Plan: Update Tooltips for Mobile Accessibility and Content Accuracy
+# Plan: User-Created Alert Templates
 
 ## Overview
-This plan addresses two critical issues with tooltips on the Create Alert page:
-1. **Mobile accessibility**: Tooltips currently rely on hover interactions which don't work on touch devices
-2. **Content accuracy**: Help content needs to be updated to match the new alert types and removed features
+This feature enables users to create, manage, and reuse custom alert templates from the My Alerts page. These templates will replace the hardcoded quick alerts on the Create Alert page, providing a personalized alert-building experience.
 
-## Current Issues Identified
+## Feature Summary
 
-### Issue 1: Mobile Inaccessibility
-- `AlertFieldHelp` component has `hidden sm:inline-flex` - completely hidden on mobile
-- `AlertNotificationChannels` uses Radix Tooltip which requires hover (not tappable)
-- Header help toggle uses Radix Tooltip (hover-only)
+| Capability | Description |
+|------------|-------------|
+| Create Templates | Define reusable alert configurations with custom names |
+| Tier Badges | Visual indicators showing the alert type's tier (Rookie/Pro/Legend) |
+| Template Management | View, edit, and delete templates from My Alerts |
+| Quick Apply | Use templates on Create Alert page for one-tap setup |
 
-### Issue 2: Outdated Content
-The `FIELD_HELP_CONTENT` in `src/types/alerts.ts` needs updates:
-
-| Field | Current Issue | Needed Update |
-|-------|--------------|---------------|
-| `ruleType` | Missing O/U and Line Surge | Include all 6 alert types |
-| `threshold` | Too generic | Alert-type-specific descriptions |
-| `direction` | Mentions "crosses" implicitly | Clarify only "At or above/below" exist |
-| `marketType` | Only shows for Line Surge | Content is fine, just limited visibility |
-
-## Implementation Plan
-
-### 1. Make AlertFieldHelp Mobile-Friendly
-
-**File: `src/components/alerts/AlertFieldHelp.tsx`**
-
-Change from hover-only to tap-friendly:
-- Remove `hidden sm:inline-flex` to show on all screen sizes
-- Keep using Popover (already tap-friendly via click trigger)
-- Adjust icon size for better touch targets on mobile (min 44x44px touch area)
+## User Flow
 
 ```text
-Before: "hidden sm:inline-flex items-center justify-center w-4 h-4"
-After:  "inline-flex items-center justify-center w-6 h-6 sm:w-4 sm:h-4"
-        + touch-friendly wrapper with min-w-[44px] min-h-[44px]
+MY ALERTS PAGE                          CREATE ALERT PAGE
++---------------------------+           +---------------------------+
+| [Active] [Inactive] [Templates]       | Quick Alerts              |
+|                           |           | +-------+ +-------+       |
+| +-- Template Card ------+ |   --->    | | My    | | Spread|       |
+| | "Fav Team ML"         | |           | | Fav   | | Watch |       |
+| | [ML] [Rookie]  [Edit] | |           | +-------+ +-------+       |
+| +------------------------+ |           +---------------------------+
+|                           |
+| [+ Create Template]       |
++---------------------------+
 ```
 
-### 2. Replace Hover Tooltips with Tap-Friendly Popovers
+## Database Design
 
-**File: `src/components/alerts/AlertNotificationChannels.tsx`**
+### New Table: `alert_templates`
 
-Replace Radix Tooltip with Popover for notification channel descriptions:
-- Tooltip requires hover (desktop-only)
-- Popover works with click/tap (mobile-friendly)
-- Add accessible label for screen readers
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | uuid | No | gen_random_uuid() | Primary key |
+| user_id | uuid | No | - | Foreign key to auth.users |
+| name | text | No | - | User-defined template name |
+| rule_type | text | No | - | Alert type (ml_threshold, spread_threshold, etc.) |
+| market_type | text | No | - | Market type (ml, sp, ou) |
+| threshold | numeric | Yes | null | Preset threshold value |
+| direction | text | Yes | null | Direction (at_or_above, at_or_below, exactly) |
+| surge_window_minutes | integer | Yes | null | For timed_surge alerts |
+| run_window_minutes | integer | Yes | null | For momentum_run alerts |
+| game_period | text | Yes | null | Game period (full_game, 1h, etc.) |
+| created_at | timestamptz | No | now() | Creation timestamp |
+| updated_at | timestamptz | No | now() | Last update timestamp |
 
-**File: `src/pages/CreateAlert.tsx`**
+### RLS Policies
+- Users can only CRUD their own templates
+- Same pattern as existing `alerts` table policies
 
-Update the header help toggle tooltip:
-- Keep Tooltip for desktop (works fine with hover)
-- The toggle button itself is tappable so this is less critical
-- Could optionally replace with Popover for consistency
+## Technical Implementation
 
-### 3. Update FIELD_HELP_CONTENT for Accuracy
+### Phase 1: Database Setup
+
+**File: New Migration**
+
+Create the `alert_templates` table with:
+- All alert condition fields (excluding event-specific fields like `eventID` and `teamSide`)
+- RLS policies for user isolation
+- Trigger for `updated_at` auto-update
+
+### Phase 2: Types and Hooks
 
 **File: `src/types/alerts.ts`**
+- Add `AlertTemplate` interface
+- Keep existing `QuickAlertTemplate` for backward compatibility during transition
 
-Updated content for each field:
+**File: `src/hooks/useAlertTemplates.ts` (new)**
+- `useAlertTemplates()` - Fetch user's templates
+- `useCreateTemplate()` - Create new template
+- `useUpdateTemplate()` - Update existing template  
+- `useDeleteTemplate()` - Delete template
+
+### Phase 3: My Alerts Page Updates
+
+**File: `src/pages/MyAlerts.tsx`**
+
+Add a third tab "Templates" alongside Active/Inactive:
 
 ```text
-ruleType: {
-  title: 'Alert Type',
-  description: 'Choose how to monitor the game. Moneyline, Spread, and O/U track betting lines. Score Margin tracks point differentials. Line Surge detects rapid line movement. Momentum tracks scoring runs.',
-  example: 'Use "Spread" to watch for line movement to +3.5',
-}
-
-threshold: {
-  title: 'Target Value',
-  description: 'The value that triggers your alert. For Moneyline: odds like +150 or -110. For Spread: points like +3.5 or -7. For O/U: total points like 224.5. For Score Margin: point lead like 10. For Momentum: run size like 8.',
-  example: 'Moneyline +150 means underdog odds of +150',
-}
-
-direction: {
-  title: 'Trigger Direction',
-  description: 'Determines when your alert fires. "At or above" triggers when the value is greater than or equal to your target. "At or below" triggers when less than or equal.',
-  example: '"At or above +3" alerts when spread is +3, +3.5, +4...',
-}
-
-marketType: {
-  title: 'Market Type',
-  description: 'For Line Surge alerts, choose which betting market to monitor. Moneyline = who wins outright. Spread = point margin. Over/Under = total combined points.',
-  example: 'Track ML surges to catch sharp money movement',
-}
-
-surgeWindow: {
-  title: 'Surge Detection Window',
-  description: 'How quickly the line must move to trigger a surge alert. Shorter windows catch sharper, more sudden movements. Longer windows catch gradual drifts.',
-  example: '5 min catches sharp moves, 30 min catches gradual shifts',
-}
-
-runWindow: {
-  title: 'Scoring Run Window',
-  description: 'Time frame to track unanswered points. Detects when one team goes on a scoring run without the opponent scoring.',
-  example: '5 min window catches 10-0 runs within 5 minutes',
-}
-
-gamePeriod: {
-  title: 'Game Period',
-  description: 'Which part of the game to monitor. "Full Game" tracks the entire game. Quarter/Half/Period options focus on specific segments.',
-  example: 'Track 4th quarter momentum to catch late-game swings',
-}
-
-timeWindow: {
-  title: 'Alert Timing',
-  description: 'When your alert can trigger. "Pregame" = only before the game starts. "Live" = only during the game. "Pregame & Live" = anytime.',
-  example: 'Use "Live-only" to ignore pregame line movements',
-}
-
-teamSide: {
-  title: 'Team Selection',
-  description: 'Which team to track for this alert. The alert monitors this team\'s odds, spread, or score depending on your alert type.',
-}
+[ Active (3) ] [ Inactive (1) ] [ Templates (2) ]
 ```
 
-## Files to Modify
+Template tab contents:
+- List of user templates in card format
+- Each card shows: Name, Rule Type badge, Tier badge, Edit/Delete actions
+- Empty state with "Create Template" CTA
+- Floating "+" button for quick creation on mobile
 
-| File | Changes |
-|------|---------|
-| `src/components/alerts/AlertFieldHelp.tsx` | Make visible and tappable on mobile |
-| `src/components/alerts/AlertNotificationChannels.tsx` | Replace Tooltip with Popover for tap support |
-| `src/types/alerts.ts` | Update FIELD_HELP_CONTENT with accurate descriptions |
+### Phase 4: Template Creation Modal
 
-## Visual Changes
+**File: `src/components/alerts/CreateTemplateModal.tsx` (new)**
 
-### Mobile Help Icons (Before)
+A modal/sheet for creating/editing templates containing:
+- Template name input (required, max 30 chars)
+- Alert type selector (reuses `AlertRuleTypeSelector`)
+- Dynamic fields based on alert type (reuses existing field components)
+- Save/Cancel actions
+
+Mobile design considerations:
+- Uses Sheet (drawer) on mobile, Dialog on desktop
+- Full-height on mobile for comfortable touch targets
+- Sticky save button at bottom
+
+### Phase 5: Template Card Component
+
+**File: `src/components/alerts/TemplateCard.tsx` (new)**
+
+Card layout:
 ```text
-[Label Field]           <- No help icon visible on mobile
-[Input]
++----------------------------------------+
+| [Icon] Template Name                   |
+| [ML] [Rookie]  [Threshold: +150]       |
+|                          [Edit] [🗑️]  |
++----------------------------------------+
 ```
 
-### Mobile Help Icons (After)
-```text
-[Label Field]     (?) <- Tappable help icon
-[Input]
-```
+Features:
+- Alert type icon (from `RuleTypeCard` iconMap)
+- Tier badge with color coding (Rookie/Pro/Legend)
+- Compact parameter summary (threshold, direction, etc.)
+- Edit button opens modal in edit mode
+- Delete with confirmation
 
-### Notification Channels (Before - hover only)
-```text
-[Email]  [Push]  [SMS]  <- Hover shows tooltip (doesn't work on mobile)
-```
+### Phase 6: Quick Alert Panel Updates
 
-### Notification Channels (After - tap friendly)
-```text
-[Email ▾]  [Push ▾]  [SMS ▾]  <- Tap shows popover with description
-```
+**File: `src/components/alerts/QuickAlertPanel.tsx`**
 
-## Accessibility Improvements
-- All interactive help elements work with touch/tap
-- Minimum 44x44px touch targets for mobile
-- ARIA labels for screen readers
-- Focus states preserved for keyboard navigation
+Transform to show user templates instead of hardcoded presets:
+- Fetch templates from `useAlertTemplates` hook
+- Show "Create your first template" if empty
+- Each template button shows: Icon + Name + Tier badge
+- On select: Apply template defaults to alert form
+
+Fallback behavior:
+- If user is not logged in, show static templates (current behavior)
+- If logged in but no templates, show prompt to create templates
+
+### Phase 7: Supabase Types Regeneration
+
+Update `src/integrations/supabase/types.ts` to include the new `alert_templates` table.
+
+## File Changes Summary
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `supabase/migrations/[timestamp].sql` | Create | Database table and RLS |
+| `src/integrations/supabase/types.ts` | Update | Add TypeScript types |
+| `src/types/alerts.ts` | Update | Add AlertTemplate interface |
+| `src/hooks/useAlertTemplates.ts` | Create | Data fetching hooks |
+| `src/pages/MyAlerts.tsx` | Update | Add Templates tab |
+| `src/components/alerts/TemplateCard.tsx` | Create | Template display card |
+| `src/components/alerts/CreateTemplateModal.tsx` | Create | Create/Edit modal |
+| `src/components/alerts/QuickAlertPanel.tsx` | Update | Use user templates |
+| `src/components/alerts/index.ts` | Update | Export new components |
+
+## Mobile Design Considerations
+
+1. **Touch Targets**: All interactive elements minimum 44x44px
+2. **Template Cards**: Full-width on mobile, card grid on desktop
+3. **Modal as Sheet**: Drawer slides up from bottom on mobile
+4. **Horizontal Scroll**: Template pills in Quick Alert Panel scroll horizontally
+5. **Sticky Actions**: Save/Cancel buttons stick to bottom of modal
+
+## Visual Design
+
+### Tier Badge Colors (matches existing)
+- **Rookie**: `bg-secondary text-muted-foreground`
+- **Pro**: `bg-amber-500/20 text-amber-400`
+- **Legend**: `bg-purple-500/20 text-purple-400`
+
+### Template Card States
+- Default: `bg-card border-border`
+- Hover: `border-primary/50`
+- Selected (in Quick Alerts): `border-primary bg-primary/10`
+
+## Edge Cases
+
+1. **No Templates**: Show encouraging empty state with "Create your first template"
+2. **Template Limit**: Consider 10 template limit for Rookie, 25 for Pro, unlimited for Legend
+3. **Deleted Alert Type Access**: If user downgrades tier, hide locked template types
+4. **Name Conflicts**: Allow duplicate names (user's choice)
+
+## Security Considerations
+
+- RLS policies ensure users can only access their own templates
+- Template data is validated server-side before insert
+- No sensitive data in templates (no event IDs or team selections)
 
