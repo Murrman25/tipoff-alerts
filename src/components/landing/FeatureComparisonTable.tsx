@@ -150,18 +150,18 @@
         <div
           className={cn(
             "w-7 h-7 rounded-full flex items-center justify-center mx-auto",
-            isLegendExclusiveCell && "bg-slate-400/10",
+              isLegendExclusiveCell && "bg-blue-500/10",
             isProCell && "bg-primary/10",
-            tier === "legend" && !legendExclusive && "bg-slate-400/10",
+            tier === "legend" && !legendExclusive && "bg-blue-500/10",
             tier === "rookie" && "bg-muted/50"
           )}
         >
           <Check
             className={cn(
               "w-4 h-4",
-              isLegendExclusiveCell ? "text-slate-300" : "",
+              isLegendExclusiveCell ? "text-blue-400" : "",
               isProCell ? "text-primary" : "",
-              tier === "legend" && !legendExclusive ? "text-slate-300" : "",
+              tier === "legend" && !legendExclusive ? "text-blue-400" : "",
               tier === "rookie" ? "text-muted-foreground" : "",
               !isLegendExclusiveCell && !isProCell && tier !== "legend" && tier !== "rookie" && "text-primary"
             )}
@@ -183,7 +183,7 @@
         <TooltipTrigger className={cn(
           "inline-flex items-center gap-1 text-sm font-medium",
           tier === "pro" && "text-primary",
-          tier === "legend" && "text-slate-300"
+           tier === "legend" && "text-blue-400"
          )}>
            {value}
            <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
@@ -200,7 +200,7 @@
       className={cn(
         "text-sm font-medium",
         tier === "pro" && "text-primary",
-        tier === "legend" && "text-slate-300"
+        tier === "legend" && "text-blue-400"
       )}
     >
       {value}
@@ -241,7 +241,7 @@
                     <span className="text-gradient-amber font-bold">Pro</span>
                    </TableHead>
                   <TableHead className="text-center font-semibold w-[120px] py-4">
-                    <span className="text-slate-300 font-bold">Legend</span>
+                    <span className="text-blue-400 font-bold">Legend</span>
                    </TableHead>
                  </TableRow>
                </TableHeader>

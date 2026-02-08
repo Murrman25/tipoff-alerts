@@ -54,8 +54,8 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   },
   legend: {
     name: "Legend",
-    color: "text-slate-300",
-    bgColor: "bg-slate-400/15",
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/15",
     features: [
       "Unlimited alerts",
       "Auto-rearm alerts",
