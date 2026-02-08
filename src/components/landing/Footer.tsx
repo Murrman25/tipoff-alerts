@@ -9,7 +9,7 @@ export const Footer = () => {
           {/* Logo and tagline */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-               <img src={logo} alt="TipOffHQ" className="h-8 w-auto" />
+               <img src={logo} alt="TipOffHQ" className="h-8 w-auto logo-blend" />
             </div>
             <p className="text-muted-foreground text-sm max-w-md">
               Real-time sports alerts platform. Track line movements, game states, 

@@ -46,7 +46,7 @@ export const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <img src={logo} alt="TipOffHQ" className="h-10 w-auto" />
+            <img src={logo} alt="TipOffHQ" className="h-10 w-auto logo-blend" />
           </Link>
 
           {/* Desktop nav */}

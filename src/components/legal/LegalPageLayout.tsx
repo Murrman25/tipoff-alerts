@@ -1,6 +1,7 @@
  import { Link } from "react-router-dom";
  import { ArrowLeft } from "lucide-react";
  import logo from "@/assets/logo.png";
+ import { PageGlow } from "@/components/PageGlow";
  
  interface LegalPageLayoutProps {
    children: React.ReactNode;
@@ -9,15 +10,16 @@
  
  export const LegalPageLayout = ({ children, title }: LegalPageLayoutProps) => {
    return (
-     <div className="min-h-screen bg-background">
-       <header className="border-b border-border">
+     <div className="min-h-screen bg-background relative">
+       <PageGlow />
+       <header className="border-b border-border relative z-10">
          <div className="container px-4 md:px-6 py-4">
            <Link to="/">
-             <img src={logo} alt="TipOffHQ" className="h-8 w-auto" />
+             <img src={logo} alt="TipOffHQ" className="h-8 w-auto logo-blend" />
            </Link>
          </div>
        </header>
-       <main className="container px-4 md:px-6 py-12">
+       <main className="container px-4 md:px-6 py-12 relative z-10">
          <Link 
            to="/" 
            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8"

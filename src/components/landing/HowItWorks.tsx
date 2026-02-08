@@ -449,7 +449,7 @@ const AlertBuilderPreview = () => {
             src={tipoffIcon}
             alt="TipOff"
             className={cn(
-              "w-4 h-4 object-contain transition-all duration-300",
+              "w-4 h-4 object-contain transition-all duration-300 logo-blend",
               step >= 4 && "animate-[pulse_2s_ease-in-out_infinite]"
             )}
           />

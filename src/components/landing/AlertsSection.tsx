@@ -165,7 +165,7 @@ const AlertBuilderPreview = () => {
             <img
               src={tipoffIcon}
               alt="TipOff"
-              className="w-4 h-4 object-contain animate-[pulse_2s_ease-in-out_infinite]"
+              className="w-4 h-4 object-contain animate-[pulse_2s_ease-in-out_infinite] logo-blend"
             />
             <p className="text-[10px] uppercase tracking-wide text-primary font-medium">
               Ready to create

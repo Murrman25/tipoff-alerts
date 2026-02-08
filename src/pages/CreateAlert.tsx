@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { PageGlow } from "@/components/PageGlow";
 import { ArrowLeft, Zap, HelpCircle, Target, GitCompareArrows, ChartNoAxesCombined, Timer, Mail, Bell, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
@@ -388,8 +389,8 @@ const CreateAlert = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
+    <div className="min-h-screen bg-background relative">
+      <PageGlow />
       <header className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-40">
         <div className="container px-4 md:px-6">
           <div className="flex items-center h-16 gap-4">
