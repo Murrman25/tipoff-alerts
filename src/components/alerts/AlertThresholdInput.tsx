@@ -45,6 +45,11 @@ export const AlertThresholdInput = ({
     return val.toString();
   };
 
+  // Round to nearest .0 or .5
+  const roundToHalf = (val: number): number => {
+    return Math.round(val * 2) / 2;
+  };
+
   // Parse the input value, stripping any leading +
   const parseInputValue = (input: string): number | null => {
     if (input === "" || input === "-" || input === "+") return null;
@@ -112,8 +117,16 @@ export const AlertThresholdInput = ({
 
   const handleBlur = () => {
     setIsFocused(false);
-    // On blur, format the value with proper prefix
-    setDisplayValue(formatForDisplay(value));
+    // Round decimal values to nearest .0 or .5 on blur
+    if (allowDecimals && value !== null) {
+      const rounded = roundToHalf(value);
+      if (rounded !== value) {
+        onChange(rounded);
+      }
+      setDisplayValue(formatForDisplay(rounded));
+    } else {
+      setDisplayValue(formatForDisplay(value));
+    }
   };
 
   const getPlaceholder = () => {
