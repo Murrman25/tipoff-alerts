@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { PageGlow } from "@/components/PageGlow";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,7 +59,8 @@ const Profile = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      <PageGlow />
       <Navbar />
       <main className="container px-4 py-8 pt-24 max-w-2xl mx-auto">
         {/* Header with Avatar Upload */}

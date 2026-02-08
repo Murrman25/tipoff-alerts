@@ -125,6 +125,11 @@
     @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
 
+  /* Logo blend: makes dark PNG backgrounds disappear on dark site backgrounds */
+  .logo-blend {
+    mix-blend-mode: lighten;
+  }
+
   .border-glow {
     @apply border border-primary/30 shadow-[0_0_15px_rgba(255,200,61,0.15)];
   }

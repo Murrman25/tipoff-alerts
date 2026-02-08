@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
+import { PageGlow } from "@/components/PageGlow";
 import { GamesFilters } from "@/components/games/GamesFilters";
 import { GameCard } from "@/components/games/GameCard";
 import { GameCardSkeleton } from "@/components/games/GameCardSkeleton";
@@ -99,8 +100,8 @@ const Games = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
+    <div className="min-h-screen bg-background relative">
+      <PageGlow />
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container px-4 md:px-6">
           <div className="flex items-center justify-between h-16">
