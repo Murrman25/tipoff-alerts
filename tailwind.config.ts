@@ -58,17 +58,16 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         // Extended TipOff palette
-        amber: {
-          glow: "hsl(var(--amber-glow))",
-          dark: "hsl(var(--amber-dark))",
-        },
         gold: {
+          glow: "hsl(var(--gold-glow))",
+          dark: "hsl(var(--gold-dark))",
           muted: "hsl(var(--gold-muted))",
         },
         charcoal: {
           deep: "hsl(var(--charcoal-deep))",
           light: "hsl(var(--charcoal-light))",
         },
+        info: "hsl(var(--info))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -93,12 +92,12 @@ export default {
         },
         "pulse-glow": {
           "0%, 100%": { 
-            boxShadow: "0 0 15px rgba(245, 158, 11, 0.15)",
-            borderColor: "rgba(245, 158, 11, 0.3)"
+            boxShadow: "0 0 15px rgba(255, 200, 61, 0.15)",
+            borderColor: "rgba(255, 200, 61, 0.3)"
           },
           "50%": { 
-            boxShadow: "0 0 25px rgba(245, 158, 11, 0.25)",
-            borderColor: "rgba(245, 158, 11, 0.5)"
+            boxShadow: "0 0 25px rgba(255, 200, 61, 0.25)",
+            borderColor: "rgba(255, 200, 61, 0.5)"
           },
         },
         "slide-up": {
@@ -115,7 +114,7 @@ export default {
         },
         "odds-flash": {
           "0%": { backgroundColor: "transparent", transform: "scale(1)" },
-          "50%": { backgroundColor: "hsl(var(--primary) / 0.2)", transform: "scale(1.05)" },
+          "50%": { backgroundColor: "rgba(255, 200, 61, 0.2)", transform: "scale(1.05)" },
           "100%": { backgroundColor: "transparent", transform: "scale(1)" },
         },
         "arrow-bounce": {
@@ -150,8 +149,8 @@ export default {
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "amber-gradient": "linear-gradient(135deg, hsl(38, 92%, 50%), hsl(32, 95%, 44%))",
-        "dark-gradient": "linear-gradient(180deg, hsl(0, 0%, 8%), hsl(0, 0%, 5%))",
+        "gold-gradient": "linear-gradient(135deg, hsl(43, 100%, 62%), hsl(43, 100%, 55%))",
+        "dark-gradient": "linear-gradient(180deg, hsl(222, 25%, 14%), hsl(220, 23%, 8%))",
       },
     },
   },

@@ -598,7 +598,7 @@ const CreateAlert = () => {
           <Button
             onClick={handleCreateAlert}
             disabled={!isFormValid || isSaving}
-            className="w-full bg-amber-gradient text-primary-foreground hover:opacity-90 h-12 text-base font-medium"
+            className="w-full bg-gold-gradient text-primary-foreground hover:opacity-90 h-12 text-base font-medium"
           >
             <Zap className="w-5 h-5 mr-2" />
             {isSaving ? "Creating..." : user ? "Create Alert" : "Sign in to Create Alert"}

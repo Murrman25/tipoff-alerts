@@ -61,7 +61,7 @@ export const PersonalInfoSection = ({
         <Button
           onClick={handleSave}
           disabled={!hasChanges || isUpdating}
-          className="bg-amber-gradient text-primary-foreground hover:opacity-90"
+          className="bg-gold-gradient text-primary-foreground hover:opacity-90"
         >
           {isUpdating ? (
             <>

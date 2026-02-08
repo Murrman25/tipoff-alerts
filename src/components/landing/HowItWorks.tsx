@@ -792,7 +792,7 @@ export const HowItWorks = () => {
                   )}>
                     {/* Step Badge + Title together */}
                     <div className="flex items-center gap-4">
-                      <div className="step-number w-12 h-12 rounded-full bg-amber-gradient flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg flex-shrink-0">
+                      <div className="step-number w-12 h-12 rounded-full bg-gold-gradient flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg flex-shrink-0">
                         {step.number}
                       </div>
                       <h3 className="text-2xl md:text-3xl font-bold tracking-tight">

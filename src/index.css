@@ -9,92 +9,96 @@
 
 @layer base {
   :root {
-    /* Dark charcoal backgrounds */
-    --background: 0 0% 5%;
-    --foreground: 40 20% 90%;
+    /* Fast Gold + Charcoal palette */
+    /* Background: #0F1218 */
+    --background: 220 23% 8%;
+    /* Foreground: #FFFFFF */
+    --foreground: 0 0% 100%;
 
-    /* Card backgrounds - slightly lighter than main bg */
-    --card: 0 0% 8%;
-    --card-foreground: 40 20% 90%;
+    /* Surface / Cards: #1A1F2B */
+    --card: 222 25% 14%;
+    --card-foreground: 0 0% 100%;
 
     /* Popover - same as card */
-    --popover: 0 0% 8%;
-    --popover-foreground: 40 20% 90%;
+    --popover: 222 25% 14%;
+    --popover-foreground: 0 0% 100%;
 
-    /* Primary - Amber/Gold accent */
-    --primary: 38 92% 50%;
-    --primary-foreground: 0 0% 5%;
+    /* Primary - Brand Gold: #FFC83D */
+    --primary: 43 100% 62%;
+    --primary-foreground: 220 23% 8%;
 
-    /* Secondary - Muted dark */
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 40 20% 90%;
+    /* Secondary - Surface tone */
+    --secondary: 222 25% 14%;
+    --secondary-foreground: 0 0% 100%;
 
-    /* Muted - Subtle grays */
-    --muted: 0 0% 15%;
-    --muted-foreground: 40 10% 55%;
+    /* Muted - #9CA3AF secondary text */
+    --muted: 221 21% 21%;
+    --muted-foreground: 218 11% 65%;
 
-    /* Accent - Darker amber */
-    --accent: 32 95% 44%;
-    --accent-foreground: 0 0% 5%;
+    /* Accent - Slightly darker gold for hover */
+    --accent: 43 100% 55%;
+    --accent-foreground: 220 23% 8%;
 
     /* Destructive - Red tones */
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Border and inputs */
-    --border: 40 15% 20%;
-    --input: 0 0% 12%;
-    --ring: 38 92% 50%;
+    /* Border: #2A3140 / Input: surface */
+    --border: 221 21% 21%;
+    --input: 222 25% 14%;
+    --ring: 43 100% 62%;
 
     --radius: 0.75rem;
 
     /* Sidebar */
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 40 20% 90%;
-    --sidebar-primary: 38 92% 50%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 40 20% 90%;
-    --sidebar-border: 40 15% 15%;
-    --sidebar-ring: 38 92% 50%;
+    --sidebar-background: 220 23% 7%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 43 100% 62%;
+    --sidebar-primary-foreground: 220 23% 8%;
+    --sidebar-accent: 222 25% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 221 21% 18%;
+    --sidebar-ring: 43 100% 62%;
 
     /* Custom extended tokens */
-    --amber-glow: 38 92% 50%;
-    --amber-dark: 32 95% 44%;
-    --gold-muted: 40 30% 65%;
-    --charcoal-deep: 0 0% 5%;
-    --charcoal-light: 0 0% 10%;
+    --gold-glow: 43 100% 62%;
+    --gold-dark: 43 100% 55%;
+    --gold-muted: 218 11% 65%;
+    --charcoal-deep: 220 23% 8%;
+    --charcoal-light: 222 25% 14%;
+    /* Info / LIVE badge accent: #3B82F6 */
+    --info: 217 91% 60%;
   }
 
   .dark {
     /* Dark theme is the default for TipOff */
-    --background: 0 0% 5%;
-    --foreground: 40 20% 90%;
-    --card: 0 0% 8%;
-    --card-foreground: 40 20% 90%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 40 20% 90%;
-    --primary: 38 92% 50%;
-    --primary-foreground: 0 0% 5%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 40 20% 90%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 40 10% 55%;
-    --accent: 32 95% 44%;
-    --accent-foreground: 0 0% 5%;
+    --background: 220 23% 8%;
+    --foreground: 0 0% 100%;
+    --card: 222 25% 14%;
+    --card-foreground: 0 0% 100%;
+    --popover: 222 25% 14%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 43 100% 62%;
+    --primary-foreground: 220 23% 8%;
+    --secondary: 222 25% 14%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 221 21% 21%;
+    --muted-foreground: 218 11% 65%;
+    --accent: 43 100% 55%;
+    --accent-foreground: 220 23% 8%;
     --destructive: 0 62% 30%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 40 15% 20%;
-    --input: 0 0% 12%;
-    --ring: 38 92% 50%;
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 40 20% 90%;
-    --sidebar-primary: 38 92% 50%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 40 20% 90%;
-    --sidebar-border: 40 15% 15%;
-    --sidebar-ring: 38 92% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 221 21% 21%;
+    --input: 222 25% 14%;
+    --ring: 43 100% 62%;
+    --sidebar-background: 220 23% 7%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 43 100% 62%;
+    --sidebar-primary-foreground: 220 23% 8%;
+    --sidebar-accent: 222 25% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 221 21% 18%;
+    --sidebar-ring: 43 100% 62%;
   }
 }
 
@@ -122,17 +126,17 @@
   }
 
   .border-glow {
-    @apply border border-primary/30 shadow-[0_0_15px_rgba(245,158,11,0.15)];
+    @apply border border-primary/30 shadow-[0_0_15px_rgba(255,200,61,0.15)];
   }
 
   .card-hover {
-    @apply transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_25px_rgba(245,158,11,0.2)];
+    @apply transition-all duration-300 hover:border-primary/50 hover:shadow-[0_0_25px_rgba(255,200,61,0.2)];
   }
 
   /* Live game card glow effect */
   .live-card-glow {
-    @apply border-primary/50 shadow-[0_0_30px_rgba(245,158,11,0.25)];
-    background: linear-gradient(135deg, hsl(38 92% 50% / 0.08) 0%, transparent 50%);
+    @apply border-primary/50 shadow-[0_0_30px_rgba(255,200,61,0.25)];
+    background: linear-gradient(135deg, hsl(43 100% 62% / 0.08) 0%, transparent 50%);
   }
 
   /* Starting soon subtle border */
