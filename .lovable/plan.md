@@ -1,76 +1,99 @@
 
 
-# Plan: Swap Amber to Brand Gold + Replace Purple with a Palette-Matching Legend Color
+# Plan: Remove All Remaining "Amber" References
 
-## Overview
+## Summary
 
-Two changes across the site:
+A site-wide scan found **amber** color references still present in 5 source files plus a CSS utility class name. These need to be swapped to the brand gold `primary` design tokens or appropriate equivalents.
 
-1. **Amber to Brand Gold**: Replace all Tailwind built-in `amber-400`, `amber-500`, `amber-300` classes with the design-token-based `primary` color (which is already set to #FFC83D). This ensures a single source of truth for the brand gold.
+## Changes by File
 
-2. **Purple to a new Legend color**: Replace the purple Legend tier color with one that harmonizes with the Fast Gold + Charcoal palette. The recommended replacement is a **warm silver / cool white** tone using Tailwind's `slate` palette (`slate-300` / `slate-400`), giving Legend a premium, platinum feel that contrasts well against the dark background without clashing with the gold brand color.
+### 1. `src/index.css` -- Rename the utility class
 
-### Why Slate/Silver for Legend?
+The `.text-gradient-amber` class already uses the correct `primary`/`accent` tokens under the hood, but the class name itself references "amber."
 
-| Option | Pros | Cons |
-|--------|------|------|
-| Slate/Silver (recommended) | Premium "platinum" feel; complements gold naturally; strong contrast on dark | Subtler than purple |
-| Cyan/Teal | Distinct from gold; tech feel | Introduces a third unrelated hue |
-| Rose/Red | Bold differentiation | Conflicts with destructive/error states |
-| Keep Purple | Already implemented | Clashes with the gold+charcoal palette |
+- Rename `.text-gradient-amber` to `.text-gradient-gold`
+- The internal definition (`bg-gradient-to-r from-primary to-accent`) stays the same
 
-The gold-to-platinum tier progression (Rookie = muted/neutral, Pro = Gold, Legend = Platinum/Silver) creates a natural "precious metals" hierarchy that feels cohesive within the charcoal palette.
+### 2. All files using `text-gradient-amber` (9 files) -- Update class name references
 
-## Color Mapping
+Every usage of the old class name needs to be updated to `text-gradient-gold`:
 
-### Amber to Primary (Brand Gold #FFC83D)
+| File | Location |
+|------|----------|
+| `src/components/landing/Hero.tsx` | "Get Tipped Off" heading |
+| `src/components/landing/AlertTypes.tsx` | "every edge" heading |
+| `src/components/landing/AlertsSection.tsx` | "your rules" heading |
+| `src/components/landing/GamesSection.tsx` | "every sport" heading |
+| `src/components/landing/HowItWorks.tsx` | "3 simple steps" heading |
+| `src/components/landing/Pricing.tsx` | "powerful features" heading + Pro price text |
+| `src/components/landing/FeatureComparisonTable.tsx` | "Pro" column header |
+| `src/pages/Games.tsx` | "Games" page title |
 
-| Current Class | Replacement |
-|---------------|-------------|
-| `text-amber-400` | `text-primary` |
-| `text-amber-500` | `text-primary` |
-| `text-amber-300` | `text-primary/80` |
-| `bg-amber-500/5` | `bg-primary/5` |
+### 3. `src/components/alerts/QuickAlertPanel.tsx` -- Fix Pro and Legend tier colors
+
+Current Pro tier colors still use raw amber classes. Legend still uses purple.
+
+| Current | Replacement |
+|---------|-------------|
 | `bg-amber-500/20` | `bg-primary/20` |
-| `bg-amber-500/30` | `bg-primary/30` |
+| `text-amber-400` | `text-primary` |
+| `bg-amber-500` | `bg-primary` |
+| `text-white` (Pro selected) | `text-primary-foreground` |
+| `bg-purple-500/20` | `bg-blue-500/15` |
+| `text-purple-400` | `text-blue-400` |
+| `bg-purple-500` | `bg-blue-500` |
+| `text-white` (Legend selected) | `text-white` (no change) |
+
+### 4. `src/components/alerts/AlertEventSelector.tsx` -- Fix rate limit warning color
+
+| Current | Replacement |
+|---------|-------------|
+| `text-amber-500` | `text-primary` |
+
+### 5. `src/components/landing/AlertsSection.tsx` -- Fix "Ready to create" summary card
+
+| Current | Replacement |
+|---------|-------------|
+| `bg-amber-500/5` | `bg-primary/5` |
 | `border-amber-500/30` | `border-primary/30` |
-| `rgba(245,158,11,...)` (in shadow) | `rgba(255,200,61,...)` (brand gold) |
+| `rgba(245,158,11,0.4)` (shadow) | `rgba(255,200,61,0.4)` (brand gold) |
+| `text-amber-500` | `text-primary` |
 
-### Purple to Slate/Silver (Legend Tier)
+### 6. `src/components/landing/HowItWorks.tsx` -- Fix phone mockup wallpaper blobs
 
-| Current Class | Replacement |
-|---------------|-------------|
-| `text-purple-400` | `text-slate-300` |
-| `bg-purple-500/20` | `bg-slate-400/15` |
-| `bg-purple-500/15` | `bg-slate-400/10` |
-| `bg-purple-500/30` | `bg-slate-400/25` |
-| `bg-purple-500 text-white` (badge solid) | `bg-slate-400 text-slate-900` |
-| `hover:text-purple-300` | `hover:text-slate-200` |
-| `hover:bg-purple-500/30` | `hover:bg-slate-400/25` |
+These are decorative gradients on the iOS and Android lock screen mockups. The amber tones are part of realistic phone wallpaper backgrounds, but they should be updated to use warm gold tones from the brand palette instead of Tailwind's built-in amber.
 
-## Files to Modify
+**iOS wallpaper blob (line 568):**
+| Current | Replacement |
+|---------|-------------|
+| `from-yellow-400 via-amber-500 to-orange-500` | `from-yellow-400 via-primary to-orange-500` |
 
-| File | Changes |
-|------|---------|
-| `src/types/profile.ts` | Update `TIER_CONFIG` Legend: color to `text-slate-300`, bgColor to `bg-slate-400/15`; Pro: color to `text-primary`, bgColor to `bg-primary/20` |
-| `src/components/landing/Pricing.tsx` | Swap `text-amber-400` to `text-primary`, `text-purple-400` to `text-slate-300` on plan name headers |
-| `src/components/landing/AlertTypes.tsx` | Update `TIER_DISPLAY` map and all tier-conditional classes (active tab states, upgrade button colors) |
-| `src/components/landing/FeatureComparisonTable.tsx` | Swap all `purple-400`/`purple-500` Legend indicators to `slate-300`/`slate-400` |
-| `src/components/alerts/RuleTypeCard.tsx` | Update `tierColors` map for Pro and Legend |
-| `src/components/alerts/TemplateCard.tsx` | Update `tierColors` map for Pro and Legend |
-| `src/components/alerts/AlertSummary.tsx` | Swap `amber-500` classes to `primary` tokens, update box-shadow rgba to brand gold |
-| `src/components/alerts/AlertNotificationChannels.tsx` | Swap `amber-500` warning text to `text-primary`, swap `purple-500` badge classes to `slate-400` equivalents |
-| `src/components/profile/SubscriptionSection.tsx` | Swap `text-amber-400` Crown icon to `text-primary` |
-| `src/pages/MyAlerts.tsx` | Swap `purple-500/20 text-purple-400` SMS channel badge to `slate-400` equivalents |
-| `src/components/landing/HowItWorks.tsx` | Remove the purple gradient blob or replace with a slate/silver-toned one |
+**Android wallpaper background and blobs (lines 646-650):**
+| Current | Replacement |
+|---------|-------------|
+| `via-amber-100/70` | `via-yellow-100/70` |
+| `from-amber-200/80` | `from-yellow-200/80` |
+| `to-amber-200/50` | `to-yellow-200/50` |
+| `to-amber-100/40` | `to-yellow-100/40` |
 
-## Tier Color Summary (After Changes)
+These are subtle shifts -- replacing amber pastels with yellow equivalents removes the "amber" dependency while keeping the warm wallpaper aesthetic.
 
-```text
-Tier        Text Color       Background         Progression
------------ ---------------- ------------------ -----------
-Rookie      muted-foreground bg-secondary       Base
-Pro         text-primary     bg-primary/20      Gold
-Legend      text-slate-300   bg-slate-400/15    Platinum
-```
+## Files Modified (Total: 12)
+
+1. `src/index.css`
+2. `src/components/landing/Hero.tsx`
+3. `src/components/landing/AlertTypes.tsx`
+4. `src/components/landing/AlertsSection.tsx`
+5. `src/components/landing/GamesSection.tsx`
+6. `src/components/landing/HowItWorks.tsx`
+7. `src/components/landing/Pricing.tsx`
+8. `src/components/landing/FeatureComparisonTable.tsx`
+9. `src/pages/Games.tsx`
+10. `src/components/alerts/QuickAlertPanel.tsx`
+11. `src/components/alerts/AlertEventSelector.tsx`
+
+## After This Change
+
+Zero references to Tailwind's built-in `amber` palette will remain anywhere in the source code. All brand gold uses will go through the `primary` design token (#FFC83D), and all Legend tier references will use Cool Blue (#3B82F6).
 
