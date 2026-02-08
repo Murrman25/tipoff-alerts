@@ -44,7 +44,7 @@ export const SubscriptionSection = ({ tier }: SubscriptionSectionProps) => {
         </div>
 
         {config.canUpgrade && nextTier && (
-          <Button className="w-full bg-amber-gradient text-primary-foreground hover:opacity-90">
+          <Button className="w-full bg-gold-gradient text-primary-foreground hover:opacity-90">
             <Sparkles className="w-4 h-4 mr-2" />
             Upgrade to {TIER_CONFIG[nextTier].name}
           </Button>

@@ -148,7 +148,7 @@ export const Navbar = () => {
                   </Button>
                 </Link>
                 <Link to="/auth">
-                  <Button size="sm" className="bg-amber-gradient text-primary-foreground hover:opacity-90">
+                  <Button size="sm" className="bg-gold-gradient text-primary-foreground hover:opacity-90">
                     Sign up
                   </Button>
                 </Link>
@@ -236,7 +236,7 @@ export const Navbar = () => {
                       </Button>
                     </Link>
                     <Link to="/auth" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
-                      <Button size="sm" className="w-full bg-amber-gradient text-primary-foreground hover:opacity-90">
+                      <Button size="sm" className="w-full bg-gold-gradient text-primary-foreground hover:opacity-90">
                         Sign up
                       </Button>
                     </Link>

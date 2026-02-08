@@ -35,7 +35,7 @@ export const Hero = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
-            <Button size="lg" className="bg-amber-gradient text-primary-foreground hover:opacity-90 transition-opacity px-8 py-6 text-lg font-semibold">
+            <Button size="lg" className="bg-gold-gradient text-primary-foreground hover:opacity-90 transition-opacity px-8 py-6 text-lg font-semibold">
               Start for free
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>

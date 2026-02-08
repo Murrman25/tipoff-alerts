@@ -113,7 +113,7 @@ export const EmailAuthForm = ({ mode, onSuccess }: EmailAuthFormProps) => {
 
       <Button
         type="submit"
-        className="w-full h-12 text-base bg-amber-gradient text-primary-foreground hover:opacity-90"
+        className="w-full h-12 text-base bg-gold-gradient text-primary-foreground hover:opacity-90"
         disabled={isLoading}
       >
         {isLoading ? (

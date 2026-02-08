@@ -148,7 +148,7 @@ export const Pricing = () => {
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-gradient text-primary-foreground text-xs font-semibold">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gold-gradient text-primary-foreground text-xs font-semibold">
                     <Star className="w-3 h-3" />
                     {plan.badge}
                   </span>
@@ -204,7 +204,7 @@ export const Pricing = () => {
                 className={cn(
                   "w-full mt-auto",
                   plan.highlighted
-                    ? "bg-amber-gradient text-primary-foreground hover:opacity-90"
+                    ? "bg-gold-gradient text-primary-foreground hover:opacity-90"
                     : "border-primary/50 text-primary hover:bg-primary/10 hover:border-primary"
                 )}
               >

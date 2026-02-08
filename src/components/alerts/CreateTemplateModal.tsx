@@ -225,7 +225,7 @@ export const CreateTemplateModal = ({
         <Button
           onClick={handleSave}
           disabled={!isValid || isSaving}
-          className="flex-1 bg-amber-gradient text-primary-foreground hover:opacity-90"
+          className="flex-1 bg-gold-gradient text-primary-foreground hover:opacity-90"
         >
           {isSaving ? (
             <>

@@ -333,7 +333,7 @@ const MyAlerts = () => {
               </h1>
             </div>
             <Link to="/alerts/create">
-              <Button size="sm" className="bg-amber-gradient text-primary-foreground hover:opacity-90">
+              <Button size="sm" className="bg-gold-gradient text-primary-foreground hover:opacity-90">
                 <Plus className="w-4 h-4 mr-1" />
                 New Alert
               </Button>
@@ -364,7 +364,7 @@ const MyAlerts = () => {
                   <Bell className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
                   <p className="text-muted-foreground mb-4">No active alerts</p>
                   <Link to="/alerts/create">
-                    <Button className="bg-amber-gradient text-primary-foreground hover:opacity-90">
+                    <Button className="bg-gold-gradient text-primary-foreground hover:opacity-90">
                       <Zap className="w-4 h-4 mr-2" />
                       Create Alert
                     </Button>
@@ -403,7 +403,7 @@ const MyAlerts = () => {
                   </p>
                   <Button 
                     onClick={handleOpenNewTemplate}
-                    className="bg-amber-gradient text-primary-foreground hover:opacity-90"
+                    className="bg-gold-gradient text-primary-foreground hover:opacity-90"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create Template
