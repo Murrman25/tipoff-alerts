@@ -440,7 +440,7 @@ const AlertBuilderPreview = () => {
         className={cn(
           "p-3 rounded-lg border transition-all duration-500",
           step >= 4 
-            ? "bg-amber-500/5 border-amber-500/30 shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)]" 
+            ? "bg-primary/5 border-primary/30 shadow-[0_0_20px_-5px_rgba(255,200,61,0.4)]" 
             : "bg-secondary/20 border-border opacity-40"
         )}
       >
@@ -455,7 +455,7 @@ const AlertBuilderPreview = () => {
           />
           <p className={cn(
             "text-[10px] uppercase tracking-wide font-medium transition-colors duration-300",
-            step >= 4 ? "text-amber-500" : "text-muted-foreground"
+            step >= 4 ? "text-primary" : "text-muted-foreground"
           )}>
             Ready to create
           </p>

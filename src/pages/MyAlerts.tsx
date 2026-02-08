@@ -121,7 +121,7 @@ const MyAlerts = () => {
     const styles: Record<string, string> = {
       email: "bg-blue-500/20 text-blue-400 border-blue-500/30",
       push: "bg-green-500/20 text-green-400 border-green-500/30",
-      sms: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+      sms: "bg-slate-400/15 text-slate-300 border-slate-400/30",
     };
     return styles[channel] || "bg-muted";
   };
