@@ -1,194 +1,93 @@
 
 
-# Plan: User-Created Alert Templates
+# Plan: Update Alert Type Examples to Match Actual Functionality
 
-## Overview
-This feature enables users to create, manage, and reuse custom alert templates from the My Alerts page. These templates will replace the hardcoded quick alerts on the Create Alert page, providing a personalized alert-building experience.
+## Problem
 
-## Feature Summary
+The current example alerts in the Alert Types section on the landing page contain inaccurate copy that doesn't match how the alert system actually works:
 
-| Capability | Description |
-|------------|-------------|
-| Create Templates | Define reusable alert configurations with custom names |
-| Tier Badges | Visual indicators showing the alert type's tier (Rookie/Pro/Legend) |
-| Template Management | View, edit, and delete templates from My Alerts |
-| Quick Apply | Use templates on Create Alert page for one-tap setup |
+- Several examples reference "track all games" or "any" game patterns (e.g., "Track when any underdog hits +300", "Track all NBA games with totals over 230", "Track any blowout exceeding 20 point lead") -- but alerts are **game-specific**, not league-wide.
+- Some examples reference features that don't exist (e.g., "any sudden line reversal" is not a configurable condition).
+- Examples don't consistently reflect the actual fields available for each alert type (team selector, threshold, direction, surge window, run window, game period).
 
-## User Flow
+## Proposed Changes
 
-```text
-MY ALERTS PAGE                          CREATE ALERT PAGE
-+---------------------------+           +---------------------------+
-| [Active] [Inactive] [Templates]       | Quick Alerts              |
-|                           |           | +-------+ +-------+       |
-| +-- Template Card ------+ |   --->    | | My    | | Spread|       |
-| | "Fav Team ML"         | |           | | Fav   | | Watch |       |
-| | [ML] [Rookie]  [Edit] | |           | +-------+ +-------+       |
-| +------------------------+ |           +---------------------------+
-|                           |
-| [+ Create Template]       |
-+---------------------------+
-```
+### Single file edit: `src/components/landing/AlertTypes.tsx`
 
-## Database Design
+Update the `examples` array for each of the six alert types in the `ALERT_TYPES` constant. All examples will reference a specific game/team and use language that maps directly to the alert builder fields.
 
-### New Table: `alert_templates`
+### Updated Examples by Alert Type
 
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| id | uuid | No | gen_random_uuid() | Primary key |
-| user_id | uuid | No | - | Foreign key to auth.users |
-| name | text | No | - | User-defined template name |
-| rule_type | text | No | - | Alert type (ml_threshold, spread_threshold, etc.) |
-| market_type | text | No | - | Market type (ml, sp, ou) |
-| threshold | numeric | Yes | null | Preset threshold value |
-| direction | text | Yes | null | Direction (at_or_above, at_or_below, exactly) |
-| surge_window_minutes | integer | Yes | null | For timed_surge alerts |
-| run_window_minutes | integer | Yes | null | For momentum_run alerts |
-| game_period | text | Yes | null | Game period (full_game, 1h, etc.) |
-| created_at | timestamptz | No | now() | Creation timestamp |
-| updated_at | timestamptz | No | now() | Last update timestamp |
+**1. Moneyline (ml_threshold)**
+- Fields: Team selector, threshold (odds), direction, time window
+- Current issues: "Track when any underdog hits +300" implies all-game tracking
 
-### RLS Policies
-- Users can only CRUD their own templates
-- Same pattern as existing `alerts` table policies
+| # | New Example |
+|---|-------------|
+| 1 | "Alert me when the Bulls ML reaches +150 or above" |
+| 2 | "Notify me if the Lakers ML drops to -110 or below" |
+| 3 | "Watch the Celtics pregame ML for exactly +200" |
 
-## Technical Implementation
+**2. Spread (spread_threshold)**
+- Fields: Team selector, threshold (points), direction, time window
+- Current issues: "Track spread movement on all primetime games" implies multi-game tracking
 
-### Phase 1: Database Setup
+| # | New Example |
+|---|-------------|
+| 1 | "Alert me when the Chiefs spread reaches +3.5 or above" |
+| 2 | "Notify me if the Celtics spread moves to -7 or below" |
+| 3 | "Watch the Cowboys live spread for +6 or better" |
 
-**File: New Migration**
+**3. Over/Under (ou_threshold)**
+- Fields: Threshold (total), direction, time window (no team selector)
+- Current issues: "Track all NBA games with totals over 230" implies multi-game tracking
 
-Create the `alert_templates` table with:
-- All alert condition fields (excluding event-specific fields like `eventID` and `teamSide`)
-- RLS policies for user isolation
-- Trigger for `updated_at` auto-update
+| # | New Example |
+|---|-------------|
+| 1 | "Alert me when the Bears vs. Packers total drops to 42.5 or below" |
+| 2 | "Notify me if the Lakers vs. Nuggets total reaches 224 or above" |
+| 3 | "Watch the Rangers vs. Bruins pregame total for exactly 5.5" |
 
-### Phase 2: Types and Hooks
+**4. Score Margin (score_margin)**
+- Fields: Team selector, threshold (points), direction, game period (live only)
+- Current issues: "Track any blowout exceeding 20 point lead" implies multi-game tracking
 
-**File: `src/types/alerts.ts`**
-- Add `AlertTemplate` interface
-- Keep existing `QuickAlertTemplate` for backward compatibility during transition
+| # | New Example |
+|---|-------------|
+| 1 | "Alert me when the Warriors lead by 10 or more in the 2nd half" |
+| 2 | "Notify me if the Bills are within 3 points in the 4th quarter" |
+| 3 | "Watch the Nuggets full-game margin for a 15-point lead or more" |
 
-**File: `src/hooks/useAlertTemplates.ts` (new)**
-- `useAlertTemplates()` - Fetch user's templates
-- `useCreateTemplate()` - Create new template
-- `useUpdateTemplate()` - Update existing template  
-- `useDeleteTemplate()` - Delete template
+**5. Timed Line Surge (timed_surge)**
+- Fields: Market toggle (ML/SP/OU), team selector, threshold, surge window (minutes), game period (live only)
+- Current issues: "Notify on any sudden line reversal" is vague and not a real condition
 
-### Phase 3: My Alerts Page Updates
+| # | New Example |
+|---|-------------|
+| 1 | "Alert me if the Vikings ML surges within a 5-minute window" |
+| 2 | "Notify me on a spread surge for the Heat within 15 minutes" |
+| 3 | "Watch for a rapid O/U shift on Rams vs. 49ers in 30 minutes" |
 
-**File: `src/pages/MyAlerts.tsx`**
+**6. Momentum Run (momentum_run)**
+- Fields: Team selector, threshold (run size in points), run window (minutes), game period (live only)
+- Current issues: "Track momentum shifts in close games" implies multi-game tracking
 
-Add a third tab "Templates" alongside Active/Inactive:
+| # | New Example |
+|---|-------------|
+| 1 | "Alert me when the Celtics go on a 10-point run within 5 minutes" |
+| 2 | "Notify me if the Lakers score 8 unanswered in a 2-minute window" |
+| 3 | "Watch for a 12-point Nuggets run in the 3rd quarter" |
 
-```text
-[ Active (3) ] [ Inactive (1) ] [ Templates (2) ]
-```
+## Design Principles Applied
 
-Template tab contents:
-- List of user templates in card format
-- Each card shows: Name, Rule Type badge, Tier badge, Edit/Delete actions
-- Empty state with "Create Template" CTA
-- Floating "+" button for quick creation on mobile
+- **Game-specific only**: Every example names a specific team or matchup -- no "all games" or "any team" language
+- **Field-accurate**: Examples reference only the fields available for that alert type (e.g., Score Margin examples mention game period since it's a live-only alert with period selection)
+- **Direction clarity**: Examples use natural language that maps to "at or above", "at or below", or "exactly at"
+- **Realistic values**: Threshold values match what users would actually set (ML odds, spread points, totals, margins, run sizes)
 
-### Phase 4: Template Creation Modal
+## Technical Details
 
-**File: `src/components/alerts/CreateTemplateModal.tsx` (new)**
-
-A modal/sheet for creating/editing templates containing:
-- Template name input (required, max 30 chars)
-- Alert type selector (reuses `AlertRuleTypeSelector`)
-- Dynamic fields based on alert type (reuses existing field components)
-- Save/Cancel actions
-
-Mobile design considerations:
-- Uses Sheet (drawer) on mobile, Dialog on desktop
-- Full-height on mobile for comfortable touch targets
-- Sticky save button at bottom
-
-### Phase 5: Template Card Component
-
-**File: `src/components/alerts/TemplateCard.tsx` (new)**
-
-Card layout:
-```text
-+----------------------------------------+
-| [Icon] Template Name                   |
-| [ML] [Rookie]  [Threshold: +150]       |
-|                          [Edit] [🗑️]  |
-+----------------------------------------+
-```
-
-Features:
-- Alert type icon (from `RuleTypeCard` iconMap)
-- Tier badge with color coding (Rookie/Pro/Legend)
-- Compact parameter summary (threshold, direction, etc.)
-- Edit button opens modal in edit mode
-- Delete with confirmation
-
-### Phase 6: Quick Alert Panel Updates
-
-**File: `src/components/alerts/QuickAlertPanel.tsx`**
-
-Transform to show user templates instead of hardcoded presets:
-- Fetch templates from `useAlertTemplates` hook
-- Show "Create your first template" if empty
-- Each template button shows: Icon + Name + Tier badge
-- On select: Apply template defaults to alert form
-
-Fallback behavior:
-- If user is not logged in, show static templates (current behavior)
-- If logged in but no templates, show prompt to create templates
-
-### Phase 7: Supabase Types Regeneration
-
-Update `src/integrations/supabase/types.ts` to include the new `alert_templates` table.
-
-## File Changes Summary
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `supabase/migrations/[timestamp].sql` | Create | Database table and RLS |
-| `src/integrations/supabase/types.ts` | Update | Add TypeScript types |
-| `src/types/alerts.ts` | Update | Add AlertTemplate interface |
-| `src/hooks/useAlertTemplates.ts` | Create | Data fetching hooks |
-| `src/pages/MyAlerts.tsx` | Update | Add Templates tab |
-| `src/components/alerts/TemplateCard.tsx` | Create | Template display card |
-| `src/components/alerts/CreateTemplateModal.tsx` | Create | Create/Edit modal |
-| `src/components/alerts/QuickAlertPanel.tsx` | Update | Use user templates |
-| `src/components/alerts/index.ts` | Update | Export new components |
-
-## Mobile Design Considerations
-
-1. **Touch Targets**: All interactive elements minimum 44x44px
-2. **Template Cards**: Full-width on mobile, card grid on desktop
-3. **Modal as Sheet**: Drawer slides up from bottom on mobile
-4. **Horizontal Scroll**: Template pills in Quick Alert Panel scroll horizontally
-5. **Sticky Actions**: Save/Cancel buttons stick to bottom of modal
-
-## Visual Design
-
-### Tier Badge Colors (matches existing)
-- **Rookie**: `bg-secondary text-muted-foreground`
-- **Pro**: `bg-amber-500/20 text-amber-400`
-- **Legend**: `bg-purple-500/20 text-purple-400`
-
-### Template Card States
-- Default: `bg-card border-border`
-- Hover: `border-primary/50`
-- Selected (in Quick Alerts): `border-primary bg-primary/10`
-
-## Edge Cases
-
-1. **No Templates**: Show encouraging empty state with "Create your first template"
-2. **Template Limit**: Consider 10 template limit for Rookie, 25 for Pro, unlimited for Legend
-3. **Deleted Alert Type Access**: If user downgrades tier, hide locked template types
-4. **Name Conflicts**: Allow duplicate names (user's choice)
-
-## Security Considerations
-
-- RLS policies ensure users can only access their own templates
-- Template data is validated server-side before insert
-- No sensitive data in templates (no event IDs or team selections)
+- Only one file is modified: `src/components/landing/AlertTypes.tsx`
+- Changes are limited to the `examples` arrays within the `ALERT_TYPES` constant (lines 28-32, 42-46, 56-60, 70-74, 84-88, 98-102)
+- No structural, styling, or logic changes required
 
