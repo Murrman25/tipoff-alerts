@@ -150,11 +150,11 @@ export const CreateTemplateModal = ({
         <p className="text-xs text-muted-foreground">{name.length}/30 characters</p>
       </div>
 
-      {/* Alert Type */}
+      {/* Alert Type - unlock all types during build-out */}
       <AlertRuleTypeSelector
         value={ruleType}
         onChange={setRuleType}
-        userTier={userTier}
+        userTier="legend"
       />
 
       {/* Market Type (for timed_surge) */}
