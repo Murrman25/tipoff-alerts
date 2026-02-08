@@ -89,7 +89,7 @@ export const Pricing = () => {
         >
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Simple pricing,{" "}
-            <span className="text-gradient-amber">powerful features</span>
+            <span className="text-gradient-gold">powerful features</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-8">
             Start free and upgrade as you grow. No hidden fees.
@@ -167,7 +167,7 @@ export const Pricing = () => {
                     key={isYearly ? "yearly" : "monthly"}
                     className={cn(
                       "text-4xl font-bold animate-fade-in",
-                      plan.highlighted && "text-gradient-amber"
+                      plan.highlighted && "text-gradient-gold"
                     )}
                   >
                     {formatPrice(plan)}

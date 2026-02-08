@@ -565,7 +565,7 @@ const NotificationsPreview = () => {
                   {/* iOS 16 style wallpaper - colorful gradient with organic shapes */}
                   <div className="absolute inset-0 bg-gradient-to-br from-teal-600 via-blue-800 to-indigo-900">
                     {/* Organic blob shapes like iOS wallpaper */}
-                    <div className="absolute top-[30%] right-[-10%] w-[200px] h-[200px] rounded-full bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 opacity-90 blur-sm" />
+                    <div className="absolute top-[30%] right-[-10%] w-[200px] h-[200px] rounded-full bg-gradient-to-br from-yellow-400 via-primary to-orange-500 opacity-90 blur-sm" />
                     <div className="absolute top-[45%] left-[-5%] w-[120px] h-[120px] rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 opacity-80 blur-sm" />
                     <div className="absolute bottom-[15%] right-[10%] w-[80px] h-[80px] rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 opacity-70 blur-sm" />
                   </div>
@@ -643,11 +643,11 @@ const NotificationsPreview = () => {
                 {/* Screen with Android wallpaper gradient */}
                 <div className="absolute inset-[2px] rounded-[2.6rem] overflow-hidden">
                   {/* Android style warm gradient wallpaper - muted tones */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-stone-200 via-amber-100/70 to-orange-100/50">
-                    {/* Organic blob shapes - softer colors */}
-                    <div className="absolute top-[20%] left-[50%] w-[250px] h-[250px] rounded-full bg-gradient-to-br from-amber-200/80 via-yellow-200/60 to-orange-200/50 opacity-80 blur-sm" />
-                    <div className="absolute top-[10%] right-[-20%] w-[180px] h-[180px] rounded-full bg-gradient-to-tr from-orange-200/60 to-amber-200/50 opacity-60 blur-md" />
-                    <div className="absolute bottom-[30%] left-[-10%] w-[150px] h-[150px] rounded-full bg-gradient-to-br from-yellow-100/50 to-amber-100/40 opacity-70 blur-sm" />
+                   <div className="absolute inset-0 bg-gradient-to-br from-stone-200 via-yellow-100/70 to-orange-100/50">
+                     {/* Organic blob shapes - softer colors */}
+                     <div className="absolute top-[20%] left-[50%] w-[250px] h-[250px] rounded-full bg-gradient-to-br from-yellow-200/80 via-yellow-200/60 to-orange-200/50 opacity-80 blur-sm" />
+                     <div className="absolute top-[10%] right-[-20%] w-[180px] h-[180px] rounded-full bg-gradient-to-tr from-orange-200/60 to-yellow-200/50 opacity-60 blur-md" />
+                     <div className="absolute bottom-[30%] left-[-10%] w-[150px] h-[150px] rounded-full bg-gradient-to-br from-yellow-100/50 to-yellow-100/40 opacity-70 blur-sm" />
                   </div>
                   
                   {/* Lock Screen Content */}
@@ -762,7 +762,7 @@ export const HowItWorks = () => {
           </span>
           <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
             From odds to alerts in{" "}
-            <span className="text-gradient-amber">3 simple steps</span>
+            <span className="text-gradient-gold">3 simple steps</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Browse live odds, set your target conditions, and let TipOff HQ handle the rest. We monitor the market play-by-play and notify you the moment your criteria are met.

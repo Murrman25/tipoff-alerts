@@ -238,7 +238,7 @@
                      Rookie
                    </TableHead>
                   <TableHead className="text-center font-semibold w-[120px] py-4">
-                    <span className="text-gradient-amber font-bold">Pro</span>
+                    <span className="text-gradient-gold font-bold">Pro</span>
                    </TableHead>
                   <TableHead className="text-center font-semibold w-[120px] py-4">
                     <span className="text-blue-400 font-bold">Legend</span>

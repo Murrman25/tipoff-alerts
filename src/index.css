@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* TipOff Design System - Dark Amber/Gold Aesthetic
-   Inspired by Attio: dark charcoal backgrounds with warm amber accents
+/* TipOff Design System - Fast Gold + Charcoal Aesthetic
+   Dark charcoal backgrounds with warm gold accents
    All colors MUST be HSL.
 */
 
@@ -121,7 +121,7 @@
 
 /* Custom utility classes */
 @layer utilities {
-  .text-gradient-amber {
+  .text-gradient-gold {
     @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
 
