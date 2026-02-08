@@ -723,19 +723,19 @@ const steps = [
   {
     number: 1,
     title: "Browse Games",
-    description: "Real-time odds across NFL, NBA, NHL, MLB and more. Live scores, spreads, and moneylines updated every second.",
+    description: "Find the exact game and market you want to track. TipOff HQ shows live odds and game state so you can build alerts with full context.",
     preview: <GamesDashboardPreview />,
   },
   {
     number: 2,
     title: "Create Alerts",
-    description: "Build custom conditions with IF/THEN logic. Set thresholds, combine rules, and choose exactly when you want to be notified.",
+    description: "Choose your market, set your target line, and customize the conditions. Combine rules or keep it simple — you're always in control.",
     preview: <AlertBuilderPreview />,
   },
   {
     number: 3,
     title: "Get Notified",
-    description: "Instant alerts the moment your criteria are met. Never miss a move with push, email, and SMS delivery.",
+    description: "The moment your alert conditions are met, TipOff HQ sends an instant notification. No refreshing, no guessing — just the odds you asked for.",
     preview: <NotificationsPreview />,
   },
 ];
@@ -765,7 +765,7 @@ export const HowItWorks = () => {
             <span className="text-gradient-amber">3 simple steps</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            TipOff connects you to real-time sports data and delivers personalized alerts when your conditions are met.
+            Browse live odds, set your target conditions, and let TipOff HQ handle the rest. We monitor the market play-by-play and notify you the moment your criteria are met.
           </p>
         </div>
 
