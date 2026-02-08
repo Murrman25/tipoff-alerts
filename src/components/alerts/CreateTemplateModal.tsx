@@ -167,19 +167,23 @@ export const CreateTemplateModal = ({
         </div>
       )}
 
-      {/* Threshold */}
-      {fieldConfig.showThreshold && (
-        <AlertThresholdInput
-          value={threshold}
-          onChange={setThreshold}
-          ruleType={ruleType}
-          marketType={marketType}
-        />
-      )}
-
-      {/* Direction */}
-      {fieldConfig.showDirection && (
-        <AlertDirectionSelector value={direction} onChange={setDirection} ruleType={ruleType} />
+      {/* Threshold & Direction – side-by-side when both visible */}
+      {(fieldConfig.showThreshold || fieldConfig.showDirection) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {fieldConfig.showThreshold && (
+            <AlertThresholdInput
+              value={threshold}
+              onChange={setThreshold}
+              ruleType={ruleType}
+              marketType={marketType}
+              label={fieldConfig.thresholdLabel}
+              placeholder={fieldConfig.thresholdPlaceholder}
+            />
+          )}
+          {fieldConfig.showDirection && (
+            <AlertDirectionSelector value={direction} onChange={setDirection} ruleType={ruleType} />
+          )}
+        </div>
       )}
 
       {/* Time Window */}
