@@ -138,9 +138,9 @@ export const Pricing = () => {
               key={index}
               className={cn(
                 "relative p-8 rounded-xl border transition-all duration-300 animate-on-scroll flex flex-col",
-                plan.highlighted
-                  ? "bg-card border-primary/50 shadow-[0_0_30px_rgba(255,200,61,0.15)] scale-105"
-                  : "bg-card border-border hover:border-primary/30",
+                plan.name === "Pro" && "bg-card border-primary/50 shadow-[0_0_30px_rgba(255,200,61,0.15)] scale-105",
+                plan.name === "Legend" && "bg-card border-blue-400/50 shadow-[0_0_30px_rgba(96,165,250,0.15)] hover:border-blue-400/70",
+                plan.name === "Rookie" && "bg-card border-border hover:border-muted-foreground/30",
                 gridVisible && "is-visible",
                 `stagger-${index + 1}`
               )}
@@ -148,7 +148,11 @@ export const Pricing = () => {
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gold-gradient text-primary-foreground text-xs font-semibold">
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold",
+                    plan.name === "Pro" && "bg-gold-gradient text-primary-foreground",
+                    plan.name === "Legend" && "bg-blue-500 text-white"
+                  )}>
                     <Star className="w-3 h-3" />
                     {plan.badge}
                   </span>
@@ -189,24 +193,23 @@ export const Pricing = () => {
                   <li key={featureIndex} className="flex items-start gap-3">
                     <Check className={cn(
                       "w-5 h-5 shrink-0 mt-0.5",
-                      plan.name === "Legend" && featureIndex === 0 ? "text-primary" : "text-primary"
+                      plan.name === "Rookie" && "text-muted-foreground",
+                      plan.name === "Pro" && "text-primary",
+                      plan.name === "Legend" && "text-blue-400"
                     )} />
-                    <span className={cn(
-                      "text-sm",
-                      plan.name === "Legend" && featureIndex === 0 && "text-primary font-medium"
-                    )}>{feature}</span>
+                    <span className="text-sm">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               {/* CTA */}
               <Button
-                variant={plan.highlighted ? "default" : "outline"}
+                variant={plan.name === "Pro" ? "default" : "outline"}
                 className={cn(
                   "w-full mt-auto",
-                  plan.highlighted
-                    ? "bg-gold-gradient text-primary-foreground hover:opacity-90"
-                    : "border-primary/50 text-primary hover:bg-primary/10 hover:border-primary"
+                  plan.name === "Pro" && "bg-gold-gradient text-primary-foreground hover:opacity-90",
+                  plan.name === "Legend" && "border-blue-400/50 text-blue-400 hover:bg-blue-400/10 hover:border-blue-400",
+                  plan.name === "Rookie" && "border-muted-foreground/50 text-muted-foreground hover:bg-muted/30 hover:border-muted-foreground"
                 )}
               >
                 {plan.cta}
