@@ -107,7 +107,7 @@ const ALERT_TYPES: AlertTypeInfo[] = [
 const TIER_DISPLAY: Record<SubscriptionTier, { label: string; color: string; bgColor: string }> = {
   rookie: { label: "Rookie", color: "text-muted-foreground", bgColor: "bg-secondary" },
   pro: { label: "Pro", color: "text-primary", bgColor: "bg-primary/20" },
-  legend: { label: "Legend", color: "text-slate-300", bgColor: "bg-slate-400/15" },
+  legend: { label: "Legend", color: "text-blue-400", bgColor: "bg-blue-500/15" },
 };
 
 const TIER_LIMITS: Record<SubscriptionTier, { alerts: string; types: string[] }> = {
@@ -183,7 +183,7 @@ export const AlertTypes = () => {
                     className={cn(
                       "px-6 py-2 text-sm font-medium gap-2 data-[state=active]:shadow-md transition-all",
                       tier === "pro" && "data-[state=active]:bg-primary/20 data-[state=active]:text-primary",
-                      tier === "legend" && "data-[state=active]:bg-slate-400/15 data-[state=active]:text-slate-300",
+                      tier === "legend" && "data-[state=active]:bg-blue-500/15 data-[state=active]:text-blue-400",
                       tier === "rookie" && "data-[state=active]:bg-background data-[state=active]:text-foreground",
                     )}
                   >
@@ -328,7 +328,7 @@ export const AlertTypes = () => {
                     "px-4 py-2 text-sm font-medium transition-all duration-200",
                     selectedTier === "rookie"
                       ? "bg-primary/20 text-primary hover:bg-primary/30 hover:text-primary"
-                      : "bg-slate-400/15 text-slate-300 hover:bg-slate-400/25 hover:text-slate-200",
+                      : "bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 hover:text-blue-300",
                   )}
                 >
                   {selectedTier === "rookie" ? "View Pro Plan" : "View Legend Plan"}

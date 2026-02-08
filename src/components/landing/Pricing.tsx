@@ -160,7 +160,7 @@ export const Pricing = () => {
                 <h3 className={cn(
                   "text-xl font-bold mb-2",
                   plan.name === "Pro" && "text-primary",
-                  plan.name === "Legend" && "text-slate-300"
+                  plan.name === "Legend" && "text-blue-400"
                 )}>{plan.name}</h3>
                 <div className="flex items-baseline gap-1">
                   <span 

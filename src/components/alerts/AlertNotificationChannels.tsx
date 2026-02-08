@@ -79,8 +79,8 @@ export const AlertNotificationChannels = ({
                       <span className={cn(
                         "text-[10px] px-1.5 py-0.5 rounded font-medium ml-0.5",
                         isSelected 
-                          ? "bg-slate-400 text-slate-900" 
-                          : "bg-slate-400/15 text-slate-300"
+                          ? "bg-blue-500 text-white" 
+                          : "bg-blue-500/15 text-blue-400"
                       )}>
                         {channel.badge}
                       </span>
