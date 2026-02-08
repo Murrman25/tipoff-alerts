@@ -1,99 +1,48 @@
 
 
-# Plan: Remove All Remaining "Amber" References
+# Plan: Align Create Template Modal Fields with Create Alert Flow
 
-## Summary
+## What's Changing
 
-A site-wide scan found **amber** color references still present in 5 source files plus a CSS utility class name. These need to be swapped to the brand gold `primary` design tokens or appropriate equivalents.
+The Create Template modal currently shows the right fields for each alert type, but is missing some of the polish and layout details that the Create Alert flow has. This plan brings them into exact parity.
 
-## Changes by File
+## Changes (Single File)
 
-### 1. `src/index.css` -- Rename the utility class
+**File: `src/components/alerts/CreateTemplateModal.tsx`**
 
-The `.text-gradient-amber` class already uses the correct `primary`/`accent` tokens under the hood, but the class name itself references "amber."
+### 1. Pass contextual label and placeholder to threshold input
 
-- Rename `.text-gradient-amber` to `.text-gradient-gold`
-- The internal definition (`bg-gradient-to-r from-primary to-accent`) stays the same
+The Create Alert page passes `fieldConfig.thresholdLabel` and `fieldConfig.thresholdPlaceholder` to `AlertThresholdInput`, which gives each alert type a descriptive label (e.g., "Target Odds" for Moneyline, "Target Spread" for Spread, "Point Margin" for Score Margin). The template modal currently omits these, so the input just shows a generic "Threshold" label.
 
-### 2. All files using `text-gradient-amber` (9 files) -- Update class name references
+- Add `label={fieldConfig.thresholdLabel}` and `placeholder={fieldConfig.thresholdPlaceholder}` to the `AlertThresholdInput` component.
 
-Every usage of the old class name needs to be updated to `text-gradient-gold`:
+### 2. Side-by-side layout for Threshold and Direction
 
-| File | Location |
-|------|----------|
-| `src/components/landing/Hero.tsx` | "Get Tipped Off" heading |
-| `src/components/landing/AlertTypes.tsx` | "every edge" heading |
-| `src/components/landing/AlertsSection.tsx` | "your rules" heading |
-| `src/components/landing/GamesSection.tsx` | "every sport" heading |
-| `src/components/landing/HowItWorks.tsx` | "3 simple steps" heading |
-| `src/components/landing/Pricing.tsx` | "powerful features" heading + Pro price text |
-| `src/components/landing/FeatureComparisonTable.tsx` | "Pro" column header |
-| `src/pages/Games.tsx` | "Games" page title |
+The Create Alert page places the threshold and direction fields in a responsive two-column grid (`grid grid-cols-1 sm:grid-cols-2 gap-4`) when both are visible. The template modal currently stacks them vertically as separate blocks.
 
-### 3. `src/components/alerts/QuickAlertPanel.tsx` -- Fix Pro and Legend tier colors
+- Wrap the threshold and direction fields in a shared grid container that mirrors the Create Alert layout, so they sit side-by-side on wider screens.
 
-Current Pro tier colors still use raw amber classes. Legend still uses purple.
+### 3. Add Market label above the Market Toggle
 
-| Current | Replacement |
-|---------|-------------|
-| `bg-amber-500/20` | `bg-primary/20` |
-| `text-amber-400` | `text-primary` |
-| `bg-amber-500` | `bg-primary` |
-| `text-white` (Pro selected) | `text-primary-foreground` |
-| `bg-purple-500/20` | `bg-blue-500/15` |
-| `text-purple-400` | `text-blue-400` |
-| `bg-purple-500` | `bg-blue-500` |
-| `text-white` (Legend selected) | `text-white` (no change) |
+The Create Alert page wraps the market selector in a section with a label. The template modal already has this, so no change needed here -- just confirming parity.
 
-### 4. `src/components/alerts/AlertEventSelector.tsx` -- Fix rate limit warning color
+## Summary of Field Visibility Per Alert Type (no logic changes needed)
 
-| Current | Replacement |
-|---------|-------------|
-| `text-amber-500` | `text-primary` |
+The existing `ALERT_TYPE_FIELD_CONFIG` already controls which fields show for each type. This plan does not change that logic -- it only improves how existing fields are rendered to match the Create Alert page.
 
-### 5. `src/components/landing/AlertsSection.tsx` -- Fix "Ready to create" summary card
+| Alert Type | Market Toggle | Threshold | Direction | Time Window | Surge Window | Run Window | Game Period |
+|---|---|---|---|---|---|---|---|
+| Moneyline | - | Target Odds | Yes | Yes | - | - | - |
+| Spread | - | Target Spread | Yes | Yes | - | - | - |
+| O/U | - | Target Total | Yes | Yes | - | - | - |
+| Score Margin | - | Point Margin | Yes | - | - | - | Yes |
+| Line Surge | Yes | Target Value | - | - | Yes | - | Yes |
+| Momentum | - | Run Size (points) | - | - | - | Yes | Yes |
 
-| Current | Replacement |
-|---------|-------------|
-| `bg-amber-500/5` | `bg-primary/5` |
-| `border-amber-500/30` | `border-primary/30` |
-| `rgba(245,158,11,0.4)` (shadow) | `rgba(255,200,61,0.4)` (brand gold) |
-| `text-amber-500` | `text-primary` |
+## Technical Details
 
-### 6. `src/components/landing/HowItWorks.tsx` -- Fix phone mockup wallpaper blobs
-
-These are decorative gradients on the iOS and Android lock screen mockups. The amber tones are part of realistic phone wallpaper backgrounds, but they should be updated to use warm gold tones from the brand palette instead of Tailwind's built-in amber.
-
-**iOS wallpaper blob (line 568):**
-| Current | Replacement |
-|---------|-------------|
-| `from-yellow-400 via-amber-500 to-orange-500` | `from-yellow-400 via-primary to-orange-500` |
-
-**Android wallpaper background and blobs (lines 646-650):**
-| Current | Replacement |
-|---------|-------------|
-| `via-amber-100/70` | `via-yellow-100/70` |
-| `from-amber-200/80` | `from-yellow-200/80` |
-| `to-amber-200/50` | `to-yellow-200/50` |
-| `to-amber-100/40` | `to-yellow-100/40` |
-
-These are subtle shifts -- replacing amber pastels with yellow equivalents removes the "amber" dependency while keeping the warm wallpaper aesthetic.
-
-## Files Modified (Total: 12)
-
-1. `src/index.css`
-2. `src/components/landing/Hero.tsx`
-3. `src/components/landing/AlertTypes.tsx`
-4. `src/components/landing/AlertsSection.tsx`
-5. `src/components/landing/GamesSection.tsx`
-6. `src/components/landing/HowItWorks.tsx`
-7. `src/components/landing/Pricing.tsx`
-8. `src/components/landing/FeatureComparisonTable.tsx`
-9. `src/pages/Games.tsx`
-10. `src/components/alerts/QuickAlertPanel.tsx`
-11. `src/components/alerts/AlertEventSelector.tsx`
-
-## After This Change
-
-Zero references to Tailwind's built-in `amber` palette will remain anywhere in the source code. All brand gold uses will go through the `primary` design token (#FFC83D), and all Legend tier references will use Cool Blue (#3B82F6).
+- Only `CreateTemplateModal.tsx` is modified
+- No new components or dependencies
+- No database or type changes
+- The template modal's Team Selector is intentionally excluded (templates are game-agnostic, so there is no game context to pick home/away from)
 
