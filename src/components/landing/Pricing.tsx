@@ -167,7 +167,8 @@ export const Pricing = () => {
                     key={isYearly ? "yearly" : "monthly"}
                     className={cn(
                       "text-4xl font-bold animate-fade-in",
-                      plan.highlighted && "text-gradient-gold"
+                      plan.highlighted && "text-gradient-gold",
+                      plan.name === "Legend" && "text-blue-400"
                     )}
                   >
                     {formatPrice(plan)}
