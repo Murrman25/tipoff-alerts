@@ -139,7 +139,7 @@ export const Pricing = () => {
               className={cn(
                 "relative p-8 rounded-xl border transition-all duration-300 animate-on-scroll flex flex-col",
                 plan.highlighted
-                  ? "bg-card border-primary/50 shadow-[0_0_30px_rgba(245,158,11,0.15)] scale-105"
+                  ? "bg-card border-primary/50 shadow-[0_0_30px_rgba(255,200,61,0.15)] scale-105"
                   : "bg-card border-border hover:border-primary/30",
                 gridVisible && "is-visible",
                 `stagger-${index + 1}`
@@ -159,8 +159,8 @@ export const Pricing = () => {
               <div className="mb-6">
                 <h3 className={cn(
                   "text-xl font-bold mb-2",
-                  plan.name === "Pro" && "text-amber-400",
-                  plan.name === "Legend" && "text-purple-400"
+                  plan.name === "Pro" && "text-primary",
+                  plan.name === "Legend" && "text-slate-300"
                 )}>{plan.name}</h3>
                 <div className="flex items-baseline gap-1">
                   <span 

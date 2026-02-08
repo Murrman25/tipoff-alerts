@@ -79,8 +79,8 @@ export const AlertNotificationChannels = ({
                       <span className={cn(
                         "text-[10px] px-1.5 py-0.5 rounded font-medium ml-0.5",
                         isSelected 
-                          ? "bg-purple-500 text-white" 
-                          : "bg-purple-500/20 text-purple-400"
+                          ? "bg-slate-400 text-slate-900" 
+                          : "bg-slate-400/15 text-slate-300"
                       )}>
                         {channel.badge}
                       </span>
@@ -100,7 +100,7 @@ export const AlertNotificationChannels = ({
         </div>
       </div>
       {selectedChannels.length === 0 && (
-        <p className="text-xs text-amber-500">Select at least one notification channel</p>
+        <p className="text-xs text-primary">Select at least one notification channel</p>
       )}
     </div>
   );

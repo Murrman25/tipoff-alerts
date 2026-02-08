@@ -106,8 +106,8 @@ const ALERT_TYPES: AlertTypeInfo[] = [
 
 const TIER_DISPLAY: Record<SubscriptionTier, { label: string; color: string; bgColor: string }> = {
   rookie: { label: "Rookie", color: "text-muted-foreground", bgColor: "bg-secondary" },
-  pro: { label: "Pro", color: "text-amber-400", bgColor: "bg-amber-500/20" },
-  legend: { label: "Legend", color: "text-purple-400", bgColor: "bg-purple-500/20" },
+  pro: { label: "Pro", color: "text-primary", bgColor: "bg-primary/20" },
+  legend: { label: "Legend", color: "text-slate-300", bgColor: "bg-slate-400/15" },
 };
 
 const TIER_LIMITS: Record<SubscriptionTier, { alerts: string; types: string[] }> = {
@@ -182,8 +182,8 @@ export const AlertTypes = () => {
                     value={tier}
                     className={cn(
                       "px-6 py-2 text-sm font-medium gap-2 data-[state=active]:shadow-md transition-all",
-                      tier === "pro" && "data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400",
-                      tier === "legend" && "data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400",
+                      tier === "pro" && "data-[state=active]:bg-primary/20 data-[state=active]:text-primary",
+                      tier === "legend" && "data-[state=active]:bg-slate-400/15 data-[state=active]:text-slate-300",
                       tier === "rookie" && "data-[state=active]:bg-background data-[state=active]:text-foreground",
                     )}
                   >
@@ -327,8 +327,8 @@ export const AlertTypes = () => {
                   className={cn(
                     "px-4 py-2 text-sm font-medium transition-all duration-200",
                     selectedTier === "rookie"
-                      ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 hover:text-amber-300"
-                      : "bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 hover:text-purple-300",
+                      ? "bg-primary/20 text-primary hover:bg-primary/30 hover:text-primary"
+                      : "bg-slate-400/15 text-slate-300 hover:bg-slate-400/25 hover:text-slate-200",
                   )}
                 >
                   {selectedTier === "rookie" ? "View Pro Plan" : "View Legend Plan"}

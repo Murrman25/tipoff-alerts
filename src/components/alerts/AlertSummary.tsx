@@ -119,8 +119,8 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
   return (
     <div 
       className={cn(
-        "bg-amber-500/5 border border-amber-500/30 rounded-lg p-4",
-        "shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)]",
+        "bg-primary/5 border border-primary/30 rounded-lg p-4",
+        "shadow-[0_0_20px_-5px_rgba(255,200,61,0.4)]",
         "animate-fade-in"
       )}
     >
@@ -130,7 +130,7 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
           alt="TipOff" 
           className="w-5 h-5 object-contain animate-[pulse_2s_ease-in-out_infinite]"
         />
-        <p className="text-xs uppercase tracking-wide text-amber-500 font-medium">
+        <p className="text-xs uppercase tracking-wide text-primary font-medium">
           Ready to create
         </p>
       </div>

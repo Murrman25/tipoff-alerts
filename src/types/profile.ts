@@ -40,8 +40,8 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   },
   pro: {
     name: "Pro",
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/20",
+    color: "text-primary",
+    bgColor: "bg-primary/20",
     features: [
       "15 alerts per day",
       "Multi-condition logic (AND/OR)",
@@ -54,8 +54,8 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   },
   legend: {
     name: "Legend",
-    color: "text-purple-400",
-    bgColor: "bg-purple-500/20",
+    color: "text-slate-300",
+    bgColor: "bg-slate-400/15",
     features: [
       "Unlimited alerts",
       "Auto-rearm alerts",

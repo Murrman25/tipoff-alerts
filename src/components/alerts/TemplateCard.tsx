@@ -26,8 +26,8 @@ const getTierForRuleType = (ruleType: RuleType): PlanTier => {
 
 const tierColors: Record<PlanTier, { bg: string; text: string }> = {
   rookie: { bg: "bg-secondary", text: "text-muted-foreground" },
-  pro: { bg: "bg-amber-500/20", text: "text-amber-400" },
-  legend: { bg: "bg-purple-500/20", text: "text-purple-400" },
+  pro: { bg: "bg-primary/20", text: "text-primary" },
+  legend: { bg: "bg-slate-400/15", text: "text-slate-300" },
 };
 
 const tierLabels: Record<PlanTier, string> = {
