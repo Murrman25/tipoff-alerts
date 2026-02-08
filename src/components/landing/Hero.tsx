@@ -22,7 +22,7 @@ export const Hero = () => {
           {/* Main headline */}
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter max-w-4xl">
             Real-time sports alerts —{" "}
-            <span className="text-gradient-amber">
+            <span className="text-gradient-gold">
               ​Get Tipped Off  
             </span>
           </h1>

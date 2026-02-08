@@ -335,7 +335,7 @@ export const GamesSection = () => {
         >
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Track every game,{" "}
-            <span className="text-gradient-amber">every sport</span>
+            <span className="text-gradient-gold">every sport</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Get real-time access to live odds, scores, and game states across NFL, NBA, NHL, MLB, and college sports. Our dashboard delivers the data you need to make informed decisions.

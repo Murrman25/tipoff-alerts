@@ -111,7 +111,7 @@ const Games = () => {
                 </Button>
               </Link>
               <h1 className="text-xl font-bold">
-                <span className="text-gradient-amber">Games</span>
+                <span className="text-gradient-gold">Games</span>
               </h1>
             </div>
             <Button

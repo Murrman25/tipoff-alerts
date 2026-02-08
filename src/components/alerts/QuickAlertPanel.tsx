@@ -48,17 +48,17 @@ const tierColors: Record<PlanTier, { bg: string; text: string; selectedBg: strin
     selectedText: "text-background"
   },
   pro: { 
-    bg: "bg-amber-500/20", 
-    text: "text-amber-400",
-    selectedBg: "bg-amber-500",
-    selectedText: "text-white"
-  },
-  legend: { 
-    bg: "bg-purple-500/20", 
-    text: "text-purple-400",
-    selectedBg: "bg-purple-500",
-    selectedText: "text-white"
-  },
+     bg: "bg-primary/20", 
+     text: "text-primary",
+     selectedBg: "bg-primary",
+     selectedText: "text-primary-foreground"
+   },
+   legend: { 
+     bg: "bg-blue-500/15", 
+     text: "text-blue-400",
+     selectedBg: "bg-blue-500",
+     selectedText: "text-white"
+   },
 };
 
 export const QuickAlertPanel = ({

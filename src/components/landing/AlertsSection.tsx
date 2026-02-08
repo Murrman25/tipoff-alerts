@@ -157,8 +157,8 @@ const AlertBuilderPreview = () => {
         <div
           className={cn(
             "p-3 rounded-lg border",
-            "bg-amber-500/5 border-amber-500/30",
-            "shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)]"
+            "bg-primary/5 border-primary/30",
+            "shadow-[0_0_20px_-5px_rgba(255,200,61,0.4)]"
           )}
         >
           <div className="flex items-center gap-2 mb-1">
@@ -167,7 +167,7 @@ const AlertBuilderPreview = () => {
               alt="TipOff"
               className="w-4 h-4 object-contain animate-[pulse_2s_ease-in-out_infinite]"
             />
-            <p className="text-[10px] uppercase tracking-wide text-amber-500 font-medium">
+            <p className="text-[10px] uppercase tracking-wide text-primary font-medium">
               Ready to create
             </p>
           </div>
@@ -426,7 +426,7 @@ export const AlertsSection = () => {
         >
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Your alerts,{" "}
-            <span className="text-gradient-amber">your rules</span>
+            <span className="text-gradient-gold">your rules</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Build sophisticated alert conditions with our intuitive builder. From simple even-money triggers to complex multi-condition logic, get notified instantly when your criteria are met.
