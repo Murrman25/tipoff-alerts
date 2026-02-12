@@ -10,6 +10,7 @@ import { LeagueLogo } from "@/components/games/LeagueLogo";
 import { FavoriteTeamsFilter } from "@/components/games/FavoriteTeamsFilter";
 import { GameSelectCard } from "./GameSelectCard";
 import { cn } from "@/lib/utils";
+import { isRateLimitedError } from "@/lib/tipoffApi";
 
 interface AlertEventSelectorProps {
   value: string | null;
@@ -48,7 +49,7 @@ export const AlertEventSelector = ({
     leagueID: selectedLeague === "all" ? [] : [selectedLeague],
     bookmakerID: [],
     betTypeID: [],
-    searchQuery: "",
+    searchQuery,
     dateRange: "today",
     oddsAvailable: true,
   });
@@ -90,29 +91,11 @@ export const AlertEventSelector = ({
       );
     }
 
-    // Apply search filter
-    const query = searchQuery.toLowerCase();
-    if (query) {
-      result = result.filter((game) => {
-        const homeName = game.teams.home.name || game.teams.home.teamID || '';
-        const awayName = game.teams.away.name || game.teams.away.teamID || '';
-        const homeAbbr = game.teams.home.abbreviation || '';
-        const awayAbbr = game.teams.away.abbreviation || '';
-
-        return (
-          homeName.toLowerCase().includes(query) ||
-          awayName.toLowerCase().includes(query) ||
-          homeAbbr.toLowerCase().includes(query) ||
-          awayAbbr.toLowerCase().includes(query)
-        );
-      });
-    }
-
     return result;
-  }, [allGames, searchQuery, selectedFavoriteTeamIds]);
+  }, [allGames, selectedFavoriteTeamIds]);
 
   const isLoadingAny = isLoading || isLoadingPreSelected;
-  const isRateLimited = (error as any)?.isRateLimited;
+  const isRateLimited = isRateLimitedError(error);
 
   const handleSelect = (eventID: string) => {
     const selectedGame = filteredGames.find(g => g.eventID === eventID) || null;

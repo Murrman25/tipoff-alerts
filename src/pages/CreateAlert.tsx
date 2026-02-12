@@ -39,8 +39,8 @@ import {
 import { GameEvent } from "@/types/games";
 import { useAuth } from "@/hooks/useAuth";
 import { useFirstTimeVisit } from "@/hooks/useFirstTimeVisit";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { createAlert } from "@/lib/alertsApi";
 
 const CreateAlert = () => {
   const navigate = useNavigate();
@@ -291,66 +291,25 @@ const CreateAlert = () => {
 
     setIsSaving(true);
     try {
-      const { data: alertData, error: alertError } = await supabase
-        .from("alerts")
-        .insert({
-          user_id: user.id,
-          rule_type: condition.ruleType,
-          event_id: condition.eventID,
-          market_type: condition.marketType,
-          team_side: condition.teamSide,
-          threshold: condition.threshold,
-          direction: condition.direction,
-          time_window: condition.timeWindow,
-        })
-        .select()
-        .single();
-
-      if (alertError) throw alertError;
-
-      const channelInserts = notificationChannels.map((channel) => ({
-        alert_id: alertData.id,
-        channel_type: channel,
-        is_enabled: true,
-      }));
-
-      const { error: channelError } = await supabase
-        .from("alert_notification_channels")
-        .insert(channelInserts);
-
-      if (channelError) throw channelError;
-
-      // Send confirmation email if email channel is selected
-      if (notificationChannels.includes("email") && user.email) {
-        const eventName = selectedGame 
+      await createAlert({
+        ruleType: condition.ruleType,
+        eventID: condition.eventID,
+        marketType: condition.marketType,
+        teamSide: condition.teamSide,
+        threshold: condition.threshold,
+        direction: condition.direction,
+        timeWindow: condition.timeWindow,
+        channels: notificationChannels,
+        eventName: selectedGame
           ? `${selectedGame.teams.away.name || selectedGame.teams.away.abbreviation} @ ${selectedGame.teams.home.name || selectedGame.teams.home.abbreviation}`
-          : "Unknown Event";
-
-        try {
-          await supabase.functions.invoke("send-alert-confirmation", {
-            body: {
-              email: user.email,
-              alertDetails: {
-                eventName,
-                teamSide: condition.teamSide,
-                marketType: condition.marketType,
-                threshold: condition.threshold,
-                direction: condition.direction,
-                ruleType: condition.ruleType,
-              },
-            },
-          });
-          console.log("Confirmation email sent successfully");
-        } catch (emailError) {
-          console.error("Failed to send confirmation email:", emailError);
-          // Don't fail the alert creation if email fails
-        }
-      }
+          : undefined,
+      });
 
       toast.success("Alert created successfully!");
       navigate("/alerts");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create alert");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create alert";
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }

@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TemplateCard, CreateTemplateModal } from "@/components/alerts";
 import { useAlertTemplates, useCreateTemplate, useUpdateTemplate, useDeleteTemplate } from "@/hooks/useAlertTemplates";
+import { deleteAlertById, listAlerts, updateAlertStatus } from "@/lib/alertsApi";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +32,7 @@ interface Alert {
   market_type: string;
   team_side: string | null;
   threshold: number | null;
-  direction: string;
+  direction: string | null;
   time_window: string;
   is_active: boolean;
   created_at: string;
@@ -66,34 +67,9 @@ const MyAlerts = () => {
       if (!user) return;
 
       try {
-        // Fetch alerts
-        const { data: alertsData, error: alertsError } = await supabase
-          .from("alerts")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (alertsError) throw alertsError;
-
-        // Fetch channels for all alerts
-        const alertIds = alertsData.map((a) => a.id);
-        const { data: channelsData, error: channelsError } = await supabase
-          .from("alert_notification_channels")
-          .select("*")
-          .in("alert_id", alertIds);
-
-        if (channelsError) throw channelsError;
-
-        // Map channels to alerts
-        const alertsWithChannels = alertsData.map((alert) => ({
-          ...alert,
-          channels: channelsData
-            .filter((c) => c.alert_id === alert.id && c.is_enabled)
-            .map((c) => c.channel_type),
-        }));
-
-        setAlerts(alertsWithChannels);
-      } catch (error: any) {
+        const alertsData = await listAlerts();
+        setAlerts(alertsData);
+      } catch {
         toast.error("Failed to load alerts");
       } finally {
         setIsLoading(false);
@@ -139,12 +115,7 @@ const MyAlerts = () => {
     );
 
     try {
-      const { error } = await supabase
-        .from("alerts")
-        .update({ is_active: newStatus })
-        .eq("id", id);
-
-      if (error) throw error;
+      await updateAlertStatus(id, newStatus);
     } catch (error) {
       // Revert on error
       setAlerts((prev) =>
@@ -162,9 +133,7 @@ const MyAlerts = () => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));
 
     try {
-      const { error } = await supabase.from("alerts").delete().eq("id", id);
-
-      if (error) throw error;
+      await deleteAlertById(id);
       toast.success("Alert deleted");
     } catch (error) {
       // Revert on error
