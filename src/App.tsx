@@ -11,11 +11,12 @@ import MyAlerts from "./pages/MyAlerts";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
- import PrivacyPolicy from "./pages/PrivacyPolicy";
- import TermsOfService from "./pages/TermsOfService";
- import Contact from "./pages/Contact";
- import AboutUs from "./pages/AboutUs";
- import Accessibility from "./pages/Accessibility";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import Contact from "./pages/Contact";
+import AboutUs from "./pages/AboutUs";
+import Accessibility from "./pages/Accessibility";
+import AdminMonitoring from "./pages/AdminMonitoring";
 
 const queryClient = new QueryClient();
 
@@ -33,11 +34,12 @@ const App = () => (
             <Route path="/alerts/create" element={<CreateAlert />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
-             <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<AboutUs />} />
             <Route path="/accessibility" element={<Accessibility />} />
+            <Route path="/admin/monitoring" element={<AdminMonitoring />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

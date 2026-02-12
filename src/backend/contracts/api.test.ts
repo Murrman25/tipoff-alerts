@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  adminMonitoringHistoryResponseSchema,
+  adminMonitoringSummaryResponseSchema,
   alertsListResponseSchema,
   gameByIdResponseSchema,
   gamesSearchResponseSchema,
@@ -88,5 +90,86 @@ describe("API contract schemas", () => {
     });
 
     expect(parsed.data[0].channels).toContain("push");
+  });
+
+  it("validates admin monitoring summary payload", () => {
+    const parsed = adminMonitoringSummaryResponseSchema.parse({
+      success: true,
+      data: {
+        asOf: "2026-02-12T10:00:00.000Z",
+        overallStatus: "healthy",
+        environment: "staging",
+        vendorUsage: {
+          used: 120,
+          limit: 6000,
+          remaining: 5880,
+          utilizationPct: 2,
+          stale: false,
+        },
+        workers: {
+          ingestion: {
+            heartbeatAgeSeconds: 20,
+            cycleAgeSeconds: 15,
+            stale: false,
+            cycleStale: false,
+          },
+          alert: {
+            heartbeatAgeSeconds: 20,
+            processedAgeSeconds: 5,
+            stale: false,
+            processedStale: false,
+          },
+          notification: {
+            heartbeatAgeSeconds: 20,
+            processedAgeSeconds: 9,
+            stale: false,
+            processedStale: false,
+          },
+        },
+        redis: {
+          pingMs: 12,
+          stale: false,
+          streams: {
+            oddsTicks: 10,
+            eventStatusTicks: 3,
+            notificationJobs: 2,
+          },
+          backlogWarnExceeded: false,
+        },
+        thresholds: {
+          heartbeatStaleSeconds: 120,
+          ingestionCycleStaleSeconds: 300,
+          streamBacklogWarn: 5000,
+        },
+      },
+    });
+
+    expect(parsed.data.environment).toBe("staging");
+  });
+
+  it("validates admin monitoring history payload", () => {
+    const parsed = adminMonitoringHistoryResponseSchema.parse({
+      success: true,
+      asOf: "2026-02-12T10:00:00.000Z",
+      environment: "staging",
+      hours: 24,
+      data: [
+        {
+          sampledAt: "2026-02-12T09:59:00.000Z",
+          overallStatus: "degraded",
+          vendorUtilizationPct: 15.5,
+          ingestionHeartbeatAgeSeconds: 65,
+          ingestionCycleAgeSeconds: 90,
+          alertHeartbeatAgeSeconds: 45,
+          notificationHeartbeatAgeSeconds: 40,
+          redisPingMs: 23,
+          streamOddsLen: 102,
+          streamStatusLen: 41,
+          streamNotificationLen: 5,
+        },
+      ],
+    });
+
+    expect(parsed.data).toHaveLength(1);
   });
 });

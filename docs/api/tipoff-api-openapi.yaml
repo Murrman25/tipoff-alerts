@@ -157,6 +157,53 @@ paths:
       responses:
         '200':
           description: Alert deleted
+  /admin/monitoring:
+    get:
+      summary: Admin monitoring summary snapshot
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: environment
+          schema:
+            type: string
+            example: staging
+      responses:
+        '200':
+          description: Monitoring summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMonitoringSummaryResponse'
+        '403':
+          description: Forbidden for non-admin users
+  /admin/monitoring/history:
+    get:
+      summary: Admin monitoring history series
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: hours
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 24
+            default: 24
+        - in: query
+          name: environment
+          schema:
+            type: string
+            example: staging
+      responses:
+        '200':
+          description: Monitoring history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMonitoringHistoryResponse'
+        '403':
+          description: Forbidden for non-admin users
 components:
   securitySchemes:
     bearerAuth:
@@ -333,3 +380,146 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AlertItem'
+    AdminMonitoringWorker:
+      type: object
+      properties:
+        heartbeatAgeSeconds:
+          type: integer
+          nullable: true
+        stale:
+          type: boolean
+        cycleAgeSeconds:
+          type: integer
+          nullable: true
+        cycleStale:
+          type: boolean
+        processedAgeSeconds:
+          type: integer
+          nullable: true
+        processedStale:
+          type: boolean
+    AdminMonitoringSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            asOf:
+              type: string
+              format: date-time
+            overallStatus:
+              type: string
+              enum: [healthy, degraded, down]
+            environment:
+              type: string
+            vendorUsage:
+              type: object
+              properties:
+                used:
+                  type: integer
+                  nullable: true
+                limit:
+                  type: integer
+                  nullable: true
+                remaining:
+                  type: integer
+                  nullable: true
+                utilizationPct:
+                  type: number
+                  nullable: true
+                stale:
+                  type: boolean
+            workers:
+              type: object
+              properties:
+                ingestion:
+                  $ref: '#/components/schemas/AdminMonitoringWorker'
+                alert:
+                  $ref: '#/components/schemas/AdminMonitoringWorker'
+                notification:
+                  $ref: '#/components/schemas/AdminMonitoringWorker'
+            redis:
+              type: object
+              properties:
+                pingMs:
+                  type: integer
+                  nullable: true
+                stale:
+                  type: boolean
+                streams:
+                  type: object
+                  properties:
+                    oddsTicks:
+                      type: integer
+                      nullable: true
+                    eventStatusTicks:
+                      type: integer
+                      nullable: true
+                    notificationJobs:
+                      type: integer
+                      nullable: true
+                backlogWarnExceeded:
+                  type: boolean
+            thresholds:
+              type: object
+              properties:
+                heartbeatStaleSeconds:
+                  type: integer
+                ingestionCycleStaleSeconds:
+                  type: integer
+                streamBacklogWarn:
+                  type: integer
+    AdminMonitoringHistoryPoint:
+      type: object
+      properties:
+        sampledAt:
+          type: string
+          format: date-time
+        overallStatus:
+          type: string
+          enum: [healthy, degraded, down]
+        vendorUtilizationPct:
+          type: number
+          nullable: true
+        ingestionHeartbeatAgeSeconds:
+          type: integer
+          nullable: true
+        ingestionCycleAgeSeconds:
+          type: integer
+          nullable: true
+        alertHeartbeatAgeSeconds:
+          type: integer
+          nullable: true
+        notificationHeartbeatAgeSeconds:
+          type: integer
+          nullable: true
+        redisPingMs:
+          type: integer
+          nullable: true
+        streamOddsLen:
+          type: integer
+          nullable: true
+        streamStatusLen:
+          type: integer
+          nullable: true
+        streamNotificationLen:
+          type: integer
+          nullable: true
+    AdminMonitoringHistoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        asOf:
+          type: string
+          format: date-time
+        environment:
+          type: string
+        hours:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminMonitoringHistoryPoint'

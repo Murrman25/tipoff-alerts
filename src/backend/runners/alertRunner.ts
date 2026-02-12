@@ -202,6 +202,12 @@ async function main() {
     consumer: config.alertConsumerName,
   });
 
+  setInterval(() => {
+    redis
+      .set("workers:alert:last_heartbeat", new Date().toISOString(), 120)
+      .catch((error) => console.error("[alert-runner] heartbeat failed", error));
+  }, 30000).unref();
+
   while (true) {
     try {
       const entries = await redis.xreadgroup({
@@ -225,6 +231,7 @@ async function main() {
         }
 
         await worker.processOddsTick(tick);
+        await redis.set("workers:alert:last_processed_at", new Date().toISOString(), 600);
         await redis.xack(redisKeys.streamOddsTicks(), config.alertConsumerGroup, entry.id);
       }
     } catch (error) {

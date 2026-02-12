@@ -11,6 +11,12 @@ export interface WorkerConfig {
   alertConsumerName: string;
   notifyConsumerGroup: string;
   notifyConsumerName: string;
+  monitorEnvironment: string;
+  monitorSampleIntervalSeconds: number;
+  monitorRetentionDays: number;
+  monitorHeartbeatStaleSeconds: number;
+  monitorIngestionCycleStaleSeconds: number;
+  monitorStreamBacklogWarn: number;
   pollLoopDelayMs: number;
 }
 
@@ -51,6 +57,12 @@ export function loadWorkerConfig(): WorkerConfig {
     alertConsumerName: process.env.ALERT_CONSUMER_NAME || `alert-${process.pid}`,
     notifyConsumerGroup: process.env.NOTIFY_CONSUMER_GROUP || "tipoff-notify-workers",
     notifyConsumerName: process.env.NOTIFY_CONSUMER_NAME || `notify-${process.pid}`,
+    monitorEnvironment: process.env.MONITOR_ENVIRONMENT || "staging",
+    monitorSampleIntervalSeconds: intEnv("MONITOR_SAMPLE_INTERVAL_SECONDS", 60),
+    monitorRetentionDays: intEnv("MONITOR_RETENTION_DAYS", 7),
+    monitorHeartbeatStaleSeconds: intEnv("MONITOR_HEARTBEAT_STALE_SECONDS", 120),
+    monitorIngestionCycleStaleSeconds: intEnv("MONITOR_INGESTION_CYCLE_STALE_SECONDS", 300),
+    monitorStreamBacklogWarn: intEnv("MONITOR_STREAM_BACKLOG_WARN", 5000),
     pollLoopDelayMs: intEnv("INGESTION_LOOP_DELAY_MS", 30000),
   };
 }

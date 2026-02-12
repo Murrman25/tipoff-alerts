@@ -22,9 +22,17 @@
 - `NOTIFY_CONSUMER_GROUP`: Redis stream consumer group for notifications.
 - `NOTIFY_CONSUMER_NAME`: Redis stream consumer identity for notification worker.
 - `NOTIFY_DRY_RUN`: `true|false` to disable provider sends in staging.
+- `MONITOR_ENVIRONMENT`: Label used when storing monitoring samples (`staging|production`).
+- `MONITOR_SAMPLE_INTERVAL_SECONDS`: Sampling interval for monitor worker (default `60`).
+- `MONITOR_RETENTION_DAYS`: DB retention for `ops_monitor_samples` (default `7`).
+- `MONITOR_HEARTBEAT_STALE_SECONDS`: Worker heartbeat stale threshold (default `120`).
+- `MONITOR_INGESTION_CYCLE_STALE_SECONDS`: Ingestion cycle stale threshold (default `300`).
+- `MONITOR_STREAM_BACKLOG_WARN`: Warn threshold for Redis stream backlogs (default `5000`).
 - `TIPOFF_GAMES_SOURCE`: `redis|vendor` games read source override.
 - `TIPOFF_ALERTS_SOURCE`: `odds_v2|legacy` alert persistence/read source.
 - `TIPOFF_STREAM_ENABLED`: `true|false` kill switch for SSE endpoint.
+- `TIPOFF_ADMIN_EMAILS`: Comma-delimited admin allowlist for `/admin/monitoring*` backend routes.
+- `VITE_TIPOFF_ADMIN_EMAILS`: Optional frontend-only visibility gate for admin nav/page UX.
 
 ## Security
 

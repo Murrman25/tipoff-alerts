@@ -18,6 +18,7 @@
     "worker:ingestion": "tsx src/backend/runners/ingestionRunner.ts",
     "worker:alert": "tsx src/backend/runners/alertRunner.ts",
     "worker:notification": "tsx src/backend/runners/notificationRunner.ts",
+    "worker:monitor": "tsx src/backend/runners/monitorRunner.ts",
     "cap:sync": "cap sync",
     "cap:open:ios": "cap open ios",
     "cap:open:android": "cap open android",

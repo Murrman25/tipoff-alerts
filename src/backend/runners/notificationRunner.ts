@@ -134,6 +134,12 @@ async function main() {
     dryRun: process.env.NOTIFY_DRY_RUN !== "false",
   });
 
+  setInterval(() => {
+    redis
+      .set("workers:notification:last_heartbeat", new Date().toISOString(), 120)
+      .catch((error) => console.error("[notification-runner] heartbeat failed", error));
+  }, 30000).unref();
+
   while (true) {
     try {
       const entries = await redis.xreadgroup({
@@ -157,6 +163,7 @@ async function main() {
         }
 
         await worker.process(job);
+        await redis.set("workers:notification:last_processed_at", new Date().toISOString(), 600);
         await redis.xack(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup, entry.id);
       }
     } catch (error) {

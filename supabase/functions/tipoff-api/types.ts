@@ -162,3 +162,26 @@ export interface RouterDeps {
   supabaseAnonKey: string | null;
   serviceRoleKey: string;
 }
+
+export type MonitoringOverallStatus = 'healthy' | 'degraded' | 'down';
+
+export interface OpsMonitorSampleRow {
+  id: number;
+  sampled_at: string;
+  environment: string;
+  overall_status: MonitoringOverallStatus;
+  vendor_used: number | null;
+  vendor_limit: number | null;
+  vendor_remaining: number | null;
+  vendor_utilization_pct: number | null;
+  vendor_stale: boolean;
+  ingestion_heartbeat_age_s: number | null;
+  ingestion_cycle_age_s: number | null;
+  alert_heartbeat_age_s: number | null;
+  notification_heartbeat_age_s: number | null;
+  redis_ping_ms: number | null;
+  stream_odds_len: number | null;
+  stream_status_len: number | null;
+  stream_notification_len: number | null;
+  details: Record<string, unknown> | null;
+}

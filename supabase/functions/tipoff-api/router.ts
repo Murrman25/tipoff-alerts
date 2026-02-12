@@ -11,6 +11,7 @@ import {
   patchLegacyAlert,
   patchAlert,
 } from './alerts.ts';
+import { AdminApiError, getAdminMonitoringHistory, getAdminMonitoringSummary } from './admin.ts';
 import { getGameById, searchGames } from './games.ts';
 import { parseGameSearchRequest } from './helpers.ts';
 import { createRedisClientFromEnv } from './redis.ts';
@@ -157,6 +158,22 @@ export async function handleTipoffApiRequest(req: Request, deps: RouterDeps): Pr
       }
     }
 
+    if (req.method === 'GET' && path === '/admin/monitoring') {
+      const payload = await getAdminMonitoringSummary(req, url, serviceClient, {
+        supabaseUrl: deps.supabaseUrl,
+        supabaseAnonKey: deps.supabaseAnonKey,
+      });
+      return jsonResponse(200, payload);
+    }
+
+    if (req.method === 'GET' && path === '/admin/monitoring/history') {
+      const payload = await getAdminMonitoringHistory(req, url, serviceClient, {
+        supabaseUrl: deps.supabaseUrl,
+        supabaseAnonKey: deps.supabaseAnonKey,
+      });
+      return jsonResponse(200, payload);
+    }
+
     return jsonResponse(404, { error: 'Not found' });
   } catch (error) {
     if (error instanceof ApiError) {
@@ -164,6 +181,10 @@ export async function handleTipoffApiRequest(req: Request, deps: RouterDeps): Pr
     }
 
     if (error instanceof VendorRequestError) {
+      return jsonResponse(error.status, { error: error.message });
+    }
+
+    if (error instanceof AdminApiError) {
       return jsonResponse(error.status, { error: error.message });
     }
 

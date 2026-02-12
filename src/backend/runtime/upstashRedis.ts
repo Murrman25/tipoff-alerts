@@ -167,6 +167,30 @@ export class UpstashRedisClient implements RedisLikeClient {
   async xack(stream: string, group: string, id: string): Promise<void> {
     await this.command("XACK", stream, group, id);
   }
+
+  async ping(): Promise<number | null> {
+    const start = Date.now();
+    const result = await this.command<string>("PING");
+    if (result !== "PONG") {
+      return null;
+    }
+
+    return Math.max(0, Date.now() - start);
+  }
+
+  async xlen(stream: string): Promise<number | null> {
+    const result = await this.command<number | string>("XLEN", stream);
+    if (typeof result === "number" && Number.isFinite(result)) {
+      return result;
+    }
+
+    if (typeof result === "string") {
+      const parsed = Number.parseInt(result, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+  }
 }
 
 export function createUpstashRedisFromEnv(): UpstashRedisClient {
