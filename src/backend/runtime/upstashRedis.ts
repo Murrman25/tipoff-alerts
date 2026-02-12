@@ -70,13 +70,13 @@ export class UpstashRedisClient implements RedisLikeClient {
   ) {}
 
   private async command<T>(...segments: (string | number)[]): Promise<T | null> {
-    const encoded = segments.map((segment) => encodeURIComponent(String(segment))).join("/");
-    const url = `${this.baseUrl}/${encoded}`;
-
-    const response = await fetch(url, {
+    const response = await fetch(this.baseUrl, {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify(segments.map((segment) => String(segment))),
     });
 
     if (!response.ok) {
