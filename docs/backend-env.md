@@ -16,6 +16,7 @@
 - `INGESTION_MAX_RPM`: Worker-level request budget cap.
 - `INGESTION_BATCH_SIZE`: Max event IDs per ingestion poll request.
 - `INGESTION_LEAGUE_IDS`: Comma list for discovery scans.
+- `INGESTION_BOOKMAKER_IDS`: Optional comma list to constrain poll payload by bookmaker IDs (for staged ramp).
 - `ALERT_CONSUMER_GROUP`: Redis stream consumer group for odds tick evaluation.
 - `ALERT_CONSUMER_NAME`: Redis stream consumer identity for alert worker.
 - `NOTIFY_CONSUMER_GROUP`: Redis stream consumer group for notifications.
