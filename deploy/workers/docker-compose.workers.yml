@@ -1,0 +1,32 @@
+version: '3.9'
+
+services:
+  ingestion-worker:
+    image: node:22
+    working_dir: /app
+    command: sh -lc "npm ci && npm run worker:ingestion"
+    volumes:
+      - ../../:/app
+    env_file:
+      - ../../.env
+    restart: unless-stopped
+
+  alert-worker:
+    image: node:22
+    working_dir: /app
+    command: sh -lc "npm ci && npm run worker:alert"
+    volumes:
+      - ../../:/app
+    env_file:
+      - ../../.env
+    restart: unless-stopped
+
+  notification-worker:
+    image: node:22
+    working_dir: /app
+    command: sh -lc "npm ci && npm run worker:notification"
+    volumes:
+      - ../../:/app
+    env_file:
+      - ../../.env
+    restart: unless-stopped
