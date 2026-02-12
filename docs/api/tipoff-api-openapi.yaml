@@ -1,0 +1,335 @@
+openapi: 3.0.3
+info:
+  title: Tipoff API
+  version: 0.1.0
+  description: Public games endpoints and authenticated alert endpoints for Tipoff.
+servers:
+  - url: https://wxcezmqaknhftwnpkanu.supabase.co/functions/v1/tipoff-api
+paths:
+  /games/search:
+    get:
+      summary: Search and list games with latest odds snapshot
+      parameters:
+        - in: query
+          name: leagueID
+          schema:
+            type: string
+          description: Comma-separated league IDs
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [live, upcoming, all]
+            default: all
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Team name search filter
+        - in: query
+          name: cursor
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: bookmakerID
+          schema:
+            type: string
+        - in: query
+          name: oddID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Games response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GamesSearchResponse'
+  /games/{eventID}:
+    get:
+      summary: Get single game detail with latest odds snapshot
+      parameters:
+        - in: path
+          name: eventID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Game response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameByIdResponse'
+  /stream:
+    get:
+      summary: SSE stream for watched event odds/status diffs
+      parameters:
+        - in: query
+          name: eventIDs
+          required: true
+          schema:
+            type: string
+          description: Comma-separated event IDs to watch
+        - in: query
+          name: channels
+          schema:
+            type: string
+          description: Optional channel filter (`odds,status`)
+      responses:
+        '200':
+          description: SSE stream
+  /alerts:
+    get:
+      summary: Get current user alerts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Alerts response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsListResponse'
+    post:
+      summary: Create alert
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlertRequest'
+      responses:
+        '201':
+          description: Alert created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/AlertItem'
+  /alerts/{id}:
+    patch:
+      summary: Update alert active status
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active:
+                  type: boolean
+              required: [is_active]
+      responses:
+        '200':
+          description: Alert updated
+    delete:
+      summary: Delete alert
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert deleted
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Team:
+      type: object
+      properties:
+        teamID:
+          type: string
+        name:
+          type: string
+        abbreviation:
+          type: string
+    EventStatus:
+      type: object
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        started:
+          type: boolean
+        ended:
+          type: boolean
+        finalized:
+          type: boolean
+        cancelled:
+          type: boolean
+        live:
+          type: boolean
+    GameEventCompat:
+      type: object
+      properties:
+        eventID:
+          type: string
+        sportID:
+          type: string
+        leagueID:
+          type: string
+        teams:
+          type: object
+          properties:
+            home:
+              $ref: '#/components/schemas/Team'
+            away:
+              $ref: '#/components/schemas/Team'
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        odds:
+          type: object
+          additionalProperties: true
+        score:
+          type: object
+          nullable: true
+          properties:
+            home:
+              type: number
+            away:
+              type: number
+    GamesSearchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/GameEventCompat'
+        nextCursor:
+          type: string
+          nullable: true
+        asOf:
+          type: string
+          format: date-time
+        freshnessSeconds:
+          type: integer
+        source:
+          type: string
+          enum: [redis, vendor]
+        cacheAgeSeconds:
+          type: number
+        degraded:
+          type: boolean
+    GameByIdResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/GameEventCompat'
+            - type: 'null'
+        asOf:
+          type: string
+          format: date-time
+        source:
+          type: string
+          enum: [redis, vendor]
+        cacheAgeSeconds:
+          type: number
+        degraded:
+          type: boolean
+    CreateAlertRequest:
+      type: object
+      properties:
+        ruleType:
+          type: string
+        eventID:
+          type: string
+          nullable: true
+        marketType:
+          type: string
+        teamSide:
+          type: string
+          nullable: true
+        threshold:
+          type: number
+          nullable: true
+        direction:
+          type: string
+          nullable: true
+        timeWindow:
+          type: string
+        channels:
+          type: array
+          items:
+            type: string
+      required: [ruleType, marketType, timeWindow, channels]
+    AlertItem:
+      type: object
+      properties:
+        id:
+          type: string
+        rule_type:
+          type: string
+        event_id:
+          type: string
+          nullable: true
+        market_type:
+          type: string
+        team_side:
+          type: string
+          nullable: true
+        threshold:
+          type: number
+          nullable: true
+        direction:
+          type: string
+          nullable: true
+        time_window:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        channels:
+          type: array
+          items:
+            type: string
+        lastFiredAt:
+          type: string
+          nullable: true
+        cooldownRemainingSeconds:
+          type: integer
+    AlertsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlertItem'

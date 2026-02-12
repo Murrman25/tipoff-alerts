@@ -11,6 +11,7 @@ import { GamesFilters as FiltersType } from "@/types/games";
 import { useGames } from "@/hooks/useGames";
 import { useFavoriteTeams } from "@/hooks/useFavoriteTeams";
 import { Button } from "@/components/ui/button";
+import { useGamesStream } from "@/hooks/useGamesStream";
 
 const Games = () => {
   const [filters, setFilters] = useState<FiltersType>({
@@ -54,18 +55,6 @@ const Games = () => {
       );
     }
     
-    // Apply search filter
-    if (filters.searchQuery) {
-      const query = filters.searchQuery.toLowerCase();
-      result = result.filter((game) => {
-        const homeName = game.teams.home.name || game.teams.home.teamID || '';
-        const awayName = game.teams.away.name || game.teams.away.teamID || '';
-        const matchesHome = homeName.toLowerCase().includes(query);
-        const matchesAway = awayName.toLowerCase().includes(query);
-        return matchesHome || matchesAway;
-      });
-    }
-    
     // Sort: live games first, then by start time
     return result.sort((a, b) => {
       const aLive = a.status.started && !a.status.ended;
@@ -98,6 +87,15 @@ const Games = () => {
     });
     setSelectedFavoriteTeamIds([]);
   };
+
+  const visibleEventIds = useMemo(() => filteredGames.slice(0, 12).map((game) => game.eventID), [filteredGames]);
+  const { isConnected: streamConnected } = useGamesStream({
+    eventIDs: visibleEventIds,
+    enabled: !isLoading && !error && visibleEventIds.length > 0,
+    onDiff: () => {
+      refetch();
+    },
+  });
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -194,7 +192,8 @@ const Games = () => {
         {!isLoading && !error && games && games.length > 0 && (
           <div className="mt-8 p-4 rounded-xl bg-primary/10 border border-primary/20">
             <p className="text-sm text-muted-foreground">
-              <span className="text-primary font-medium">Live Data:</span> Showing {games.length} events from SportsGameOdds API. Data refreshes automatically every minute.
+              <span className="text-primary font-medium">Live Data:</span> Showing {games.length} events from Tipoff backend.
+              {streamConnected ? " Streaming is active for visible games." : " Polling fallback refreshes every minute."}
             </p>
           </div>
         )}
