@@ -81,12 +81,14 @@ async function main() {
     {
       maxRequestsPerMinute: config.ingestionMaxRpm,
       maxEventIdsPerRequest: config.ingestionBatchSize,
+      bookmakerIDs: config.ingestionBookmakerIDs,
     },
     sink,
   );
 
   console.log("[ingestion-runner] started", {
     leagues: config.ingestionLeagueIDs,
+    bookmakers: config.ingestionBookmakerIDs,
     maxRequestsPerMinute: config.ingestionMaxRpm,
     batchSize: config.ingestionBatchSize,
   });

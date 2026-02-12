@@ -10,9 +10,19 @@ import {
 import { parseVendorBookmakerOdds } from "@/backend/odds/parseAmericanOdds";
 import { EventStatusTick, OddsTick } from "@/backend/contracts/ticks";
 
+const CORE_ODD_IDS = [
+  "points-home-game-ml-home",
+  "points-away-game-ml-away",
+  "points-home-game-sp-home",
+  "points-away-game-sp-away",
+  "points-all-game-ou-over",
+  "points-all-game-ou-under",
+] as const;
+
 export interface IngestionWorkerConfig {
   maxRequestsPerMinute: number;
   maxEventIdsPerRequest: number;
+  bookmakerIDs?: string[];
 }
 
 export interface TickPublisher {
@@ -40,6 +50,10 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
     for (const poll of polls) {
       const response = await this.vendor.getEvents({
         eventIDs: poll.eventIDs.join(","),
+        oddID: CORE_ODD_IDS.join(","),
+        bookmakerID: this.config.bookmakerIDs?.length
+          ? this.config.bookmakerIDs.join(",")
+          : undefined,
         oddsAvailable: true,
         includeAltLines: false,
       });

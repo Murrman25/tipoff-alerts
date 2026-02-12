@@ -6,6 +6,7 @@ export interface WorkerConfig {
   ingestionMaxRpm: number;
   ingestionBatchSize: number;
   ingestionLeagueIDs: string[];
+  ingestionBookmakerIDs: string[];
   alertConsumerGroup: string;
   alertConsumerName: string;
   notifyConsumerGroup: string;
@@ -39,6 +40,10 @@ export function loadWorkerConfig(): WorkerConfig {
     ingestionMaxRpm: intEnv("INGESTION_MAX_RPM", 240),
     ingestionBatchSize: intEnv("INGESTION_BATCH_SIZE", 25),
     ingestionLeagueIDs: (process.env.INGESTION_LEAGUE_IDS || "NBA,NFL,MLB,NHL")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    ingestionBookmakerIDs: (process.env.INGESTION_BOOKMAKER_IDS || "")
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean),
