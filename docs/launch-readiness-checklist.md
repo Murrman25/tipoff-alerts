@@ -18,6 +18,9 @@
 - `tipoff.alert.fired.count`
 - `tipoff.alert.idempotent_conflicts.count`
 - `tipoff.notification.attempt.count` by status
+- `tipoff.ops.worker.heartbeat_age_seconds` by worker
+- `tipoff.ops.redis.stream.backlog` by stream
+- `tipoff.ops.vendor.usage.utilization_pct`
 
 ## Alerting Thresholds
 

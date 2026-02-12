@@ -134,8 +134,85 @@ export const alertsListResponseSchema = z.object({
   data: z.array(alertResponseSchema),
 });
 
+const monitoringStatusSchema = z.enum(["healthy", "degraded", "down"]);
+
+const monitorWorkerSchema = z.object({
+  heartbeatAgeSeconds: z.number().int().nonnegative().nullable(),
+  stale: z.boolean(),
+  cycleAgeSeconds: z.number().int().nonnegative().nullable().optional(),
+  cycleStale: z.boolean().optional(),
+  processedAgeSeconds: z.number().int().nonnegative().nullable().optional(),
+  processedStale: z.boolean().optional(),
+});
+
+const monitorRedisSchema = z.object({
+  pingMs: z.number().int().nonnegative().nullable(),
+  stale: z.boolean(),
+  streams: z.object({
+    oddsTicks: z.number().int().nonnegative().nullable(),
+    eventStatusTicks: z.number().int().nonnegative().nullable(),
+    notificationJobs: z.number().int().nonnegative().nullable(),
+  }),
+  backlogWarnExceeded: z.boolean(),
+});
+
+const monitorVendorUsageSchema = z.object({
+  used: z.number().int().nonnegative().nullable(),
+  limit: z.number().int().positive().nullable(),
+  remaining: z.number().int().nonnegative().nullable(),
+  utilizationPct: z.number().min(0).nullable(),
+  stale: z.boolean(),
+});
+
+const monitorThresholdsSchema = z.object({
+  heartbeatStaleSeconds: z.number().int().positive(),
+  ingestionCycleStaleSeconds: z.number().int().positive(),
+  streamBacklogWarn: z.number().int().positive(),
+});
+
+export const adminMonitoringSummaryResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.object({
+    asOf: z.string(),
+    overallStatus: monitoringStatusSchema,
+    environment: z.string(),
+    vendorUsage: monitorVendorUsageSchema,
+    workers: z.object({
+      ingestion: monitorWorkerSchema,
+      alert: monitorWorkerSchema,
+      notification: monitorWorkerSchema,
+    }),
+    redis: monitorRedisSchema,
+    thresholds: monitorThresholdsSchema,
+  }),
+});
+
+export const adminMonitoringHistoryPointSchema = z.object({
+  sampledAt: z.string(),
+  overallStatus: monitoringStatusSchema,
+  vendorUtilizationPct: z.number().nullable(),
+  ingestionHeartbeatAgeSeconds: z.number().int().nonnegative().nullable(),
+  ingestionCycleAgeSeconds: z.number().int().nonnegative().nullable(),
+  alertHeartbeatAgeSeconds: z.number().int().nonnegative().nullable(),
+  notificationHeartbeatAgeSeconds: z.number().int().nonnegative().nullable(),
+  redisPingMs: z.number().int().nonnegative().nullable(),
+  streamOddsLen: z.number().int().nonnegative().nullable(),
+  streamStatusLen: z.number().int().nonnegative().nullable(),
+  streamNotificationLen: z.number().int().nonnegative().nullable(),
+});
+
+export const adminMonitoringHistoryResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.array(adminMonitoringHistoryPointSchema),
+  asOf: z.string(),
+  environment: z.string(),
+  hours: z.number().int().min(1).max(24),
+});
+
 export type GameEventCompat = z.infer<typeof gameEventCompatSchema>;
 export type GamesSearchResponse = z.infer<typeof gamesSearchResponseSchema>;
 export type GameByIdResponse = z.infer<typeof gameByIdResponseSchema>;
 export type AlertApiItem = z.infer<typeof alertResponseSchema>;
 export type AlertsListResponse = z.infer<typeof alertsListResponseSchema>;
+export type AdminMonitoringSummaryResponse = z.infer<typeof adminMonitoringSummaryResponseSchema>;
+export type AdminMonitoringHistoryResponse = z.infer<typeof adminMonitoringHistoryResponseSchema>;

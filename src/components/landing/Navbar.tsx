@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Zap, Menu, ChevronDown, LogOut, Bell, User } from "lucide-react";
+import { Zap, Menu, ChevronDown, LogOut, Bell, User, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -11,12 +11,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 
 export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, signOut, isLoading } = useAuth();
+  const isAdmin = useIsAdmin();
   const navigate = useNavigate();
 
   const sectionLinks = [
@@ -92,6 +94,14 @@ export const Navbar = () => {
             >
               Create Alert
             </Link>
+            {user && isAdmin && (
+              <Link
+                to="/admin/monitoring"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Admin
+              </Link>
+            )}
           </div>
 
           {/* Auth buttons / User menu */}
@@ -133,6 +143,14 @@ export const Navbar = () => {
                       Create Alert
                     </Link>
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin/monitoring" className="cursor-pointer">
+                        <ShieldAlert className="w-4 h-4 mr-2" />
+                        Admin Monitoring
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive">
                     <LogOut className="w-4 h-4 mr-2" />
@@ -204,6 +222,15 @@ export const Navbar = () => {
                 >
                   Create Alert →
                 </Link>
+                {user && isAdmin && (
+                  <Link
+                    to="/admin/monitoring"
+                    className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Admin Monitoring
+                  </Link>
+                )}
               </div>
               {user && (
                 <Link
