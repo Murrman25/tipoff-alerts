@@ -105,3 +105,41 @@ npm run cap:sync
 - If iOS `pod install` fails during `cap sync`, ensure your terminal uses UTF-8:
   - `export LANG=en_US.UTF-8`
   - `export LC_ALL=en_US.UTF-8`
+
+## Backend API (Supabase Edge Function)
+
+Tipoff now includes a backend facade edge function at:
+
+- `https://wxcezmqaknhftwnpkanu.supabase.co/functions/v1/tipoff-api`
+
+Endpoints implemented:
+
+- `GET /games/search`
+- `GET /games/{eventID}`
+- `GET /alerts` (requires Supabase auth)
+- `POST /alerts` (requires Supabase auth)
+- `PATCH /alerts/{id}` (requires Supabase auth)
+- `DELETE /alerts/{id}` (requires Supabase auth)
+
+API contract docs:
+
+- `/Users/alexmurray/Desktop/tipoff-launchpad/docs/api/tipoff-api-openapi.yaml`
+
+## Worker Runtime
+
+Worker entrypoints:
+
+- `npm run worker:ingestion`
+- `npm run worker:alert`
+- `npm run worker:notification`
+
+Deployment manifests:
+
+- `/Users/alexmurray/Desktop/tipoff-launchpad/deploy/workers/docker-compose.workers.yml`
+
+## Smoke + Load
+
+- `npm run smoke:tipoff`
+- `npm run smoke:stream` (requires `SMOKE_EVENT_IDS`)
+- `npm run smoke:alert-pipeline`
+- `k6 run load/k6-tipoff-games.js -e TIPOFF_API_BASE_URL=...`
