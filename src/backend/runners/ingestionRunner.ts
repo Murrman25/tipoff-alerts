@@ -82,7 +82,10 @@ async function main() {
       maxRequestsPerMinute: config.ingestionMaxRpm,
       maxEventIdsPerRequest: config.ingestionBatchSize,
       bookmakerIDs: config.ingestionBookmakerIDs,
+      bookmakerIDsLive: config.ingestionBookmakerIDsLive,
+      bookmakerIDsCold: config.ingestionBookmakerIDsCold,
     },
+    redis,
     sink,
   );
 
@@ -100,17 +103,25 @@ async function main() {
       .catch((error) => console.error("[ingestion-runner] heartbeat failed", error));
   }, 30000).unref();
 
+  let cachedSummaries: IngestionEventSummary[] = [];
+  let lastDiscoveryMs = 0;
+
   while (true) {
+    const nowMs = Date.now();
     try {
-      const summaries = await discoverEventSummaries(vendor, config.ingestionLeagueIDs);
-      await worker.runCycle(summaries);
+      if (nowMs - lastDiscoveryMs >= config.ingestionDiscoveryIntervalMs || cachedSummaries.length === 0) {
+        cachedSummaries = await discoverEventSummaries(vendor, config.ingestionLeagueIDs);
+        lastDiscoveryMs = nowMs;
+      }
+
+      await worker.runCycle(cachedSummaries);
       await redis.set("workers:ingestion:last_cycle_at", new Date().toISOString(), 600);
-      console.log("[ingestion-runner] cycle complete", { events: summaries.length });
+      console.log("[ingestion-runner] cycle complete", { events: cachedSummaries.length });
     } catch (error) {
       console.error("[ingestion-runner] cycle failed", error);
     }
 
-    await sleep(config.pollLoopDelayMs);
+    await sleep(config.ingestionPollTickMs);
   }
 }
 

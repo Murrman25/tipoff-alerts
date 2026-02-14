@@ -59,6 +59,7 @@ describe("IngestionWorker", () => {
         maxRequestsPerMinute: 10,
         maxEventIdsPerRequest: 10,
       },
+      undefined,
       sink,
     );
 

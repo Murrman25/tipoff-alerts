@@ -16,4 +16,8 @@ describe("redisKeys", () => {
     expect(redisKeys.streamAlertDeadLetter()).toBe("stream:alert_dead_letter");
     expect(redisKeys.streamNotificationDeadLetter()).toBe("stream:notification_dead_letter");
   });
+
+  it("formats poll schedule keys correctly", () => {
+    expect(redisKeys.pollNextAt("evt1")).toBe("poll:event:evt1:next_at");
+  });
 });

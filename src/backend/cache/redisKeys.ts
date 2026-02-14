@@ -3,6 +3,7 @@ export const redisKeys = {
   eventBooks: (eventID: string) => `odds:event:${eventID}:books`,
   marketBookQuote: (eventID: string, oddID: string, bookmakerID: string) =>
     `odds:event:${eventID}:market:${oddID}:book:${bookmakerID}`,
+  pollNextAt: (eventID: string) => `poll:event:${eventID}:next_at`,
   alertByEventOddBook: (eventID: string, oddID: string, bookmakerID: string) =>
     `alerts:idx:event:${eventID}:odd:${oddID}:book:${bookmakerID}`,
   alertMeta: (alertID: string) => `alerts:meta:${alertID}`,

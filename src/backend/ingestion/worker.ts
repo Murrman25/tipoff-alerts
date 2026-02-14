@@ -9,6 +9,8 @@ import {
 } from "@/backend/ingestion/types";
 import { parseVendorBookmakerOdds } from "@/backend/odds/parseAmericanOdds";
 import { EventStatusTick, OddsTick } from "@/backend/contracts/ticks";
+import { redisKeys } from "@/backend/cache/redisKeys";
+import { ttlForEventStatus } from "@/backend/cache/ttlPolicy";
 
 const CORE_ODD_IDS = [
   "points-home-game-ml-home",
@@ -23,6 +25,8 @@ export interface IngestionWorkerConfig {
   maxRequestsPerMinute: number;
   maxEventIdsPerRequest: number;
   bookmakerIDs?: string[];
+  bookmakerIDsLive?: string[];
+  bookmakerIDsCold?: string[];
 }
 
 export interface TickPublisher {
@@ -37,6 +41,7 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
     private readonly vendor: VendorEventsClient<TEvent>,
     private readonly publisher: TickPublisher,
     private readonly config: IngestionWorkerConfig,
+    private readonly redis?: import("@/backend/cache/redisClient").RedisLikeClient,
     private readonly sink?: RedisIngestionSink,
   ) {
     this.budget = new TokenBucket({
@@ -46,17 +51,49 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
   }
 
   async runCycle(events: IngestionEventSummary[]) {
-    const polls = planPollRequests(events, this.budget, this.config.maxEventIdsPerRequest);
+    const polls = await planPollRequests(
+      events,
+      this.budget,
+      this.config.maxEventIdsPerRequest,
+      this.redis,
+    );
     for (const poll of polls) {
+      const lifecycleBookmakers =
+        poll.lifecycle === "live" || poll.lifecycle === "starting_soon"
+          ? this.config.bookmakerIDsLive
+          : this.config.bookmakerIDsCold;
+
+      const bookmakerIDs =
+        lifecycleBookmakers && lifecycleBookmakers.length > 0
+          ? lifecycleBookmakers
+          : this.config.bookmakerIDs;
+
       const response = await this.vendor.getEvents({
         eventIDs: poll.eventIDs.join(","),
         oddID: CORE_ODD_IDS.join(","),
-        bookmakerID: this.config.bookmakerIDs?.length
-          ? this.config.bookmakerIDs.join(",")
-          : undefined,
+        bookmakerID: bookmakerIDs?.length ? bookmakerIDs.join(",") : undefined,
         oddsAvailable: true,
         includeAltLines: false,
       });
+
+      if (this.redis) {
+        const nowMs = Date.now();
+        for (const [eventID, nextAt] of Object.entries(poll.nextPollAtByEventID)) {
+          // Keep schedule key alive at least as long as the hot cache keys.
+          const summary = events.find((item) => item.eventID === eventID);
+          const ttl = summary
+            ? ttlForEventStatus({
+                startsAt: summary.startsAt,
+                started: summary.started,
+                ended: summary.ended,
+                finalized: summary.finalized,
+              })
+            : 10 * 60;
+
+          // Store epoch millis so the planner can compare cheaply.
+          await this.redis.set(redisKeys.pollNextAt(eventID), String(Math.max(nowMs, nextAt)), ttl);
+        }
+      }
 
       for (const event of response.data) {
         const statusTick: EventStatusTick = {

@@ -74,14 +74,14 @@ describe("ingestion lifecycle + scheduler", () => {
 });
 
 describe("request budget planner", () => {
-  it("stops scheduling once token bucket budget is exhausted", () => {
+  it("stops scheduling once token bucket budget is exhausted", async () => {
     const bucket = new TokenBucket({
       capacity: 2,
       refillPerSecond: 0,
       initialTokens: 2,
     });
 
-    const polls = planPollRequests(
+    const polls = await planPollRequests(
       [
         {
           eventID: "e1",
