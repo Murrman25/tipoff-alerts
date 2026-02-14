@@ -11,11 +11,13 @@ describe("comparator mapping", () => {
     expect(uiDirectionToComparator("at_or_below")).toBe("lte");
     expect(uiDirectionToComparator("crosses_above")).toBe("crosses_up");
     expect(uiDirectionToComparator("crosses_below")).toBe("crosses_down");
+    expect(uiDirectionToComparator("exactly")).toBe("eq");
   });
 
   it("maps backend comparators to UI directions", () => {
     expect(comparatorToUiDirection("gte")).toBe("at_or_above");
     expect(comparatorToUiDirection("lte")).toBe("at_or_below");
+    expect(comparatorToUiDirection("eq")).toBe("exactly");
     expect(comparatorToUiDirection("crosses_up")).toBe("crosses_above");
     expect(comparatorToUiDirection("crosses_down")).toBe("crosses_below");
   });

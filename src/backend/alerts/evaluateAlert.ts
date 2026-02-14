@@ -1,6 +1,6 @@
 import { OddsTick } from "@/backend/contracts/ticks";
 
-export type AlertComparator = "gte" | "lte" | "crosses_up" | "crosses_down";
+export type AlertComparator = "gte" | "lte" | "eq" | "crosses_up" | "crosses_down";
 
 export interface AlertRule {
   id: string;
@@ -63,6 +63,8 @@ function comparatorMet(
       return { met: current >= target, needsPrevious: false };
     case "lte":
       return { met: current <= target, needsPrevious: false };
+    case "eq":
+      return { met: current === target, needsPrevious: false };
     case "crosses_up":
       if (previous === undefined || previous === null) {
         return { met: false, needsPrevious: true };

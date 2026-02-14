@@ -10,11 +10,21 @@ export interface NotificationJob {
   oddID: string;
   bookmakerID: string;
   currentOdds: number;
+  previousOdds?: number | null;
+  ruleType?: string;
+  marketType?: string;
+  teamSide?: string | null;
+  threshold?: number | null;
+  direction?: string;
   observedAt: string;
 }
 
 export interface NotificationSender {
-  send(channel: NotificationChannel, job: NotificationJob): Promise<{ providerMessageId?: string }>;
+  send(
+    channel: NotificationChannel,
+    destination: string,
+    job: NotificationJob,
+  ): Promise<{ providerMessageId?: string }>;
 }
 
 export interface NotificationRepository {
@@ -46,7 +56,7 @@ export class NotificationWorker {
       const destination = await this.repository.resolveDestination(job.userId, channel);
       for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
         try {
-          const result = await this.sender.send(channel, job);
+          const result = await this.sender.send(channel, destination, job);
           await this.repository.saveDelivery({
             alertFiringId: job.alertFiringId,
             channel,

@@ -48,6 +48,34 @@ describe("evaluateAlert", () => {
     expect(result.reason).toBe("fire");
   });
 
+  it("fires when eq comparator threshold is met", () => {
+    const result = evaluateAlert({
+      alert: {
+        id: "a2eq",
+        comparator: "eq",
+        targetValue: 150,
+      },
+      currentTick: baseTick,
+    });
+
+    expect(result.shouldFire).toBe(true);
+    expect(result.reason).toBe("fire");
+  });
+
+  it("does not fire when eq comparator threshold is not met", () => {
+    const result = evaluateAlert({
+      alert: {
+        id: "a2eq2",
+        comparator: "eq",
+        targetValue: 151,
+      },
+      currentTick: baseTick,
+    });
+
+    expect(result.shouldFire).toBe(false);
+    expect(result.reason).toBe("comparator_not_met");
+  });
+
   it("requires previous value for crosses_up", () => {
     const result = evaluateAlert({
       alert: {

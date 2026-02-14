@@ -80,7 +80,7 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
   async listMatchingAlerts(tick: OddsTick): Promise<StoredAlert[]> {
     const { data: alerts, error } = await this.supabase
       .from("odds_alerts")
-      .select("id,user_id,event_id,odd_id,bookmaker_id,comparator,target_value,one_shot,cooldown_seconds,available_required,last_fired_at,is_active")
+      .select("id,user_id,event_id,odd_id,bookmaker_id,comparator,target_value,ui_rule_type,ui_market_type,ui_team_side,ui_direction,one_shot,cooldown_seconds,available_required,last_fired_at,is_active")
       .eq("event_id", tick.eventID)
       .eq("odd_id", tick.oddID)
       .eq("bookmaker_id", tick.bookmakerID)
@@ -117,6 +117,10 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
         bookmakerID: item.bookmaker_id as string,
         comparator: item.comparator as StoredAlert["comparator"],
         targetValue: asNumber(item.target_value),
+        uiRuleType: (item.ui_rule_type as string | null) || null,
+        uiMarketType: (item.ui_market_type as string | null) || null,
+        uiTeamSide: (item.ui_team_side as string | null) || null,
+        uiDirection: (item.ui_direction as string | null) || null,
         oneShot: asBoolean(item.one_shot, true),
         cooldownSeconds: asNumber(item.cooldown_seconds),
         availableRequired: asBoolean(item.available_required, true),
@@ -279,6 +283,12 @@ async function main() {
       oddID: string;
       bookmakerID: string;
       currentOdds: number;
+      previousOdds: number | null;
+      ruleType: string;
+      marketType: string;
+      teamSide: string | null;
+      threshold: number;
+      direction: string;
       observedAt: string;
     }) => {
       await redis.xadd(redisKeys.streamNotificationJobs(), {
@@ -290,6 +300,12 @@ async function main() {
         oddID: job.oddID,
         bookmakerID: job.bookmakerID,
         currentOdds: String(job.currentOdds),
+        previousOdds: job.previousOdds === null ? "" : String(job.previousOdds),
+        ruleType: job.ruleType,
+        marketType: job.marketType,
+        teamSide: job.teamSide || "",
+        threshold: String(job.threshold),
+        direction: job.direction,
         observedAt: job.observedAt,
       });
     },

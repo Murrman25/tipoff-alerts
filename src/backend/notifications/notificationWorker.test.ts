@@ -35,6 +35,7 @@ describe("NotificationWorker", () => {
 
     expect(sender.send).toHaveBeenCalledTimes(2);
     expect(repository.saveDelivery).toHaveBeenCalledTimes(2);
+    expect(sender.send).toHaveBeenCalledWith("push", "user@example.com", expect.any(Object));
   });
 
   it("retries transient failures and marks intermediate attempts pending", async () => {

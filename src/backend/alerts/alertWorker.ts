@@ -7,8 +7,12 @@ export interface StoredAlert {
   eventID: string;
   oddID: string;
   bookmakerID: string;
-  comparator: "gte" | "lte" | "crosses_up" | "crosses_down";
+  comparator: "gte" | "lte" | "eq" | "crosses_up" | "crosses_down";
   targetValue: number;
+  uiRuleType?: string | null;
+  uiMarketType?: string | null;
+  uiTeamSide?: string | null;
+  uiDirection?: string | null;
   oneShot: boolean;
   cooldownSeconds: number;
   availableRequired: boolean;
@@ -43,6 +47,12 @@ export interface NotificationJobPublisher {
     oddID: string;
     bookmakerID: string;
     currentOdds: number;
+    previousOdds: number | null;
+    ruleType: string;
+    marketType: string;
+    teamSide: string | null;
+    threshold: number;
+    direction: string;
     observedAt: string;
   }): Promise<void>;
 }
@@ -101,6 +111,12 @@ export class AlertWorker {
         oddID: tick.oddID,
         bookmakerID: tick.bookmakerID,
         currentOdds: tick.currentOdds,
+        previousOdds: previousTick?.currentOdds ?? null,
+        ruleType: alert.uiRuleType || "odds_threshold",
+        marketType: alert.uiMarketType || "ml",
+        teamSide: alert.uiTeamSide || null,
+        threshold: alert.targetValue,
+        direction: alert.uiDirection || "at_or_above",
         observedAt: tick.observedAt,
       });
     }

@@ -7,12 +7,13 @@ const UI_TO_COMPARATOR: Record<string, AlertComparator> = {
   at_or_below: "lte",
   crosses_above: "crosses_up",
   crosses_below: "crosses_down",
-  exactly: "gte",
+  exactly: "eq",
 };
 
 const COMPARATOR_TO_UI: Record<AlertComparator, string> = {
   gte: "at_or_above",
   lte: "at_or_below",
+  eq: "exactly",
   crosses_up: "crosses_above",
   crosses_down: "crosses_below",
 };
