@@ -13,5 +13,7 @@ describe("redisKeys", () => {
     expect(redisKeys.streamOddsTicks()).toBe("stream:odds_ticks");
     expect(redisKeys.streamEventStatusTicks()).toBe("stream:event_status_ticks");
     expect(redisKeys.streamNotificationJobs()).toBe("stream:notification_jobs");
+    expect(redisKeys.streamAlertDeadLetter()).toBe("stream:alert_dead_letter");
+    expect(redisKeys.streamNotificationDeadLetter()).toBe("stream:notification_dead_letter");
   });
 });

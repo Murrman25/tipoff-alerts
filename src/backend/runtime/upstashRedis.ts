@@ -143,9 +143,11 @@ export class UpstashRedisClient implements RedisLikeClient {
     consumer: string;
     count?: number;
     blockMs?: number;
+    readId?: string;
   }): Promise<StreamEntry[]> {
     const count = params.count ?? 50;
     const blockMs = params.blockMs ?? 5000;
+    const readId = params.readId ?? ">";
 
     const raw = await this.command<unknown>(
       "XREADGROUP",
@@ -158,7 +160,7 @@ export class UpstashRedisClient implements RedisLikeClient {
       blockMs,
       "STREAMS",
       params.stream,
-      ">",
+      readId,
     );
 
     return parseStreamEntries(raw);

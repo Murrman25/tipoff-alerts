@@ -8,7 +8,7 @@ import {
 import { redisKeys } from "@/backend/cache/redisKeys";
 import { loadWorkerConfig, sleep } from "@/backend/runtime/config";
 import { createServiceSupabaseClient } from "@/backend/runtime/supabase";
-import { createUpstashRedisFromEnv } from "@/backend/runtime/upstashRedis";
+import { createUpstashRedisFromEnv, UpstashRedisClient } from "@/backend/runtime/upstashRedis";
 
 function parseChannels(value: string): NotificationChannel[] {
   try {
@@ -34,7 +34,15 @@ function asNotificationJob(fields: Record<string, string>): NotificationJob | nu
   const bookmakerID = fields.bookmakerID;
   const currentOdds = Number(fields.currentOdds);
 
-  if (!alertFiringId || !alertId || !userId || !eventID || !oddID || !bookmakerID || !Number.isFinite(currentOdds)) {
+  if (
+    !alertFiringId ||
+    !alertId ||
+    !userId ||
+    !eventID ||
+    !oddID ||
+    !bookmakerID ||
+    !Number.isFinite(currentOdds)
+  ) {
     return null;
   }
 
@@ -50,6 +58,22 @@ function asNotificationJob(fields: Record<string, string>): NotificationJob | nu
     observedAt: fields.observedAt || new Date().toISOString(),
   };
 }
+
+function intEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(1, parsed);
+}
+
+type RedisStreamEntry = Awaited<ReturnType<UpstashRedisClient["xreadgroup"]>>[number];
 
 class SupabaseNotificationRepository implements NotificationRepository {
   constructor(private readonly supabase: ReturnType<typeof createServiceSupabaseClient>) {}
@@ -117,10 +141,89 @@ class LoggingNotificationSender implements NotificationSender {
   }
 }
 
+async function processNotificationEntry(params: {
+  entry: RedisStreamEntry;
+  source: "new" | "pending";
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  worker: NotificationWorker;
+}) {
+  const { entry, source, redis, config, worker } = params;
+  const job = asNotificationJob(entry.fields);
+  if (!job) {
+    await redis.xack(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup, entry.id);
+    return;
+  }
+
+  try {
+    await worker.process(job);
+    await redis.set("workers:notification:last_processed_at", new Date().toISOString(), 600);
+    await redis.xack(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup, entry.id);
+  } catch (error) {
+    const errorText = error instanceof Error ? error.message : String(error ?? "unknown error");
+    console.error("[notification-runner] entry processing failed; moving to dead-letter", {
+      entryId: entry.id,
+      source,
+      error: errorText,
+    });
+
+    try {
+      await redis.xadd(redisKeys.streamNotificationDeadLetter(), {
+        stream: redisKeys.streamNotificationJobs(),
+        group: config.notifyConsumerGroup,
+        consumer: config.notifyConsumerName,
+        entryId: entry.id,
+        source,
+        error: errorText,
+        payload: JSON.stringify(entry.fields),
+        observedAt: new Date().toISOString(),
+      });
+    } catch (deadLetterError) {
+      console.error("[notification-runner] dead-letter publish failed", deadLetterError);
+    }
+
+    await redis.xack(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup, entry.id);
+  }
+}
+
+async function drainPendingNotificationEntries(params: {
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  worker: NotificationWorker;
+  readCount: number;
+}): Promise<number> {
+  const { redis, config, worker, readCount } = params;
+  let total = 0;
+
+  for (let i = 0; i < 40; i += 1) {
+    const pending = await redis.xreadgroup({
+      stream: redisKeys.streamNotificationJobs(),
+      group: config.notifyConsumerGroup,
+      consumer: config.notifyConsumerName,
+      count: readCount,
+      blockMs: 1,
+      readId: "0",
+    });
+
+    if (pending.length === 0) {
+      break;
+    }
+
+    for (const entry of pending) {
+      await processNotificationEntry({ entry, source: "pending", redis, config, worker });
+    }
+
+    total += pending.length;
+  }
+
+  return total;
+}
+
 async function main() {
   const config = loadWorkerConfig();
   const redis = createUpstashRedisFromEnv();
   const supabase = createServiceSupabaseClient(config.supabaseUrl, config.supabaseServiceRoleKey);
+  const readCount = intEnv("NOTIFY_READ_COUNT", 25);
 
   await redis.xgroupCreate(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup);
 
@@ -132,6 +235,7 @@ async function main() {
     group: config.notifyConsumerGroup,
     consumer: config.notifyConsumerName,
     dryRun: process.env.NOTIFY_DRY_RUN !== "false",
+    readCount,
   });
 
   setInterval(() => {
@@ -142,11 +246,16 @@ async function main() {
 
   while (true) {
     try {
+      const drained = await drainPendingNotificationEntries({ redis, config, worker, readCount });
+      if (drained > 0) {
+        console.log("[notification-runner] drained pending entries", { drained });
+      }
+
       const entries = await redis.xreadgroup({
         stream: redisKeys.streamNotificationJobs(),
         group: config.notifyConsumerGroup,
         consumer: config.notifyConsumerName,
-        count: 100,
+        count: readCount,
         blockMs: 5000,
       });
 
@@ -156,15 +265,7 @@ async function main() {
       }
 
       for (const entry of entries) {
-        const job = asNotificationJob(entry.fields);
-        if (!job) {
-          await redis.xack(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup, entry.id);
-          continue;
-        }
-
-        await worker.process(job);
-        await redis.set("workers:notification:last_processed_at", new Date().toISOString(), 600);
-        await redis.xack(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup, entry.id);
+        await processNotificationEntry({ entry, source: "new", redis, config, worker });
       }
     } catch (error) {
       console.error("[notification-runner] loop failure", error);

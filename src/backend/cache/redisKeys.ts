@@ -10,4 +10,6 @@ export const redisKeys = {
   streamOddsTicks: () => "stream:odds_ticks",
   streamEventStatusTicks: () => "stream:event_status_ticks",
   streamNotificationJobs: () => "stream:notification_jobs",
+  streamAlertDeadLetter: () => "stream:alert_dead_letter",
+  streamNotificationDeadLetter: () => "stream:notification_dead_letter",
 };

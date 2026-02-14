@@ -50,6 +50,27 @@ function asOddsTick(fields: Record<string, string>): OddsTick | null {
   };
 }
 
+function intEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(1, parsed);
+}
+
+function isPelLimitError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("Pending Entries List limit") || message.includes("XReadGroup is cancelled");
+}
+
+type RedisStreamEntry = Awaited<ReturnType<UpstashRedisClient["xreadgroup"]>>[number];
+
 class SupabaseAlertRepository implements AlertWorkerRepository {
   constructor(
     private readonly supabase: ReturnType<typeof createServiceSupabaseClient>,
@@ -161,10 +182,89 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
   }
 }
 
+async function processAlertEntry(params: {
+  entry: RedisStreamEntry;
+  source: "new" | "pending";
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  worker: AlertWorker;
+}) {
+  const { entry, source, redis, config, worker } = params;
+  const tick = asOddsTick(entry.fields);
+  if (!tick) {
+    await redis.xack(redisKeys.streamOddsTicks(), config.alertConsumerGroup, entry.id);
+    return;
+  }
+
+  try {
+    await worker.processOddsTick(tick);
+    await redis.set("workers:alert:last_processed_at", new Date().toISOString(), 600);
+    await redis.xack(redisKeys.streamOddsTicks(), config.alertConsumerGroup, entry.id);
+  } catch (error) {
+    const errorText = error instanceof Error ? error.message : String(error ?? "unknown error");
+    console.error("[alert-runner] entry processing failed; moving to dead-letter", {
+      entryId: entry.id,
+      source,
+      error: errorText,
+    });
+
+    try {
+      await redis.xadd(redisKeys.streamAlertDeadLetter(), {
+        stream: redisKeys.streamOddsTicks(),
+        group: config.alertConsumerGroup,
+        consumer: config.alertConsumerName,
+        entryId: entry.id,
+        source,
+        error: errorText,
+        payload: JSON.stringify(entry.fields),
+        observedAt: new Date().toISOString(),
+      });
+    } catch (deadLetterError) {
+      console.error("[alert-runner] dead-letter publish failed", deadLetterError);
+    }
+
+    await redis.xack(redisKeys.streamOddsTicks(), config.alertConsumerGroup, entry.id);
+  }
+}
+
+async function drainPendingAlertEntries(params: {
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  worker: AlertWorker;
+  readCount: number;
+}): Promise<number> {
+  const { redis, config, worker, readCount } = params;
+  let total = 0;
+
+  for (let i = 0; i < 40; i += 1) {
+    const pending = await redis.xreadgroup({
+      stream: redisKeys.streamOddsTicks(),
+      group: config.alertConsumerGroup,
+      consumer: config.alertConsumerName,
+      count: readCount,
+      blockMs: 1,
+      readId: "0",
+    });
+
+    if (pending.length === 0) {
+      break;
+    }
+
+    for (const entry of pending) {
+      await processAlertEntry({ entry, source: "pending", redis, config, worker });
+    }
+
+    total += pending.length;
+  }
+
+  return total;
+}
+
 async function main() {
   const config = loadWorkerConfig();
   const redis = createUpstashRedisFromEnv();
   const supabase = createServiceSupabaseClient(config.supabaseUrl, config.supabaseServiceRoleKey);
+  const readCount = intEnv("ALERT_READ_COUNT", 25);
 
   await redis.xgroupCreate(redisKeys.streamOddsTicks(), config.alertConsumerGroup);
 
@@ -200,6 +300,7 @@ async function main() {
   console.log("[alert-runner] started", {
     group: config.alertConsumerGroup,
     consumer: config.alertConsumerName,
+    readCount,
   });
 
   setInterval(() => {
@@ -210,11 +311,21 @@ async function main() {
 
   while (true) {
     try {
+      const drained = await drainPendingAlertEntries({
+        redis,
+        config,
+        worker,
+        readCount,
+      });
+      if (drained > 0) {
+        console.log("[alert-runner] drained pending entries", { drained });
+      }
+
       const entries = await redis.xreadgroup({
         stream: redisKeys.streamOddsTicks(),
         group: config.alertConsumerGroup,
         consumer: config.alertConsumerName,
-        count: 100,
+        count: readCount,
         blockMs: 5000,
       });
 
@@ -224,18 +335,17 @@ async function main() {
       }
 
       for (const entry of entries) {
-        const tick = asOddsTick(entry.fields);
-        if (!tick) {
-          await redis.xack(redisKeys.streamOddsTicks(), config.alertConsumerGroup, entry.id);
-          continue;
-        }
-
-        await worker.processOddsTick(tick);
-        await redis.set("workers:alert:last_processed_at", new Date().toISOString(), 600);
-        await redis.xack(redisKeys.streamOddsTicks(), config.alertConsumerGroup, entry.id);
+        await processAlertEntry({ entry, source: "new", redis, config, worker });
       }
     } catch (error) {
-      console.error("[alert-runner] loop failure", error);
+      if (isPelLimitError(error)) {
+        console.warn("[alert-runner] PEL limit reached; draining pending entries", {
+          consumer: config.alertConsumerName,
+          group: config.alertConsumerGroup,
+        });
+      } else {
+        console.error("[alert-runner] loop failure", error);
+      }
       await sleep(1000);
     }
   }
