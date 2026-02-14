@@ -2,6 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { CORE_ODD_IDS } from './types.ts';
 import { enrichTeams, mapEventPayload } from './games.ts';
+import { loadEventFromIngestionCache } from './ingestionCache.ts';
+import { createRedisClientFromEnv } from './redis.ts';
 import { fetchVendorEvents } from './vendor.ts';
 import { recordMetric } from './metrics.ts';
 
@@ -42,6 +44,7 @@ export function streamEvents(
 
   const encoder = new TextEncoder();
   const previousByEvent = new Map<string, { odds: string; status: string }>();
+  const redis = createRedisClientFromEnv();
 
   const stream = new ReadableStream({
     start(controller) {
@@ -63,15 +66,33 @@ export function streamEvents(
 
       const poll = async () => {
         try {
-          const response = await fetchVendorEvents(apiKey, {
-            eventIDs: eventIDs.join(','),
-            oddID: CORE_ODD_IDS.join(','),
-            includeAltLines: false,
-            limit: eventIDs.length,
-          });
+          let enriched: ReturnType<typeof mapEventPayload>[] = [];
+          let source: 'redis' | 'vendor' = 'vendor';
 
-          const mapped = response.data.map(mapEventPayload);
-          const enriched = await enrichTeams(mapped, serviceClient);
+          if (redis) {
+            const cached: ReturnType<typeof mapEventPayload>[] = [];
+            for (const eventID of eventIDs) {
+              const item = await loadEventFromIngestionCache({ redis, eventID });
+              if (item) cached.push(mapEventPayload(item));
+            }
+            if (cached.length > 0) {
+              enriched = await enrichTeams(cached, serviceClient);
+              source = 'redis';
+            }
+          }
+
+          if (enriched.length === 0) {
+            const response = await fetchVendorEvents(apiKey, {
+              eventIDs: eventIDs.join(','),
+              oddID: CORE_ODD_IDS.join(','),
+              includeAltLines: false,
+              limit: eventIDs.length,
+            });
+            const mapped = response.data.map(mapEventPayload);
+            enriched = await enrichTeams(mapped, serviceClient);
+            source = 'vendor';
+          }
+
           const asOf = new Date().toISOString();
 
           for (const event of enriched) {
@@ -107,6 +128,7 @@ export function streamEvents(
           send('heartbeat', {
             asOf,
             watchedEvents: eventIDs.length,
+            source,
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Stream polling failed';

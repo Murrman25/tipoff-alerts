@@ -131,12 +131,43 @@ export class UpstashRedisClient implements RedisLikeClient {
     await this.command("SADD", key, ...members);
   }
 
+  async srem(key: string, members: string[]): Promise<void> {
+    if (members.length === 0) {
+      return;
+    }
+    await this.command("SREM", key, ...members);
+  }
+
   async smembers(key: string): Promise<string[]> {
     const result = await this.command<unknown>("SMEMBERS", key);
     if (!Array.isArray(result)) {
       return [];
     }
 
+    return result
+      .map((value) => (typeof value === "string" ? value : null))
+      .filter((value): value is string => value !== null);
+  }
+
+  async zadd(key: string, entries: Array<{ score: number; member: string }>): Promise<void> {
+    if (entries.length === 0) return;
+    const args: (string | number)[] = [];
+    for (const entry of entries) {
+      if (!Number.isFinite(entry.score) || !entry.member) continue;
+      args.push(entry.score, entry.member);
+    }
+    if (args.length === 0) return;
+    await this.command("ZADD", key, ...args);
+  }
+
+  async zrem(key: string, members: string[]): Promise<void> {
+    if (members.length === 0) return;
+    await this.command("ZREM", key, ...members);
+  }
+
+  async zrange(key: string, start: number, stop: number): Promise<string[]> {
+    const result = await this.command<unknown>("ZRANGE", key, start, stop);
+    if (!Array.isArray(result)) return [];
     return result
       .map((value) => (typeof value === "string" ? value : null))
       .filter((value): value is string => value !== null);

@@ -11,6 +11,7 @@ import { parseVendorBookmakerOdds } from "@/backend/odds/parseAmericanOdds";
 import { EventStatusTick, OddsTick } from "@/backend/contracts/ticks";
 import { redisKeys } from "@/backend/cache/redisKeys";
 import { ttlForEventStatus } from "@/backend/cache/ttlPolicy";
+import { VendorMarketBookOdds } from "@/backend/ingestion/types";
 
 const CORE_ODD_IDS = [
   "points-home-game-ml-home",
@@ -121,11 +122,45 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
           await this.sink.writeEventStatus(statusTick);
         }
 
+        if (this.redis) {
+          const ttl = ttlForEventStatus({
+            startsAt: statusTick.startsAt,
+            started: statusTick.started,
+            ended: statusTick.ended,
+            finalized: statusTick.finalized,
+          });
+
+          const eventMeta = {
+            eventID: event.eventID,
+            sportID: event.sportID || "",
+            leagueID: event.leagueID,
+            teams: event.teams || {},
+            status: event.status || {},
+            scores: event.scores || null,
+            results: event.results || null,
+          };
+
+          await this.redis.set(redisKeys.eventMeta(event.eventID), JSON.stringify(eventMeta), ttl);
+        }
+
+        const oddsCoreSnapshot: Record<string, { byBookmaker: Record<string, VendorMarketBookOdds> }> =
+          {};
+
         const oddsByMarket = event.odds || {};
         for (const [oddID, oddNode] of Object.entries(oddsByMarket)) {
           const byBookmaker = oddNode.byBookmaker || {};
 
           for (const [bookmakerID, rawQuote] of Object.entries(byBookmaker)) {
+            if (!oddsCoreSnapshot[oddID]) {
+              oddsCoreSnapshot[oddID] = { byBookmaker: {} };
+            }
+            oddsCoreSnapshot[oddID].byBookmaker[bookmakerID] = {
+              odds: rawQuote.odds,
+              available: rawQuote.available,
+              spread: rawQuote.spread,
+              overUnder: rawQuote.overUnder,
+            };
+
             if (this.sink) {
               const tick = await this.sink.writeOddsQuote({
                 eventID: event.eventID,
@@ -166,6 +201,52 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
               observedAt: statusTick.observedAt,
             });
           }
+        }
+
+        if (this.redis) {
+          const ttl = ttlForEventStatus({
+            startsAt: statusTick.startsAt,
+            started: statusTick.started,
+            ended: statusTick.ended,
+            finalized: statusTick.finalized,
+          });
+          await this.redis.set(
+            redisKeys.eventOddsCore(event.eventID),
+            JSON.stringify(oddsCoreSnapshot),
+            ttl,
+          );
+
+          const lifecycle = classifyLifecycle({
+            eventID: statusTick.eventID,
+            leagueID: event.leagueID,
+            startsAt: statusTick.startsAt,
+            started: statusTick.started,
+            ended: statusTick.ended,
+            finalized: statusTick.finalized,
+          });
+
+          const liveKey = redisKeys.leagueLiveIndex(event.leagueID);
+          const upcomingKey = redisKeys.leagueUpcomingIndex(event.leagueID);
+
+          const startsAtMs = new Date(statusTick.startsAt).getTime();
+          const score = Number.isFinite(startsAtMs) ? startsAtMs : Date.now();
+
+          // Keep league indexes alive with a fixed TTL; ingestion refreshes frequently.
+          const indexTtlSeconds = 12 * 60 * 60;
+
+          if (lifecycle === "live") {
+            await this.redis.sadd(liveKey, [event.eventID]);
+            await this.redis.zrem(upcomingKey, [event.eventID]);
+          } else if (lifecycle === "finalized") {
+            await this.redis.srem(liveKey, [event.eventID]);
+            await this.redis.zrem(upcomingKey, [event.eventID]);
+          } else {
+            await this.redis.srem(liveKey, [event.eventID]);
+            await this.redis.zadd(upcomingKey, [{ score, member: event.eventID }]);
+          }
+
+          await this.redis.expire(liveKey, indexTtlSeconds);
+          await this.redis.expire(upcomingKey, indexTtlSeconds);
         }
       }
     }

@@ -20,4 +20,11 @@ describe("redisKeys", () => {
   it("formats poll schedule keys correctly", () => {
     expect(redisKeys.pollNextAt("evt1")).toBe("poll:event:evt1:next_at");
   });
+
+  it("formats ingestion data-plane keys correctly", () => {
+    expect(redisKeys.eventMeta("evt1")).toBe("event:evt1:meta");
+    expect(redisKeys.eventOddsCore("evt1")).toBe("odds:event:evt1:odds_core");
+    expect(redisKeys.leagueLiveIndex("NBA")).toBe("idx:league:NBA:live");
+    expect(redisKeys.leagueUpcomingIndex("NBA")).toBe("idx:league:NBA:upcoming");
+  });
 });
