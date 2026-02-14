@@ -33,13 +33,16 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
     switch (context) {
       case 'odds':
         return direction.id === "at_or_above" ? "or better" : 
-               direction.id === "at_or_below" ? "or worse" : "";
+               direction.id === "at_or_below" ? "or worse" :
+               direction.id === "exactly" ? "exactly" : "";
       case 'spread':
         return direction.id === "at_or_above" ? "or better" : 
-               direction.id === "at_or_below" ? "or worse" : "";
+               direction.id === "at_or_below" ? "or worse" :
+               direction.id === "exactly" ? "exactly" : "";
       case 'total':
         return direction.id === "at_or_above" ? "or higher" : 
-               direction.id === "at_or_below" ? "or lower" : "";
+               direction.id === "at_or_below" ? "or lower" :
+               direction.id === "exactly" ? "exactly" : "";
       case 'margin':
         return direction.id === "at_or_above" ? "or more" : 
                direction.id === "at_or_below" ? "or fewer" : 

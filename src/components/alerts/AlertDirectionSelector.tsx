@@ -20,10 +20,11 @@ export const AlertDirectionSelector = ({
 }: AlertDirectionSelectorProps) => {
   // Filter options based on rule type
   const getAvailableOptions = () => {
-    // Market-based alerts use at or above/below only
+    // Market-based alerts support at or above/below + exactly
+    // (exactly maps to backend eq comparator).
     if (ruleType === "ml_threshold" || ruleType === "spread_threshold" || ruleType === "ou_threshold") {
       return DIRECTION_OPTIONS.filter(
-        (opt) => opt.id === "at_or_above" || opt.id === "at_or_below"
+        (opt) => opt.id === "at_or_above" || opt.id === "at_or_below" || opt.id === "exactly"
       );
     }
     // Score margin uses at/above/below/exactly
