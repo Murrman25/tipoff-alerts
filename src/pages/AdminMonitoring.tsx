@@ -15,6 +15,10 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { AdminMonitoringEnvironmentQuery } from "@/lib/adminMonitoringApi";
 import { TipoffApiError } from "@/lib/tipoffApi";
 
+function hasNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 function fmtNumber(value: number | null | undefined): string {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return "-";
@@ -62,6 +66,15 @@ export default function AdminMonitoring() {
         oddsBacklog: point.streamOddsLen,
       })),
     [history],
+  );
+
+  const hasVendorUtilizationSeries = useMemo(
+    () => chartData.some((point) => hasNumber(point.utilization)),
+    [chartData],
+  );
+  const hasRedisTrendSeries = useMemo(
+    () => chartData.some((point) => hasNumber(point.redisPingMs) || hasNumber(point.oddsBacklog)),
+    [chartData],
   );
 
   if (authLoading || (user && summaryQuery.isLoading && !summary)) {
@@ -234,17 +247,27 @@ export default function AdminMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                {history.length === 0 ? (
+                {history.length === 0 || !hasVendorUtilizationSeries ? (
                   <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
-                    No 24h history for this environment.
+                    {history.length === 0
+                      ? "No 24h history for this environment yet."
+                      : "History exists, but vendor utilization is not sampled yet."}
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <XAxis dataKey="time" minTickGap={24} />
-                      <YAxis />
+                      <YAxis domain={[0, 100]} />
                       <Tooltip />
-                      <Line type="monotone" dataKey="utilization" stroke="hsl(var(--primary))" dot={false} />
+                      <Line
+                        type="monotone"
+                        dataKey="utilization"
+                        stroke="hsl(var(--primary))"
+                        dot={history.length < 2}
+                        activeDot={{ r: 3 }}
+                        connectNulls
+                        isAnimationActive={false}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -258,18 +281,39 @@ export default function AdminMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                {history.length === 0 ? (
+                {history.length === 0 || !hasRedisTrendSeries ? (
                   <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
-                    No 24h history for this environment.
+                    {history.length === 0
+                      ? "No 24h history for this environment yet."
+                      : "History exists, but Redis trend metrics are not sampled yet."}
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <XAxis dataKey="time" minTickGap={24} />
-                      <YAxis />
+                      <YAxis yAxisId="ping" />
+                      <YAxis yAxisId="backlog" orientation="right" />
                       <Tooltip />
-                      <Line type="monotone" dataKey="redisPingMs" stroke="#22c55e" dot={false} />
-                      <Line type="monotone" dataKey="oddsBacklog" stroke="#f59e0b" dot={false} />
+                      <Line
+                        type="monotone"
+                        dataKey="redisPingMs"
+                        yAxisId="ping"
+                        stroke="#22c55e"
+                        dot={history.length < 2}
+                        activeDot={{ r: 3 }}
+                        connectNulls
+                        isAnimationActive={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="oddsBacklog"
+                        yAxisId="backlog"
+                        stroke="#f59e0b"
+                        dot={history.length < 2}
+                        activeDot={{ r: 3 }}
+                        connectNulls
+                        isAnimationActive={false}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
