@@ -23,6 +23,25 @@ export interface OddsQuoteSnapshot {
 export class RedisIngestionSink {
   constructor(private readonly redis: RedisLikeClient) {}
 
+  private stableOddsFields(serialized: string | null): {
+    currentOdds: number | null;
+    line: number | null;
+    available: boolean;
+  } | null {
+    if (!serialized) return null;
+    try {
+      const parsed = JSON.parse(serialized) as Partial<OddsTick>;
+      if (typeof parsed !== "object" || parsed === null) return null;
+      return {
+        currentOdds: typeof parsed.currentOdds === "number" ? parsed.currentOdds : null,
+        line: typeof parsed.line === "number" ? parsed.line : null,
+        available: Boolean(parsed.available),
+      };
+    } catch {
+      return null;
+    }
+  }
+
   async writeOddsQuote(snapshot: OddsQuoteSnapshot): Promise<OddsTick | null> {
     const parsed = parseVendorBookmakerOdds({
       odds: snapshot.odds,
@@ -55,7 +74,7 @@ export class RedisIngestionSink {
       finalized: snapshot.finalized,
     });
 
-    await this.redis.set(
+    const previousRaw = await this.redis.setWithGet(
       quoteKey,
       JSON.stringify({
         ...tick,
@@ -63,19 +82,57 @@ export class RedisIngestionSink {
       }),
       ttl,
     );
-    await this.redis.sadd(redisKeys.eventBooks(snapshot.eventID), [snapshot.bookmakerID]);
-    await this.redis.xadd(redisKeys.streamOddsTicks(), {
-      eventID: tick.eventID,
-      oddID: tick.oddID,
-      bookmakerID: tick.bookmakerID,
-      currentOdds: String(tick.currentOdds),
-      line: tick.line === null ? "null" : String(tick.line),
-      available: String(tick.available),
-      vendorUpdatedAt: tick.vendorUpdatedAt || "",
-      observedAt: tick.observedAt,
-    });
+
+    const previous = this.stableOddsFields(previousRaw);
+    const changed =
+      !previous ||
+      previous.currentOdds !== tick.currentOdds ||
+      previous.line !== tick.line ||
+      previous.available !== tick.available;
+
+    const booksKey = redisKeys.eventBooks(snapshot.eventID);
+    await this.redis.sadd(booksKey, [snapshot.bookmakerID]);
+    await this.redis.expire(booksKey, ttl);
+
+    if (changed) {
+      await this.redis.xadd(redisKeys.streamOddsTicks(), {
+        eventID: tick.eventID,
+        oddID: tick.oddID,
+        bookmakerID: tick.bookmakerID,
+        currentOdds: String(tick.currentOdds),
+        line: tick.line === null ? "null" : String(tick.line),
+        available: String(tick.available),
+        vendorUpdatedAt: tick.vendorUpdatedAt || "",
+        observedAt: tick.observedAt,
+      });
+    }
 
     return tick;
+  }
+
+  private stableStatusFields(serialized: string | null): {
+    startsAt: string;
+    started: boolean;
+    ended: boolean;
+    finalized: boolean;
+    cancelled: boolean;
+    live: boolean;
+  } | null {
+    if (!serialized) return null;
+    try {
+      const parsed = JSON.parse(serialized) as Partial<EventStatusTick>;
+      if (typeof parsed !== "object" || parsed === null) return null;
+      return {
+        startsAt: typeof parsed.startsAt === "string" ? parsed.startsAt : "",
+        started: Boolean(parsed.started),
+        ended: Boolean(parsed.ended),
+        finalized: Boolean(parsed.finalized),
+        cancelled: Boolean(parsed.cancelled),
+        live: Boolean(parsed.live),
+      };
+    } catch {
+      return null;
+    }
   }
 
   async writeEventStatus(status: EventStatusTick): Promise<void> {
@@ -86,17 +143,30 @@ export class RedisIngestionSink {
       finalized: status.finalized,
     });
 
-    await this.redis.set(redisKeys.eventStatus(status.eventID), JSON.stringify(status), ttl);
-    await this.redis.xadd(redisKeys.streamEventStatusTicks(), {
-      eventID: status.eventID,
-      startsAt: status.startsAt,
-      started: String(status.started),
-      ended: String(status.ended),
-      finalized: String(status.finalized),
-      cancelled: String(status.cancelled),
-      live: String(status.live),
-      vendorUpdatedAt: status.vendorUpdatedAt || "",
-      observedAt: status.observedAt,
-    });
+    const statusKey = redisKeys.eventStatus(status.eventID);
+    const previousRaw = await this.redis.setWithGet(statusKey, JSON.stringify(status), ttl);
+    const previous = this.stableStatusFields(previousRaw);
+    const changed =
+      !previous ||
+      previous.startsAt !== status.startsAt ||
+      previous.started !== status.started ||
+      previous.ended !== status.ended ||
+      previous.finalized !== status.finalized ||
+      previous.cancelled !== status.cancelled ||
+      previous.live !== status.live;
+
+    if (changed) {
+      await this.redis.xadd(redisKeys.streamEventStatusTicks(), {
+        eventID: status.eventID,
+        startsAt: status.startsAt,
+        started: String(status.started),
+        ended: String(status.ended),
+        finalized: String(status.finalized),
+        cancelled: String(status.cancelled),
+        live: String(status.live),
+        vendorUpdatedAt: status.vendorUpdatedAt || "",
+        observedAt: status.observedAt,
+      });
+    }
   }
 }

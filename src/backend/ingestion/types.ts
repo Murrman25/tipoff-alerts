@@ -53,7 +53,12 @@ export interface VendorMarketBookOdds {
 
 export interface VendorIngestionEvent {
   eventID: string;
+  sportID?: string;
   leagueID: string;
+  teams?: {
+    home?: unknown;
+    away?: unknown;
+  };
   status?: {
     startsAt?: string;
     started?: boolean;
@@ -61,7 +66,10 @@ export interface VendorIngestionEvent {
     finalized?: boolean;
     cancelled?: boolean;
     updatedAt?: string;
+    score?: { home?: number; away?: number };
   };
+  scores?: { home?: number; away?: number };
+  results?: { home?: { points?: number }; away?: { points?: number } };
   odds?: Record<
     string,
     {

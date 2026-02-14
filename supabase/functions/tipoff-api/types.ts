@@ -156,6 +156,16 @@ export interface GamesResponseMeta {
   degraded?: boolean;
 }
 
+export interface IngestionEventMeta {
+  eventID: string;
+  sportID: string;
+  leagueID: string;
+  teams?: VendorEvent['teams'];
+  status?: VendorEvent['status'];
+  scores?: VendorEvent['scores'] | null;
+  results?: VendorEvent['results'] | null;
+}
+
 export interface RouterDeps {
   sportsApiKey: string | null;
   supabaseUrl: string;

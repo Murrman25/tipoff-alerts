@@ -1,6 +1,10 @@
 export interface RedisCacheClient {
   getJson<T>(key: string): Promise<T | null>;
   setJson(key: string, value: unknown, ttlSeconds: number): Promise<void>;
+  get(key: string): Promise<string | null>;
+  mget(keys: string[]): Promise<(string | null)[]>;
+  smembers(key: string): Promise<string[]>;
+  zrange(key: string, start: number, stop: number): Promise<string[]>;
 }
 
 interface UpstashResult<T> {
@@ -31,8 +35,32 @@ class UpstashRedisClient implements RedisCacheClient {
     return payload.result ?? null;
   }
 
+  async get(key: string): Promise<string | null> {
+    const result = await this.command<string>('GET', key);
+    return typeof result === 'string' ? result : null;
+  }
+
+  async mget(keys: string[]): Promise<(string | null)[]> {
+    if (keys.length === 0) return [];
+    const result = await this.command<unknown>('MGET', ...keys);
+    if (!Array.isArray(result)) return keys.map(() => null);
+    return result.map((value) => (typeof value === 'string' ? value : null));
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    const result = await this.command<unknown>('SMEMBERS', key);
+    if (!Array.isArray(result)) return [];
+    return result.map((value) => (typeof value === 'string' ? value : '')).filter((v) => v.length > 0);
+  }
+
+  async zrange(key: string, start: number, stop: number): Promise<string[]> {
+    const result = await this.command<unknown>('ZRANGE', key, start, stop);
+    if (!Array.isArray(result)) return [];
+    return result.map((value) => (typeof value === 'string' ? value : '')).filter((v) => v.length > 0);
+  }
+
   async getJson<T>(key: string): Promise<T | null> {
-    const serialized = await this.command<string>('GET', key);
+    const serialized = await this.get(key);
     if (!serialized) {
       return null;
     }

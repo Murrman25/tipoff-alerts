@@ -97,9 +97,31 @@ export class UpstashRedisClient implements RedisLikeClient {
     await this.command("SET", key, value);
   }
 
+  async setWithGet(key: string, value: string, ttlSeconds: number): Promise<string | null> {
+    const ttl = Math.max(1, Math.floor(ttlSeconds));
+    const previous = await this.command<string | null>("SET", key, value, "EX", ttl, "GET");
+    return typeof previous === "string" ? previous : null;
+  }
+
   async get(key: string): Promise<string | null> {
     const result = await this.command<string>("GET", key);
     return typeof result === "string" ? result : null;
+  }
+
+  async mget(keys: string[]): Promise<(string | null)[]> {
+    if (keys.length === 0) {
+      return [];
+    }
+    const result = await this.command<unknown>("MGET", ...keys);
+    if (!Array.isArray(result)) {
+      return keys.map(() => null);
+    }
+    return result.map((value) => (typeof value === "string" ? value : null));
+  }
+
+  async expire(key: string, ttlSeconds: number): Promise<void> {
+    const ttl = Math.max(1, Math.floor(ttlSeconds));
+    await this.command("EXPIRE", key, ttl);
   }
 
   async sadd(key: string, members: string[]): Promise<void> {
@@ -109,12 +131,43 @@ export class UpstashRedisClient implements RedisLikeClient {
     await this.command("SADD", key, ...members);
   }
 
+  async srem(key: string, members: string[]): Promise<void> {
+    if (members.length === 0) {
+      return;
+    }
+    await this.command("SREM", key, ...members);
+  }
+
   async smembers(key: string): Promise<string[]> {
     const result = await this.command<unknown>("SMEMBERS", key);
     if (!Array.isArray(result)) {
       return [];
     }
 
+    return result
+      .map((value) => (typeof value === "string" ? value : null))
+      .filter((value): value is string => value !== null);
+  }
+
+  async zadd(key: string, entries: Array<{ score: number; member: string }>): Promise<void> {
+    if (entries.length === 0) return;
+    const args: (string | number)[] = [];
+    for (const entry of entries) {
+      if (!Number.isFinite(entry.score) || !entry.member) continue;
+      args.push(entry.score, entry.member);
+    }
+    if (args.length === 0) return;
+    await this.command("ZADD", key, ...args);
+  }
+
+  async zrem(key: string, members: string[]): Promise<void> {
+    if (members.length === 0) return;
+    await this.command("ZREM", key, ...members);
+  }
+
+  async zrange(key: string, start: number, stop: number): Promise<string[]> {
+    const result = await this.command<unknown>("ZRANGE", key, start, stop);
+    if (!Array.isArray(result)) return [];
     return result
       .map((value) => (typeof value === "string" ? value : null))
       .filter((value): value is string => value !== null);

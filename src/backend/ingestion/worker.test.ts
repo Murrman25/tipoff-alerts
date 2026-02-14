@@ -4,6 +4,7 @@ import { InMemoryRedisClient } from "@/backend/cache/redisClient";
 import { VendorGetEventsParams } from "@/backend/ingestion/types";
 import { RedisIngestionSink } from "@/backend/ingestion/redisSink";
 import { IngestionWorker } from "@/backend/ingestion/worker";
+import { redisKeys } from "@/backend/cache/redisKeys";
 
 describe("IngestionWorker", () => {
   it("publishes status and odds ticks and writes redis snapshots", async () => {
@@ -59,6 +60,7 @@ describe("IngestionWorker", () => {
         maxRequestsPerMinute: 10,
         maxEventIdsPerRequest: 10,
       },
+      undefined,
       sink,
     );
 
@@ -118,5 +120,76 @@ describe("IngestionWorker", () => {
 
     expect(vendorRequests).toHaveLength(1);
     expect(vendorRequests[0].bookmakerID).toBe("draftkings,fanduel");
+  });
+
+  it("writes league indexes and meta when redis is provided", async () => {
+    const vendor = {
+      getEvents: async () => {
+        return {
+          data: [
+            {
+              eventID: "evt_3",
+              sportID: "BASKETBALL",
+              leagueID: "NBA",
+              teams: { home: { teamID: "h" }, away: { teamID: "a" } },
+              status: {
+                startsAt: "2026-02-12T10:00:00.000Z",
+                started: true,
+                ended: false,
+                finalized: false,
+                cancelled: false,
+                updatedAt: "2026-02-12T10:00:20.000Z",
+              },
+              odds: {
+                "points-home-game-ml-home": {
+                  byBookmaker: {
+                    draftkings: {
+                      odds: "+140",
+                      available: true,
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        };
+      },
+    };
+
+    const redis = new InMemoryRedisClient();
+    const sink = new RedisIngestionSink(redis);
+    const worker = new IngestionWorker(
+      vendor,
+      {
+        publishEventStatusTick: async () => undefined,
+        publishOddsTick: async () => undefined,
+      },
+      {
+        maxRequestsPerMinute: 10,
+        maxEventIdsPerRequest: 10,
+      },
+      redis,
+      sink,
+    );
+
+    await worker.runCycle([
+      {
+        eventID: "evt_3",
+        leagueID: "NBA",
+        startsAt: "2026-02-12T10:00:00.000Z",
+        started: true,
+        ended: false,
+        finalized: false,
+      },
+    ]);
+
+    const metaRaw = await redis.get(redisKeys.eventMeta("evt_3"));
+    expect(metaRaw).toBeTruthy();
+
+    const oddsRaw = await redis.get(redisKeys.eventOddsCore("evt_3"));
+    expect(oddsRaw).toBeTruthy();
+
+    const liveMembers = await redis.smembers(redisKeys.leagueLiveIndex("NBA"));
+    expect(liveMembers).toContain("evt_3");
   });
 });

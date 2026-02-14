@@ -16,4 +16,15 @@ describe("redisKeys", () => {
     expect(redisKeys.streamAlertDeadLetter()).toBe("stream:alert_dead_letter");
     expect(redisKeys.streamNotificationDeadLetter()).toBe("stream:notification_dead_letter");
   });
+
+  it("formats poll schedule keys correctly", () => {
+    expect(redisKeys.pollNextAt("evt1")).toBe("poll:event:evt1:next_at");
+  });
+
+  it("formats ingestion data-plane keys correctly", () => {
+    expect(redisKeys.eventMeta("evt1")).toBe("event:evt1:meta");
+    expect(redisKeys.eventOddsCore("evt1")).toBe("odds:event:evt1:odds_core");
+    expect(redisKeys.leagueLiveIndex("NBA")).toBe("idx:league:NBA:live");
+    expect(redisKeys.leagueUpcomingIndex("NBA")).toBe("idx:league:NBA:upcoming");
+  });
 });

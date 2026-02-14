@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { applyGameSearchFilter, parseScore, sortEvents } from './helpers.ts';
+import { loadEventFromIngestionCache, loadEventIDsFromIndexes } from './ingestionCache.ts';
 import { RedisCacheClient } from './redis.ts';
 import {
   CORE_ODD_IDS,
@@ -176,6 +177,51 @@ export async function searchGames(
   const cacheKey = buildSearchCacheKey(request);
   let cachedPayload: CachedEnvelope<SearchGamesResult> | null = null;
 
+  const leagueIDs = (request.leagueID || DEFAULT_LEAGUES)
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  // Prefer ingestion cache (Redis indexes + hot keys). We still keep the envelope cache as a cheap fast path.
+  if (redis && request.cursor === null) {
+    try {
+      const eventIDs = await loadEventIDsFromIndexes({
+        redis,
+        leagueIDs,
+        status: request.status,
+        limit: request.limit,
+      });
+
+      if (eventIDs.length > 0) {
+        const events: VendorEvent[] = [];
+        for (const eventID of eventIDs) {
+          const cached = await loadEventFromIngestionCache({ redis, eventID });
+          if (cached) {
+            events.push(mapEventPayload(cached));
+          }
+        }
+
+        const searched = applyGameSearchFilter(events, request.q);
+        const sorted = sortEvents(searched);
+        const enriched = await enrichTeams(sorted, serviceClient);
+        const asOf = new Date().toISOString();
+
+        return {
+          success: true,
+          data: enriched,
+          nextCursor: undefined,
+          asOf,
+          freshnessSeconds: DEFAULT_FRESHNESS_SECONDS,
+          source: 'redis',
+          cacheAgeSeconds: 0,
+          degraded: false,
+        };
+      }
+    } catch (error) {
+      console.error('Ingestion cache search path failed; falling back to vendor', error);
+    }
+  }
+
   if (redis) {
     cachedPayload = await redis.getJson<CachedEnvelope<SearchGamesResult>>(cacheKey);
     if (cachedPayload?.payload) {
@@ -308,6 +354,26 @@ export async function getGameById(
   const marketOddID = oddID || CORE_ODD_IDS.join(',');
   const cacheKey = buildDetailCacheKey(eventID, marketOddID, bookmakerID);
   let cachedPayload: CachedEnvelope<GameByIdResult> | null = null;
+
+  if (redis && !bookmakerID && (!oddID || oddID === CORE_ODD_IDS.join(','))) {
+    try {
+      const cached = await loadEventFromIngestionCache({ redis, eventID });
+      if (cached) {
+        const enriched = await enrichTeams([mapEventPayload(cached)], serviceClient);
+        const asOf = new Date().toISOString();
+        return {
+          success: true,
+          data: enriched[0] || null,
+          asOf,
+          source: 'redis',
+          cacheAgeSeconds: 0,
+          degraded: false,
+        };
+      }
+    } catch (error) {
+      console.error('Ingestion cache detail path failed; falling back to vendor', error);
+    }
+  }
 
   if (redis) {
     cachedPayload = await redis.getJson<CachedEnvelope<GameByIdResult>>(cacheKey);
