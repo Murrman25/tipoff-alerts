@@ -1,3 +1,5 @@
+export type MonitorEnvironment = "staging" | "production";
+
 export interface WorkerConfig {
   sportsGameOddsApiKey: string | null;
   supabaseUrl: string;
@@ -11,7 +13,7 @@ export interface WorkerConfig {
   alertConsumerName: string;
   notifyConsumerGroup: string;
   notifyConsumerName: string;
-  monitorEnvironment: string;
+  monitorEnvironment: MonitorEnvironment;
   monitorSampleIntervalSeconds: number;
   monitorRetentionDays: number;
   monitorHeartbeatStaleSeconds: number;
@@ -37,6 +39,14 @@ function intEnv(name: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function monitorEnvironmentEnv(): MonitorEnvironment {
+  const raw = process.env.MONITOR_ENVIRONMENT?.trim().toLowerCase();
+  if (raw === "production") {
+    return "production";
+  }
+  return "staging";
+}
+
 export function loadWorkerConfig(): WorkerConfig {
   return {
     sportsGameOddsApiKey: process.env.SPORTSGAMEODDS_API_KEY || null,
@@ -57,7 +67,7 @@ export function loadWorkerConfig(): WorkerConfig {
     alertConsumerName: process.env.ALERT_CONSUMER_NAME || `alert-${process.pid}`,
     notifyConsumerGroup: process.env.NOTIFY_CONSUMER_GROUP || "tipoff-notify-workers",
     notifyConsumerName: process.env.NOTIFY_CONSUMER_NAME || `notify-${process.pid}`,
-    monitorEnvironment: process.env.MONITOR_ENVIRONMENT || "staging",
+    monitorEnvironment: monitorEnvironmentEnv(),
     monitorSampleIntervalSeconds: intEnv("MONITOR_SAMPLE_INTERVAL_SECONDS", 60),
     monitorRetentionDays: intEnv("MONITOR_RETENTION_DAYS", 7),
     monitorHeartbeatStaleSeconds: intEnv("MONITOR_HEARTBEAT_STALE_SECONDS", 120),

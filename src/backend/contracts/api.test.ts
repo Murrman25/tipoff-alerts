@@ -99,6 +99,9 @@ describe("API contract schemas", () => {
         asOf: "2026-02-12T10:00:00.000Z",
         overallStatus: "healthy",
         environment: "staging",
+        resolvedEnvironment: "staging",
+        availableEnvironments: ["staging", "production"],
+        noData: false,
         vendorUsage: {
           used: 120,
           limit: 6000,
@@ -152,6 +155,9 @@ describe("API contract schemas", () => {
       success: true,
       asOf: "2026-02-12T10:00:00.000Z",
       environment: "staging",
+      resolvedEnvironment: "staging",
+      availableEnvironments: ["staging", "production"],
+      noData: false,
       hours: 24,
       data: [
         {

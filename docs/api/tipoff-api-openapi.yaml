@@ -167,7 +167,8 @@ paths:
           name: environment
           schema:
             type: string
-            example: staging
+            enum: [auto, staging, production]
+            default: auto
       responses:
         '200':
           description: Monitoring summary
@@ -194,7 +195,8 @@ paths:
           name: environment
           schema:
             type: string
-            example: staging
+            enum: [auto, staging, production]
+            default: auto
       responses:
         '200':
           description: Monitoring history
@@ -414,6 +416,17 @@ components:
               enum: [healthy, degraded, down]
             environment:
               type: string
+            resolvedEnvironment:
+              type: string
+              nullable: true
+              enum: [staging, production]
+            availableEnvironments:
+              type: array
+              items:
+                type: string
+                enum: [staging, production]
+            noData:
+              type: boolean
             vendorUsage:
               type: object
               properties:
@@ -517,6 +530,17 @@ components:
           format: date-time
         environment:
           type: string
+        resolvedEnvironment:
+          type: string
+          nullable: true
+          enum: [staging, production]
+        availableEnvironments:
+          type: array
+          items:
+            type: string
+            enum: [staging, production]
+        noData:
+          type: boolean
         hours:
           type: integer
         data:

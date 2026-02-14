@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchAdminMonitoringHistory } from "@/lib/adminMonitoringApi";
+import { AdminMonitoringEnvironmentQuery, fetchAdminMonitoringHistory } from "@/lib/adminMonitoringApi";
 
 export function useAdminMonitoringHistory(
-  params?: { hours?: number; environment?: string; enabled?: boolean },
+  params?: { hours?: number; environment?: AdminMonitoringEnvironmentQuery; enabled?: boolean },
 ) {
   return useQuery({
     queryKey: ["admin-monitoring-history", params?.hours || 24, params?.environment],

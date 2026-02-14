@@ -135,6 +135,7 @@ export const alertsListResponseSchema = z.object({
 });
 
 const monitoringStatusSchema = z.enum(["healthy", "degraded", "down"]);
+const monitoringEnvironmentSchema = z.enum(["staging", "production"]);
 
 const monitorWorkerSchema = z.object({
   heartbeatAgeSeconds: z.number().int().nonnegative().nullable(),
@@ -176,6 +177,9 @@ export const adminMonitoringSummaryResponseSchema = z.object({
     asOf: z.string(),
     overallStatus: monitoringStatusSchema,
     environment: z.string(),
+    resolvedEnvironment: monitoringEnvironmentSchema.nullable(),
+    availableEnvironments: z.array(monitoringEnvironmentSchema),
+    noData: z.boolean(),
     vendorUsage: monitorVendorUsageSchema,
     workers: z.object({
       ingestion: monitorWorkerSchema,
@@ -206,6 +210,9 @@ export const adminMonitoringHistoryResponseSchema = z.object({
   data: z.array(adminMonitoringHistoryPointSchema),
   asOf: z.string(),
   environment: z.string(),
+  resolvedEnvironment: monitoringEnvironmentSchema.nullable(),
+  availableEnvironments: z.array(monitoringEnvironmentSchema),
+  noData: z.boolean(),
   hours: z.number().int().min(1).max(24),
 });
 

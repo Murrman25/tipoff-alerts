@@ -44,6 +44,73 @@ function pickNumericValue(
   return null;
 }
 
+function parseRateLimitWindow(window: Record<string, unknown> | null): {
+  used: number | null;
+  limit: number | null;
+  remaining: number | null;
+} {
+  if (!window) {
+    return { used: null, limit: null, remaining: null };
+  }
+
+  const used = pickNumericValue([window], [
+    "current-requests",
+    "currentRequests",
+    "current_requests",
+    "used",
+    "requestsUsed",
+  ]);
+  const limit = pickNumericValue([window], [
+    "max-requests",
+    "maxRequests",
+    "max_requests",
+    "limit",
+    "requestsLimit",
+  ]);
+  const remainingRaw = pickNumericValue([window], ["remaining", "requestsRemaining"]);
+  const remaining =
+    remainingRaw !== null
+      ? remainingRaw
+      : used !== null && limit !== null
+        ? Math.max(0, limit - used)
+        : null;
+
+  return { used, limit, remaining };
+}
+
+function pickRateLimitUsage(rateLimits: Record<string, unknown> | null): {
+  used: number | null;
+  limit: number | null;
+  remaining: number | null;
+} {
+  if (!rateLimits) {
+    return { used: null, limit: null, remaining: null };
+  }
+
+  const priorities = [
+    "per-minute",
+    "per-hour",
+    "per-day",
+    "per-month",
+    "per-second",
+  ];
+
+  const candidates = priorities
+    .map((key) => parseRateLimitWindow(asRecord(rateLimits[key])))
+    .filter((item) => item.used !== null || item.limit !== null || item.remaining !== null);
+
+  if (candidates.length === 0) {
+    return { used: null, limit: null, remaining: null };
+  }
+
+  const complete = candidates.find((item) => item.used !== null && item.limit !== null);
+  if (complete) {
+    return complete;
+  }
+
+  return candidates[0];
+}
+
 export function parseVendorUsagePayload(payload: unknown): VendorUsage {
   const root = asRecord(payload);
   const data = asRecord(root?.data);
@@ -52,12 +119,20 @@ export function parseVendorUsagePayload(payload: unknown): VendorUsage {
   const account = asRecord(root?.account);
   const current = asRecord(root?.current);
   const rateLimit = asRecord(root?.rateLimit);
+  const rateLimits = asRecord(data?.rateLimits) || asRecord(root?.rateLimits);
 
   const records = [root, data, usage, requests, account, current, rateLimit];
 
-  const used = pickNumericValue(records, ["used", "requestsUsed", "requestUsed", "currentUsed"]);
-  const limit = pickNumericValue(records, ["limit", "requestsLimit", "requestLimit", "max"]);
-  const remainingRaw = pickNumericValue(records, ["remaining", "requestsRemaining", "requestRemaining"]);
+  const fromRateLimits = pickRateLimitUsage(rateLimits);
+  const used =
+    fromRateLimits.used ??
+    pickNumericValue(records, ["used", "requestsUsed", "requestUsed", "currentUsed"]);
+  const limit =
+    fromRateLimits.limit ??
+    pickNumericValue(records, ["limit", "requestsLimit", "requestLimit", "max"]);
+  const remainingRaw =
+    fromRateLimits.remaining ??
+    pickNumericValue(records, ["remaining", "requestsRemaining", "requestRemaining"]);
 
   const remaining =
     remainingRaw !== null

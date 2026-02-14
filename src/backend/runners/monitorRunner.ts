@@ -91,6 +91,16 @@ async function fetchVendorUsage(apiKey: string | null): Promise<VendorUsageSnaps
 
 async function runSample() {
   const config = loadWorkerConfig();
+  const rawEnvironment = process.env.MONITOR_ENVIRONMENT?.trim().toLowerCase();
+  if (!rawEnvironment) {
+    console.warn("[monitor-runner] MONITOR_ENVIRONMENT is not set; defaulting to staging");
+  } else if (rawEnvironment !== "staging" && rawEnvironment !== "production") {
+    console.warn("[monitor-runner] MONITOR_ENVIRONMENT is invalid; expected staging|production", {
+      provided: rawEnvironment,
+      resolved: config.monitorEnvironment,
+    });
+  }
+
   const redis = createUpstashRedisFromEnv();
   const supabase = createServiceSupabaseClient(config.supabaseUrl, config.supabaseServiceRoleKey);
 
@@ -117,6 +127,7 @@ async function runSample() {
     const vendorUsage = await fetchVendorUsage(config.sportsGameOddsApiKey);
     if (vendorUsage.error) {
       errors.push(vendorUsage.error);
+      console.warn("[monitor-runner] vendor usage probe degraded", { error: vendorUsage.error });
     }
 
     let ingestionHeartbeatAgeSeconds: number | null = null;
@@ -243,6 +254,8 @@ async function runSample() {
     console.log("[monitor-runner] sample stored", {
       status: status.overallStatus,
       environment: config.monitorEnvironment,
+      vendorUsed: vendorUsage.used,
+      vendorLimit: vendorUsage.limit,
       vendorStale: vendorUsage.stale,
       redisPingMs,
       streamOddsLen,

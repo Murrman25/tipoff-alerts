@@ -37,4 +37,49 @@ describe("parseVendorUsagePayload", () => {
     expect(usage.remaining).toBeNull();
     expect(usage.utilizationPct).toBeNull();
   });
+
+  it("parses SportsGameOdds rateLimits response shape", () => {
+    const usage = parseVendorUsagePayload({
+      success: true,
+      data: {
+        rateLimits: {
+          "per-minute": {
+            "max-requests": 300,
+            "current-requests": 28,
+          },
+          "per-hour": {
+            "max-requests": 50000,
+            "current-requests": 2753,
+          },
+        },
+      },
+    });
+
+    expect(usage.used).toBe(28);
+    expect(usage.limit).toBe(300);
+    expect(usage.remaining).toBe(272);
+    expect(usage.utilizationPct).toBeCloseTo(9.33, 2);
+  });
+
+  it("falls back when top priority rate window is unlimited", () => {
+    const usage = parseVendorUsagePayload({
+      success: true,
+      data: {
+        rateLimits: {
+          "per-minute": {
+            "max-requests": "unlimited",
+            "current-requests": 5,
+          },
+          "per-hour": {
+            "max-requests": 50000,
+            "current-requests": 200,
+          },
+        },
+      },
+    });
+
+    expect(usage.used).toBe(200);
+    expect(usage.limit).toBe(50000);
+    expect(usage.remaining).toBe(49800);
+  });
 });

@@ -6,8 +6,10 @@ import {
 } from "@/backend/contracts/api";
 import { tipoffFetch } from "@/lib/tipoffApi";
 
+export type AdminMonitoringEnvironmentQuery = "auto" | "staging" | "production";
+
 export async function fetchAdminMonitoringSummary(
-  environment?: string,
+  environment: AdminMonitoringEnvironmentQuery = "auto",
 ): Promise<AdminMonitoringSummaryResponse> {
   const payload = await tipoffFetch<unknown>("/admin/monitoring", {
     auth: true,
@@ -21,7 +23,7 @@ export async function fetchAdminMonitoringSummary(
 
 export async function fetchAdminMonitoringHistory(params?: {
   hours?: number;
-  environment?: string;
+  environment?: AdminMonitoringEnvironmentQuery;
 }): Promise<AdminMonitoringHistoryResponse> {
   const payload = await tipoffFetch<unknown>("/admin/monitoring/history", {
     auth: true,

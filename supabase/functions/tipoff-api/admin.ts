@@ -1,5 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+import {
+  asMonitoringEnvironment,
+  MonitoringEnvironment,
+  MonitoringEnvironmentQuery,
+  MONITORING_ENVIRONMENTS,
+  normalizeEnvironmentQuery,
+  resolveEnvironmentSelection,
+} from './adminHelpers.ts';
 import { MonitoringOverallStatus, OpsMonitorSampleRow } from './types.ts';
 
 interface AdminThresholds {
@@ -15,6 +23,13 @@ interface AdminDeps {
 
 interface ServiceClientLike {
   from: ReturnType<typeof createClient>['from'];
+}
+
+interface MonitoringEnvironmentScope {
+  requestedEnvironment: MonitoringEnvironmentQuery;
+  resolvedEnvironment: MonitoringEnvironment | null;
+  availableEnvironments: MonitoringEnvironment[];
+  latestRow: OpsMonitorSampleRow | null;
 }
 
 export class AdminApiError extends Error {
@@ -64,6 +79,15 @@ function parseAdminEmails(raw: string | null): Set<string> {
       .map((value) => normalizeEmail(value))
       .filter((value) => value.length > 0),
   );
+}
+
+function parseEnvironmentQuery(url: URL): MonitoringEnvironmentQuery {
+  const parsed = normalizeEnvironmentQuery(url.searchParams.get('environment'));
+  if (!parsed) {
+    throw new AdminApiError(400, 'environment must be one of auto|staging|production');
+  }
+
+  return parsed;
 }
 
 async function getAuthenticatedEmail(req: Request, deps: AdminDeps): Promise<string> {
@@ -120,10 +144,6 @@ function parseHours(url: URL): number {
   return Math.max(1, Math.min(24, parsed));
 }
 
-function parseEnvironment(url: URL): string {
-  return url.searchParams.get('environment') || Deno.env.get('MONITOR_ENVIRONMENT') || 'staging';
-}
-
 function asNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -149,9 +169,12 @@ function rowToSummaryData(row: OpsMonitorSampleRow | null, environment: string) 
   const alertHeartbeatAge = row?.alert_heartbeat_age_s ?? null;
   const notificationHeartbeatAge = row?.notification_heartbeat_age_s ?? null;
 
-  const ingestionHeartbeatStale = ingestionHeartbeatAge === null || ingestionHeartbeatAge > thresholds.heartbeatStaleSeconds;
-  const ingestionCycleStale = ingestionCycleAge === null || ingestionCycleAge > thresholds.ingestionCycleStaleSeconds;
-  const alertHeartbeatStale = alertHeartbeatAge === null || alertHeartbeatAge > thresholds.heartbeatStaleSeconds;
+  const ingestionHeartbeatStale =
+    ingestionHeartbeatAge === null || ingestionHeartbeatAge > thresholds.heartbeatStaleSeconds;
+  const ingestionCycleStale =
+    ingestionCycleAge === null || ingestionCycleAge > thresholds.ingestionCycleStaleSeconds;
+  const alertHeartbeatStale =
+    alertHeartbeatAge === null || alertHeartbeatAge > thresholds.heartbeatStaleSeconds;
   const notificationHeartbeatStale =
     notificationHeartbeatAge === null || notificationHeartbeatAge > thresholds.heartbeatStaleSeconds;
 
@@ -212,15 +235,55 @@ function rowToSummaryData(row: OpsMonitorSampleRow | null, environment: string) 
   };
 }
 
-export async function getAdminMonitoringSummary(
-  req: Request,
-  url: URL,
-  serviceClient: ServiceClientLike,
-  deps: AdminDeps,
-) {
-  await assertAdminAccess(req, deps);
+async function listAvailableEnvironments(serviceClient: ServiceClientLike): Promise<MonitoringEnvironment[]> {
+  const checks = await Promise.all(
+    MONITORING_ENVIRONMENTS.map(async (environment) => {
+      const { data, error } = await serviceClient
+        .from('ops_monitor_samples')
+        .select('id')
+        .eq('environment', environment)
+        .limit(1);
 
-  const environment = parseEnvironment(url);
+      if (error) {
+        throw new AdminApiError(500, `Failed to inspect ${environment} monitoring data: ${error.message}`);
+      }
+
+      return { environment, hasData: Array.isArray(data) && data.length > 0 };
+    }),
+  );
+
+  return checks
+    .filter((item) => item.hasData)
+    .map((item) => item.environment);
+}
+
+async function fetchLatestByEnvironments(
+  serviceClient: ServiceClientLike,
+  environments: MonitoringEnvironment[],
+): Promise<OpsMonitorSampleRow | null> {
+  if (environments.length === 0) {
+    return null;
+  }
+
+  const { data, error } = await serviceClient
+    .from('ops_monitor_samples')
+    .select('*')
+    .in('environment', [...environments])
+    .order('sampled_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new AdminApiError(500, `Failed to resolve monitoring environment: ${error.message}`);
+  }
+
+  return (data as OpsMonitorSampleRow | null) || null;
+}
+
+async function fetchLatestByEnvironment(
+  serviceClient: ServiceClientLike,
+  environment: MonitoringEnvironment,
+): Promise<OpsMonitorSampleRow | null> {
   const { data, error } = await serviceClient
     .from('ops_monitor_samples')
     .select('*')
@@ -233,9 +296,104 @@ export async function getAdminMonitoringSummary(
     throw new AdminApiError(500, `Failed to load monitor summary: ${error.message}`);
   }
 
+  return (data as OpsMonitorSampleRow | null) || null;
+}
+
+async function resolveMonitoringEnvironmentScope(
+  serviceClient: ServiceClientLike,
+  requestedEnvironment: MonitoringEnvironmentQuery,
+): Promise<MonitoringEnvironmentScope> {
+  const availableEnvironments = await listAvailableEnvironments(serviceClient);
+
+  if (requestedEnvironment === 'auto') {
+    const latestRow = await fetchLatestByEnvironments(serviceClient, availableEnvironments);
+    const latestEnvironment = latestRow?.environment
+      ? asMonitoringEnvironment(latestRow.environment)
+      : null;
+    const resolvedEnvironment = resolveEnvironmentSelection({
+      requestedEnvironment,
+      availableEnvironments,
+      latestEnvironment,
+    });
+
+    return {
+      requestedEnvironment,
+      resolvedEnvironment,
+      availableEnvironments,
+      latestRow,
+    };
+  }
+
+  const latestRow = await fetchLatestByEnvironment(serviceClient, requestedEnvironment);
+  const resolvedEnvironment = resolveEnvironmentSelection({
+    requestedEnvironment,
+    availableEnvironments,
+    latestEnvironment: requestedEnvironment,
+  });
+
+  return {
+    requestedEnvironment,
+    resolvedEnvironment,
+    availableEnvironments,
+    latestRow,
+  };
+}
+
+function logAdminMonitoringRead(payload: {
+  endpoint: 'summary' | 'history';
+  requestedEnvironment: MonitoringEnvironmentQuery;
+  resolvedEnvironment: MonitoringEnvironment | null;
+  availableEnvironments: MonitoringEnvironment[];
+  rowFound: boolean;
+  noData: boolean;
+  rowCount?: number;
+}) {
+  console.log(
+    JSON.stringify({
+      type: 'admin_monitoring_read',
+      endpoint: payload.endpoint,
+      requestedEnvironment: payload.requestedEnvironment,
+      resolvedEnvironment: payload.resolvedEnvironment,
+      availableEnvironments: payload.availableEnvironments,
+      rowFound: payload.rowFound,
+      noData: payload.noData,
+      rowCount: payload.rowCount,
+      at: new Date().toISOString(),
+    }),
+  );
+}
+
+export async function getAdminMonitoringSummary(
+  req: Request,
+  url: URL,
+  serviceClient: ServiceClientLike,
+  deps: AdminDeps,
+) {
+  await assertAdminAccess(req, deps);
+
+  const requestedEnvironment = parseEnvironmentQuery(url);
+  const scope = await resolveMonitoringEnvironmentScope(serviceClient, requestedEnvironment);
+  const noData = scope.latestRow === null;
+  const environment = scope.resolvedEnvironment || scope.requestedEnvironment;
+
+  logAdminMonitoringRead({
+    endpoint: 'summary',
+    requestedEnvironment,
+    resolvedEnvironment: scope.resolvedEnvironment,
+    availableEnvironments: scope.availableEnvironments,
+    rowFound: !noData,
+    noData,
+    rowCount: noData ? 0 : 1,
+  });
+
   return {
     success: true,
-    data: rowToSummaryData((data as OpsMonitorSampleRow | null) || null, environment),
+    data: {
+      ...rowToSummaryData(scope.latestRow, environment),
+      resolvedEnvironment: scope.resolvedEnvironment,
+      availableEnvironments: scope.availableEnvironments,
+      noData,
+    },
   };
 }
 
@@ -264,27 +422,47 @@ export async function getAdminMonitoringHistory(
   await assertAdminAccess(req, deps);
 
   const hours = parseHours(url);
-  const environment = parseEnvironment(url);
-  const sinceIso = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+  const requestedEnvironment = parseEnvironmentQuery(url);
+  const scope = await resolveMonitoringEnvironmentScope(serviceClient, requestedEnvironment);
 
-  const { data, error } = await serviceClient
-    .from('ops_monitor_samples')
-    .select('*')
-    .eq('environment', environment)
-    .gte('sampled_at', sinceIso)
-    .order('sampled_at', { ascending: true });
+  let rows: OpsMonitorSampleRow[] = [];
+  if (scope.resolvedEnvironment) {
+    const sinceIso = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
-  if (error) {
-    throw new AdminApiError(500, `Failed to load monitor history: ${error.message}`);
+    const { data, error } = await serviceClient
+      .from('ops_monitor_samples')
+      .select('*')
+      .eq('environment', scope.resolvedEnvironment)
+      .gte('sampled_at', sinceIso)
+      .order('sampled_at', { ascending: true });
+
+    if (error) {
+      throw new AdminApiError(500, `Failed to load monitor history: ${error.message}`);
+    }
+
+    rows = (data || []) as OpsMonitorSampleRow[];
   }
 
-  const rows = ((data || []) as OpsMonitorSampleRow[]).map(toHistoryPoint);
+  const noData = rows.length === 0;
+
+  logAdminMonitoringRead({
+    endpoint: 'history',
+    requestedEnvironment,
+    resolvedEnvironment: scope.resolvedEnvironment,
+    availableEnvironments: scope.availableEnvironments,
+    rowFound: rows.length > 0,
+    noData,
+    rowCount: rows.length,
+  });
 
   return {
     success: true,
-    data: rows,
+    data: rows.map(toHistoryPoint),
     asOf: new Date().toISOString(),
-    environment,
+    environment: scope.resolvedEnvironment || scope.requestedEnvironment,
+    resolvedEnvironment: scope.resolvedEnvironment,
+    availableEnvironments: scope.availableEnvironments,
+    noData,
     hours,
   };
 }

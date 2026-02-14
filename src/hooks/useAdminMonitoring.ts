@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchAdminMonitoringSummary } from "@/lib/adminMonitoringApi";
+import { AdminMonitoringEnvironmentQuery, fetchAdminMonitoringSummary } from "@/lib/adminMonitoringApi";
 
-export function useAdminMonitoring(environment?: string, enabled = true) {
+export function useAdminMonitoring(
+  environment: AdminMonitoringEnvironmentQuery = "auto",
+  enabled = true,
+) {
   return useQuery({
     queryKey: ["admin-monitoring-summary", environment],
     queryFn: () => fetchAdminMonitoringSummary(environment),
