@@ -127,6 +127,8 @@ export const alertResponseSchema = z.object({
   channels: z.array(z.string()),
   lastFiredAt: z.string().nullable().optional(),
   cooldownRemainingSeconds: z.number().int().nonnegative().optional(),
+  eventName: z.string().optional(),
+  teamName: z.string().optional(),
 });
 
 export const alertsListResponseSchema = z.object({

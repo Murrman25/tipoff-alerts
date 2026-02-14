@@ -122,7 +122,7 @@ export async function handleTipoffApiRequest(req: Request, deps: RouterDeps): Pr
         const payload =
           alertsSource === 'legacy'
             ? await listLegacyAlerts(serviceClient, userId)
-            : await listAlerts(serviceClient, userId);
+            : await listAlerts(serviceClient, userId, redis);
         return jsonResponse(200, payload);
       }
 
@@ -130,7 +130,7 @@ export async function handleTipoffApiRequest(req: Request, deps: RouterDeps): Pr
         const payload =
           alertsSource === 'legacy'
             ? await createLegacyAlert(req, serviceClient, userId, deps.supabaseUrl, deps.supabaseAnonKey)
-            : await createAlert(req, serviceClient, userId, deps.supabaseUrl, deps.supabaseAnonKey);
+            : await createAlert(req, serviceClient, userId, deps.supabaseUrl, deps.supabaseAnonKey, redis);
         return jsonResponse(201, payload);
       }
 

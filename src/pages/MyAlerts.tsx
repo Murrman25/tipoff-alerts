@@ -37,6 +37,8 @@ interface Alert {
   is_active: boolean;
   created_at: string;
   channels: string[];
+  eventName?: string;
+  teamName?: string;
 }
 
 const MyAlerts = () => {
@@ -186,11 +188,13 @@ const MyAlerts = () => {
 
   const AlertCard = ({ alert }: { alert: Alert }) => {
     const game = getGameInfo(alert.event_id);
-    const teamName = game
-      ? alert.team_side === "home"
-        ? game.teams.home.name
-        : game.teams.away.name
-      : "Unknown Team";
+    const teamName =
+      alert.teamName ||
+      (game
+        ? alert.team_side === "home"
+          ? game.teams.home.name
+          : game.teams.away.name
+        : "Unknown Team");
 
     return (
       <Card className={`bg-card border-border transition-opacity ${!alert.is_active ? "opacity-60" : ""}`}>
@@ -225,11 +229,13 @@ const MyAlerts = () => {
               </div>
 
               {/* Game info */}
-              {game && (
+              {game ? (
                 <p className="text-xs text-muted-foreground">
                   {game.teams.away.abbreviation} @ {game.teams.home.abbreviation} • {game.leagueID}
                 </p>
-              )}
+              ) : alert.eventName ? (
+                <p className="text-xs text-muted-foreground">{alert.eventName}</p>
+              ) : null}
 
               {/* Notification channels */}
               <div className="flex items-center gap-1.5 pt-1">

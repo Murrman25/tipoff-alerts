@@ -5,6 +5,7 @@ export interface RedisCacheClient {
   mget(keys: string[]): Promise<(string | null)[]>;
   smembers(key: string): Promise<string[]>;
   zrange(key: string, start: number, stop: number): Promise<string[]>;
+  xadd(stream: string, fields: Record<string, string>): Promise<string | null>;
 }
 
 interface UpstashResult<T> {
@@ -75,6 +76,15 @@ class UpstashRedisClient implements RedisCacheClient {
   async setJson(key: string, value: unknown, ttlSeconds: number): Promise<void> {
     const ttl = Math.max(1, Math.floor(ttlSeconds));
     await this.command('SETEX', key, ttl, JSON.stringify(value));
+  }
+
+  async xadd(stream: string, fields: Record<string, string>): Promise<string | null> {
+    const pairs: (string | number)[] = [];
+    for (const [key, value] of Object.entries(fields)) {
+      pairs.push(key, value);
+    }
+    const result = await this.command<string>('XADD', stream, '*', ...pairs);
+    return typeof result === 'string' ? result : null;
   }
 }
 

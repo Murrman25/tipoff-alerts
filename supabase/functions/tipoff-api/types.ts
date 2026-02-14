@@ -129,7 +129,7 @@ export interface OddsAlertRow {
   event_id: string;
   odd_id: string;
   bookmaker_id: string;
-  comparator: 'gte' | 'lte' | 'crosses_up' | 'crosses_down';
+  comparator: 'gte' | 'lte' | 'eq' | 'crosses_up' | 'crosses_down';
   target_value: number;
   ui_rule_type: string | null;
   ui_market_type: string | null;

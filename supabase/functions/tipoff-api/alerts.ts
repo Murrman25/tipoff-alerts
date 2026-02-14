@@ -1,8 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { OddsAlertChannelRow, OddsAlertRow } from './types.ts';
+import { RedisCacheClient } from './redis.ts';
 
-type Comparator = 'gte' | 'lte' | 'crosses_up' | 'crosses_down';
+type Comparator = 'gte' | 'lte' | 'eq' | 'crosses_up' | 'crosses_down';
 
 type UiDirection =
   | 'at_or_above'
@@ -95,6 +96,8 @@ interface AlertApiItem {
   channels: string[];
   lastFiredAt: string | null;
   cooldownRemainingSeconds: number;
+  eventName?: string;
+  teamName?: string;
 }
 
 function asAlertCreateRequest(payload: unknown): AlertCreateRequest {
@@ -120,6 +123,7 @@ function uiDirectionToComparator(direction: UiDirection): Comparator {
     case 'crosses_below':
       return 'crosses_down';
     case 'exactly':
+      return 'eq';
     case 'at_or_above':
     default:
       return 'gte';
@@ -130,6 +134,8 @@ function comparatorToUiDirection(comparator: Comparator): string {
   switch (comparator) {
     case 'lte':
       return 'at_or_below';
+    case 'eq':
+      return 'exactly';
     case 'crosses_up':
       return 'crosses_above';
     case 'crosses_down':
@@ -245,7 +251,78 @@ function toApiItem(alert: OddsAlertRow, channels: OddsAlertChannelRow[]): AlertA
   };
 }
 
-export async function listAlerts(serviceClient: ReturnType<typeof createClient>, userId: string) {
+function eventMetaKey(eventID: string) {
+  return `event:${eventID}:meta`;
+}
+
+function pickTeamName(team: unknown): string | null {
+  if (!team || typeof team !== 'object') return null;
+  const t = team as Record<string, unknown>;
+  const names = (t.names && typeof t.names === 'object' ? (t.names as Record<string, unknown>) : null) || null;
+  const longName = names && typeof names.long === 'string' ? (names.long as string) : null;
+  const mediumName = names && typeof names.medium === 'string' ? (names.medium as string) : null;
+  const shortName = names && typeof names.short === 'string' ? (names.short as string) : null;
+  const name = typeof t.name === 'string' ? (t.name as string) : null;
+  const teamID = typeof t.teamID === 'string' ? (t.teamID as string) : null;
+  return longName || mediumName || name || shortName || teamID;
+}
+
+function computeEventAndTeamNames(meta: unknown, teamSide: string | null): { eventName?: string; teamName?: string } {
+  if (!meta || typeof meta !== 'object') return {};
+  const m = meta as Record<string, unknown>;
+  const teams = (m.teams && typeof m.teams === 'object' ? (m.teams as Record<string, unknown>) : null) || null;
+  const home = teams && typeof teams.home === 'object' ? teams.home : null;
+  const away = teams && typeof teams.away === 'object' ? teams.away : null;
+  const homeName = pickTeamName(home);
+  const awayName = pickTeamName(away);
+
+  const eventName = awayName && homeName ? `${awayName} @ ${homeName}` : undefined;
+  const teamName =
+    teamSide === 'home' ? homeName || undefined : teamSide === 'away' ? awayName || undefined : undefined;
+
+  return { eventName, teamName };
+}
+
+function marketQuoteKey(eventID: string, oddID: string, bookmakerID: string) {
+  return `odds:event:${eventID}:market:${oddID}:book:${bookmakerID}`;
+}
+
+function parseCachedOddsTick(
+  raw: string | null,
+): { currentOdds: number; available: boolean; vendorUpdatedAt: string | null; observedAt: string | null } | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const currentOdds = typeof parsed.currentOdds === 'number' ? parsed.currentOdds : Number(parsed.currentOdds);
+    if (!Number.isFinite(currentOdds)) return null;
+    const available = Boolean(parsed.available);
+    const vendorUpdatedAt = typeof parsed.vendorUpdatedAt === 'string' && parsed.vendorUpdatedAt.length > 0
+      ? parsed.vendorUpdatedAt
+      : null;
+    const observedAt = typeof parsed.observedAt === 'string' && parsed.observedAt.length > 0 ? parsed.observedAt : null;
+    return { currentOdds, available, vendorUpdatedAt, observedAt };
+  } catch {
+    return null;
+  }
+}
+
+function comparatorMet(comparator: Comparator, target: number, current: number): boolean {
+  switch (comparator) {
+    case 'lte':
+      return current <= target;
+    case 'eq':
+      return current === target;
+    case 'gte':
+    default:
+      return current >= target;
+  }
+}
+
+export async function listAlerts(
+  serviceClient: ReturnType<typeof createClient>,
+  userId: string,
+  redis: RedisCacheClient | null,
+) {
   const { data: alerts, error: alertsError } = await serviceClient
     .from('odds_alerts')
     .select('*')
@@ -272,9 +349,39 @@ export async function listAlerts(serviceClient: ReturnType<typeof createClient>,
   }
 
   const typedChannels = (channels || []) as OddsAlertChannelRow[];
+
+  const metaByEventId = new Map<string, unknown>();
+  if (redis) {
+    const eventIds = Array.from(new Set(typedAlerts.map((item) => item.event_id).filter(Boolean)));
+    if (eventIds.length > 0) {
+      try {
+        const raws = await redis.mget(eventIds.map((id) => eventMetaKey(id)));
+        for (let i = 0; i < eventIds.length; i += 1) {
+          const raw = raws[i];
+          if (!raw) continue;
+          try {
+            metaByEventId.set(eventIds[i], JSON.parse(raw));
+          } catch {
+            // ignore malformed cache
+          }
+        }
+      } catch (error) {
+        console.error('alert event meta enrichment failed', error);
+      }
+    }
+  }
+
   return {
     success: true,
-    data: typedAlerts.map((alert) => toApiItem(alert, typedChannels)),
+    data: typedAlerts.map((alert) => {
+      const item = toApiItem(alert, typedChannels);
+      const meta = metaByEventId.get(alert.event_id);
+      const names = computeEventAndTeamNames(meta, alert.ui_team_side || null);
+      return {
+        ...item,
+        ...names,
+      };
+    }),
   };
 }
 
@@ -333,6 +440,7 @@ export async function createAlert(
   userId: string,
   supabaseUrl: string,
   supabaseAnonKey: string | null,
+  redis: RedisCacheClient | null,
 ) {
   const body = asAlertCreateRequest(await req.json().catch(() => ({})));
 
@@ -407,6 +515,72 @@ export async function createAlert(
           },
         }),
       }).catch((error) => console.error('confirmation email dispatch failed', error));
+    }
+  }
+
+  // Fire-on-create: if Redis has a current quote and the condition is already met,
+  // create an idempotent firing + enqueue a notification job immediately.
+  if (redis && (comparator === 'gte' || comparator === 'lte' || comparator === 'eq')) {
+    try {
+      const quoteRaw = await redis.get(
+        marketQuoteKey(payload.event_id, payload.odd_id, payload.bookmaker_id),
+      );
+      const cached = parseCachedOddsTick(quoteRaw);
+      if (cached && (!payload.available_required || cached.available)) {
+        const targetValue = Number(payload.target_value);
+        if (Number.isFinite(targetValue) && comparatorMet(comparator, targetValue, cached.currentOdds)) {
+          const sourceTimestamp = cached.vendorUpdatedAt || cached.observedAt || new Date().toISOString();
+          const firingKey = [payload.event_id, payload.odd_id, payload.bookmaker_id, sourceTimestamp].join(':');
+
+          const observedAt = cached.observedAt || new Date().toISOString();
+          const { data: firing, error: firingError } = await serviceClient
+            .from('odds_alert_firings')
+            .insert({
+              alert_id: (insertedAlert as OddsAlertRow).id,
+              event_id: payload.event_id,
+              odd_id: payload.odd_id,
+              bookmaker_id: payload.bookmaker_id,
+              firing_key: firingKey,
+              triggered_value: cached.currentOdds,
+              vendor_updated_at: cached.vendorUpdatedAt,
+              observed_at: observedAt,
+            })
+            .select('id')
+            .single();
+
+          if (firingError) {
+            // Ignore duplicate firing; unique constraint provides idempotency.
+            if ((firingError as unknown as { code?: string }).code !== '23505') {
+              throw new Error(firingError.message);
+            }
+          } else if (firing?.id) {
+            await serviceClient
+              .from('odds_alerts')
+              .update({ last_fired_at: observedAt })
+              .eq('id', (insertedAlert as OddsAlertRow).id);
+
+            await redis.xadd('stream:notification_jobs', {
+              alertFiringId: String(firing.id),
+              alertId: String((insertedAlert as OddsAlertRow).id),
+              userId: String(userId),
+              channels: JSON.stringify(channels),
+              eventID: payload.event_id,
+              oddID: payload.odd_id,
+              bookmakerID: payload.bookmaker_id,
+              currentOdds: String(cached.currentOdds),
+              previousOdds: '',
+              ruleType: payload.ui_rule_type,
+              marketType: payload.ui_market_type,
+              teamSide: payload.ui_team_side || '',
+              threshold: String(payload.target_value),
+              direction: payload.ui_direction,
+              observedAt,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('fire-on-create evaluation failed', error);
     }
   }
 
