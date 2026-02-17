@@ -19,8 +19,10 @@ const getTeamAbbr = (team: any): string => {
   return team?.abbreviation || team?.name?.slice(0, 3).toUpperCase() || 'TM';
 };
 
-const formatOdds = (odds: string) => {
+const formatOdds = (odds?: string) => {
+  if (!odds) return '--';
   const num = parseInt(odds);
+  if (!Number.isFinite(num)) return odds;
   return num > 0 ? `+${num}` : `${num}`;
 };
 
@@ -47,7 +49,15 @@ export const GameSelectCard = ({
   const homeSpread = getOddsValue("points-home-game-sp-home");
   const over = getOddsValue("points-all-game-ou-over");
 
-  const hasOdds = awayML?.available || homeML?.available || homeSpread?.available || over?.available;
+  const hasOdds =
+    awayML?.available ||
+    awayML?.stale ||
+    homeML?.available ||
+    homeML?.stale ||
+    homeSpread?.available ||
+    homeSpread?.stale ||
+    over?.available ||
+    over?.stale;
 
   // Helper to determine if a team is winning
   const isWinning = (teamScore: number, opponentScore: number) => teamScore > opponentScore;
@@ -152,21 +162,21 @@ export const GameSelectCard = ({
       {/* Compact Odds Row */}
       {hasOdds && (
         <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground pt-0.5">
-          {(awayML?.available || homeML?.available) && (
+          {(awayML?.available || awayML?.stale || homeML?.available || homeML?.stale) && (
             <span className="font-mono">
-              ML: {awayML?.available ? formatOdds(awayML.odds) : '--'}/{homeML?.available ? formatOdds(homeML.odds) : '--'}
+              ML: {(awayML?.available || awayML?.stale) ? formatOdds(awayML.odds) : '--'}/{(homeML?.available || homeML?.stale) ? formatOdds(homeML.odds) : '--'}
             </span>
           )}
-          {homeSpread?.available && (
+          {(homeSpread?.available || homeSpread?.stale) && (
             <>
               <span className="text-border">•</span>
-              <span className="font-mono">SP: {homeSpread.spread}</span>
+              <span className="font-mono">SP: {homeSpread.spread || '--'}</span>
             </>
           )}
-          {over?.available && (
+          {(over?.available || over?.stale) && (
             <>
               <span className="text-border">•</span>
-              <span className="font-mono">O/U: {over.overUnder}</span>
+              <span className="font-mono">O/U: {over.overUnder || '--'}</span>
             </>
           )}
         </div>

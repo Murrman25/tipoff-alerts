@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ttlForEventStatus } from "@/backend/cache/ttlPolicy";
+import { ttlForEventStatus, ttlForOddsQuote } from "@/backend/cache/ttlPolicy";
 
 const now = new Date("2026-02-12T10:00:00.000Z");
 
@@ -36,5 +36,18 @@ describe("ttlForEventStatus", () => {
       now,
     });
     expect(ttl).toBe(2700);
+  });
+});
+
+describe("ttlForOddsQuote", () => {
+  it("keeps live quote TTL for at least 10 minutes", () => {
+    const ttl = ttlForOddsQuote({
+      startsAt: "2026-02-12T09:00:00.000Z",
+      started: true,
+      ended: false,
+      finalized: false,
+      now,
+    });
+    expect(ttl).toBe(600);
   });
 });

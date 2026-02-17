@@ -38,6 +38,11 @@ paths:
             maximum: 100
             default: 20
         - in: query
+          name: oddsAvailable
+          schema:
+            type: boolean
+          description: Optional odds availability filter (`true` only odds-ready, `false` include score-only events)
+        - in: query
           name: bookmakerID
           schema:
             type: string

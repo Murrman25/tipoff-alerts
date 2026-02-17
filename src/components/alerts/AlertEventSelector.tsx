@@ -49,9 +49,9 @@ export const AlertEventSelector = ({
     leagueID: selectedLeague === "all" ? [] : [selectedLeague],
     bookmakerID: [],
     betTypeID: [],
+    status: "all",
     searchQuery,
-    dateRange: "today",
-    oddsAvailable: true,
+    oddsAvailable: false,
   });
 
   // Fetch specific game if pre-selected

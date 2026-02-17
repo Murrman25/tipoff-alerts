@@ -2,11 +2,14 @@ import { z } from "zod";
 
 export const oddsBookSchema = z.record(
   z.object({
-    odds: z.string(),
+    odds: z.string().optional(),
     available: z.boolean(),
     spread: z.string().optional(),
     overUnder: z.string().optional(),
     deeplink: z.string().optional(),
+    stale: z.boolean().optional(),
+    lastSeenAt: z.string().optional(),
+    staleAgeSeconds: z.number().nonnegative().optional(),
   }),
 );
 
@@ -152,9 +155,24 @@ const monitorRedisSchema = z.object({
   pingMs: z.number().int().nonnegative().nullable(),
   stale: z.boolean(),
   streams: z.object({
-    oddsTicks: z.number().int().nonnegative().nullable(),
-    eventStatusTicks: z.number().int().nonnegative().nullable(),
-    notificationJobs: z.number().int().nonnegative().nullable(),
+    oddsTicks: z.object({
+      length: z.number().int().nonnegative().nullable(),
+      groupLag: z.number().int().nonnegative().nullable(),
+      pending: z.number().int().nonnegative().nullable(),
+      oldestPendingAgeSeconds: z.number().int().nonnegative().nullable(),
+    }),
+    eventStatusTicks: z.object({
+      length: z.number().int().nonnegative().nullable(),
+      groupLag: z.number().int().nonnegative().nullable(),
+      pending: z.number().int().nonnegative().nullable(),
+      oldestPendingAgeSeconds: z.number().int().nonnegative().nullable(),
+    }),
+    notificationJobs: z.object({
+      length: z.number().int().nonnegative().nullable(),
+      groupLag: z.number().int().nonnegative().nullable(),
+      pending: z.number().int().nonnegative().nullable(),
+      oldestPendingAgeSeconds: z.number().int().nonnegative().nullable(),
+    }),
   }),
   backlogWarnExceeded: z.boolean(),
 });
@@ -171,6 +189,7 @@ const monitorThresholdsSchema = z.object({
   heartbeatStaleSeconds: z.number().int().positive(),
   ingestionCycleStaleSeconds: z.number().int().positive(),
   streamBacklogWarn: z.number().int().positive(),
+  streamOldestPendingWarnSeconds: z.number().int().positive(),
 });
 
 export const adminMonitoringSummaryResponseSchema = z.object({

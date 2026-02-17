@@ -133,9 +133,24 @@ describe("API contract schemas", () => {
           pingMs: 12,
           stale: false,
           streams: {
-            oddsTicks: 10,
-            eventStatusTicks: 3,
-            notificationJobs: 2,
+            oddsTicks: {
+              length: 10,
+              groupLag: 1,
+              pending: 2,
+              oldestPendingAgeSeconds: 12,
+            },
+            eventStatusTicks: {
+              length: 3,
+              groupLag: null,
+              pending: null,
+              oldestPendingAgeSeconds: null,
+            },
+            notificationJobs: {
+              length: 2,
+              groupLag: 0,
+              pending: 0,
+              oldestPendingAgeSeconds: 0,
+            },
           },
           backlogWarnExceeded: false,
         },
@@ -143,6 +158,7 @@ describe("API contract schemas", () => {
           heartbeatStaleSeconds: 120,
           ingestionCycleStaleSeconds: 300,
           streamBacklogWarn: 5000,
+          streamOldestPendingWarnSeconds: 180,
         },
       },
     });

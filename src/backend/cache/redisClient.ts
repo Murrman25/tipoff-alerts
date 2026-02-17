@@ -10,7 +10,13 @@ export interface RedisLikeClient {
   zadd(key: string, entries: Array<{ score: number; member: string }>): Promise<void>;
   zrem(key: string, members: string[]): Promise<void>;
   zrange(key: string, start: number, stop: number): Promise<string[]>;
-  xadd(stream: string, fields: Record<string, string>): Promise<void>;
+  xadd(
+    stream: string,
+    fields: Record<string, string>,
+    options?: {
+      maxLenApprox?: number;
+    },
+  ): Promise<void>;
 }
 
 interface StoredValue {
@@ -131,9 +137,20 @@ export class InMemoryRedisClient implements RedisLikeClient {
     return sorted.slice(s, e + 1);
   }
 
-  async xadd(stream: string, fields: Record<string, string>): Promise<void> {
+  async xadd(
+    stream: string,
+    fields: Record<string, string>,
+    options?: {
+      maxLenApprox?: number;
+    },
+  ): Promise<void> {
     const existing = this.streams.get(stream) ?? [];
     existing.push(fields);
+    const maxLen = options?.maxLenApprox;
+    if (typeof maxLen === "number" && Number.isFinite(maxLen) && maxLen > 0 && existing.length > maxLen) {
+      const trim = existing.length - Math.floor(maxLen);
+      existing.splice(0, Math.max(0, trim));
+    }
     this.streams.set(stream, existing);
   }
 

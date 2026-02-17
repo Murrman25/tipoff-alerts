@@ -1,6 +1,6 @@
 import { RedisLikeClient } from "@/backend/cache/redisClient";
 import { redisKeys } from "@/backend/cache/redisKeys";
-import { ttlForEventStatus } from "@/backend/cache/ttlPolicy";
+import { ttlForEventStatus, ttlForOddsQuote } from "@/backend/cache/ttlPolicy";
 import { EventStatusTick, OddsTick } from "@/backend/contracts/ticks";
 import { parseVendorBookmakerOdds } from "@/backend/odds/parseAmericanOdds";
 
@@ -20,8 +20,16 @@ export interface OddsQuoteSnapshot {
   observedAt: string;
 }
 
+export interface RedisIngestionSinkOptions {
+  oddsStreamMaxLen?: number;
+  statusStreamMaxLen?: number;
+}
+
 export class RedisIngestionSink {
-  constructor(private readonly redis: RedisLikeClient) {}
+  constructor(
+    private readonly redis: RedisLikeClient,
+    private readonly options: RedisIngestionSinkOptions = {},
+  ) {}
 
   private stableOddsFields(serialized: string | null): {
     currentOdds: number | null;
@@ -67,7 +75,7 @@ export class RedisIngestionSink {
     };
 
     const quoteKey = redisKeys.marketBookQuote(snapshot.eventID, snapshot.oddID, snapshot.bookmakerID);
-    const ttl = ttlForEventStatus({
+    const ttl = ttlForOddsQuote({
       startsAt: snapshot.startsAt,
       started: snapshot.started,
       ended: snapshot.ended,
@@ -104,6 +112,8 @@ export class RedisIngestionSink {
         available: String(tick.available),
         vendorUpdatedAt: tick.vendorUpdatedAt || "",
         observedAt: tick.observedAt,
+      }, {
+        maxLenApprox: this.options.oddsStreamMaxLen,
       });
     }
 
@@ -166,6 +176,8 @@ export class RedisIngestionSink {
         live: String(status.live),
         vendorUpdatedAt: status.vendorUpdatedAt || "",
         observedAt: status.observedAt,
+      }, {
+        maxLenApprox: this.options.statusStreamMaxLen,
       });
     }
   }

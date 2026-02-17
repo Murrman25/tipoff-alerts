@@ -9,12 +9,20 @@ const DEFAULT_LIMIT = 40;
 
 export function useGames(filters: GamesFilters) {
   return useQuery({
-    queryKey: ['games', filters.leagueID, filters.bookmakerID, filters.betTypeID, filters.oddsAvailable, filters.searchQuery],
+    queryKey: [
+      'games',
+      filters.leagueID,
+      filters.bookmakerID,
+      filters.betTypeID,
+      filters.status,
+      filters.oddsAvailable,
+      filters.searchQuery,
+    ],
     queryFn: async (): Promise<GameEvent[]> => {
       const payload = await tipoffFetch<unknown>("/games/search", {
         query: {
           leagueID: filters.leagueID.length > 0 ? filters.leagueID.join(",") : undefined,
-          status: "all",
+          status: filters.status,
           q: filters.searchQuery || undefined,
           limit: DEFAULT_LIMIT,
           bookmakerID: filters.bookmakerID.length > 0 ? filters.bookmakerID.join(",") : undefined,

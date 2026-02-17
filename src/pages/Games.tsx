@@ -18,9 +18,9 @@ const Games = () => {
     leagueID: [],
     bookmakerID: [],
     betTypeID: [],
+    status: "live",
     searchQuery: "",
-    dateRange: "today",
-    oddsAvailable: true,
+    oddsAvailable: false,
   });
   const [selectedFavoriteTeamIds, setSelectedFavoriteTeamIds] = useState<string[]>([]);
 
@@ -70,6 +70,7 @@ const Games = () => {
   }, [games, filters.searchQuery, selectedFavoriteTeamIds]);
 
   const hasActiveFilters =
+    filters.status !== "live" ||
     filters.leagueID.length > 0 ||
     filters.bookmakerID.length > 0 ||
     filters.betTypeID.length > 0 ||
@@ -81,9 +82,9 @@ const Games = () => {
       leagueID: [],
       bookmakerID: [],
       betTypeID: [],
+      status: "live",
       searchQuery: "",
-      dateRange: "today",
-      oddsAvailable: true,
+      oddsAvailable: false,
     });
     setSelectedFavoriteTeamIds([]);
   };

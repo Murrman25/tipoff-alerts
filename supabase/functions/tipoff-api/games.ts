@@ -1,7 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { applyGameSearchFilter, parseScore, sortEvents } from './helpers.ts';
-import { loadEventFromIngestionCache, loadEventIDsFromIndexes } from './ingestionCache.ts';
+import {
+  loadEventFromIngestionCache,
+  loadEventIDsFromIndexes,
+  pruneStaleEventFromIndexes,
+} from './ingestionCache.ts';
 import { RedisCacheClient } from './redis.ts';
 import {
   CORE_ODD_IDS,
@@ -147,6 +151,7 @@ function buildSearchCacheKey(request: SearchRequest): string {
     request.q || '',
     request.cursor || '',
     String(request.limit),
+    request.oddsAvailable === undefined ? '' : String(request.oddsAvailable),
     request.bookmakerID || '',
     request.oddID || CORE_ODD_IDS.join(','),
   ].join(':');
@@ -168,6 +173,91 @@ function isFresh(ageSeconds: number, freshnessSeconds: number): boolean {
   return ageSeconds <= freshnessSeconds;
 }
 
+function finalizeEvents(events: VendorEvent[], request: SearchRequest): VendorEvent[] {
+  const searched = applyGameSearchFilter(events, request.q);
+  const sorted = sortEvents(searched);
+  return sorted.slice(0, request.limit);
+}
+
+function mergeEventLists(base: VendorEvent[], override: VendorEvent[]): VendorEvent[] {
+  const merged = new Map<string, VendorEvent>();
+  for (const event of base) {
+    merged.set(event.eventID, event);
+  }
+  for (const event of override) {
+    merged.set(event.eventID, event);
+  }
+  return Array.from(merged.values());
+}
+
+async function fetchVendorEventsForSearch(params: {
+  apiKey: string;
+  request: SearchRequest;
+}): Promise<{ events: VendorEvent[]; nextCursor?: string }> {
+  const { apiKey, request } = params;
+  const leagueID = request.leagueID || DEFAULT_LEAGUES;
+  const oddID = request.oddID || CORE_ODD_IDS.join(',');
+  const baseParams = {
+    leagueID,
+    oddsAvailable: request.oddsAvailable,
+    includeAltLines: false,
+    oddID,
+    bookmakerID: request.bookmakerID || undefined,
+    limit: request.limit,
+  };
+
+  if (request.status === 'live') {
+    const response = await fetchVendorEvents(apiKey, {
+      ...baseParams,
+      live: true,
+      cursor: request.cursor || undefined,
+    });
+    return {
+      events: response.data.map(mapEventPayload),
+      nextCursor: response.nextCursor,
+    };
+  }
+
+  if (request.status === 'upcoming') {
+    const response = await fetchVendorEvents(apiKey, {
+      ...baseParams,
+      live: false,
+      started: false,
+      finalized: false,
+      cursor: request.cursor || undefined,
+    });
+    return {
+      events: response.data.map(mapEventPayload),
+      nextCursor: response.nextCursor,
+    };
+  }
+
+  const [liveResponse, upcomingResponse] = await Promise.all([
+    fetchVendorEvents(apiKey, {
+      ...baseParams,
+      live: true,
+    }),
+    fetchVendorEvents(apiKey, {
+      ...baseParams,
+      live: false,
+      started: false,
+      finalized: false,
+      cursor: request.cursor || undefined,
+    }),
+  ]);
+
+  const merged = [...liveResponse.data, ...upcomingResponse.data];
+  const unique = new Map<string, VendorEvent>();
+  for (const event of merged) {
+    unique.set(event.eventID, mapEventPayload(event));
+  }
+
+  return {
+    events: Array.from(unique.values()),
+    nextCursor: upcomingResponse.nextCursor,
+  };
+}
+
 export async function searchGames(
   request: SearchRequest,
   apiKey: string,
@@ -176,6 +266,9 @@ export async function searchGames(
 ): Promise<SearchGamesResult> {
   const cacheKey = buildSearchCacheKey(request);
   let cachedPayload: CachedEnvelope<SearchGamesResult> | null = null;
+  let provisionalRedisPayload: SearchGamesResult | null = null;
+  let provisionalRedisEvents: VendorEvent[] = [];
+  let shouldVendorVerify = false;
 
   const leagueIDs = (request.leagueID || DEFAULT_LEAGUES)
     .split(',')
@@ -185,28 +278,32 @@ export async function searchGames(
   // Prefer ingestion cache (Redis indexes + hot keys). We still keep the envelope cache as a cheap fast path.
   if (redis && request.cursor === null) {
     try {
-      const eventIDs = await loadEventIDsFromIndexes({
+      const candidates = await loadEventIDsFromIndexes({
         redis,
         leagueIDs,
         status: request.status,
         limit: request.limit,
       });
 
-      if (eventIDs.length > 0) {
+      if (candidates.length > 0) {
         const events: VendorEvent[] = [];
-        for (const eventID of eventIDs) {
-          const cached = await loadEventFromIngestionCache({ redis, eventID });
+        let cacheMisses = 0;
+        for (const candidate of candidates) {
+          const cached = await loadEventFromIngestionCache({ redis, eventID: candidate.eventID });
           if (cached) {
             events.push(mapEventPayload(cached));
+          } else {
+            cacheMisses += 1;
+            await pruneStaleEventFromIndexes({ redis, candidate });
           }
         }
 
-        const searched = applyGameSearchFilter(events, request.q);
-        const sorted = sortEvents(searched);
-        const enriched = await enrichTeams(sorted, serviceClient);
+        const prepared = finalizeEvents(events, request);
+        const enriched = await enrichTeams(prepared, serviceClient);
         const asOf = new Date().toISOString();
 
-        return {
+        provisionalRedisEvents = events;
+        provisionalRedisPayload = {
           success: true,
           data: enriched,
           nextCursor: undefined,
@@ -216,13 +313,23 @@ export async function searchGames(
           cacheAgeSeconds: 0,
           degraded: false,
         };
+
+        const minHealthyCoverage = Math.ceil(candidates.length * 0.6);
+        const healthyCoverage = cacheMisses === 0 && events.length >= minHealthyCoverage;
+        shouldVendorVerify = !healthyCoverage;
+        if (healthyCoverage) {
+          return provisionalRedisPayload;
+        }
+      } else {
+        shouldVendorVerify = true;
       }
     } catch (error) {
       console.error('Ingestion cache search path failed; falling back to vendor', error);
+      shouldVendorVerify = true;
     }
   }
 
-  if (redis) {
+  if (redis && !shouldVendorVerify) {
     cachedPayload = await redis.getJson<CachedEnvelope<SearchGamesResult>>(cacheKey);
     if (cachedPayload?.payload) {
       const ageSeconds = cacheAgeSeconds(cachedPayload.asOf);
@@ -240,74 +347,24 @@ export async function searchGames(
   recordMetric('tipoff.cache.hit_rate', 1, { endpoint: 'games_search', hit: 'false' });
 
   try {
-    const leagueID = request.leagueID || DEFAULT_LEAGUES;
-    const oddID = request.oddID || CORE_ODD_IDS.join(',');
-    const baseParams = {
-      leagueID,
-      oddsAvailable: true,
-      includeAltLines: false,
-      oddID,
-      bookmakerID: request.bookmakerID || undefined,
-      limit: request.limit,
-    };
+    const vendor = await fetchVendorEventsForSearch({
+      apiKey,
+      request,
+    });
 
-    let nextCursor: string | undefined;
-    let events: VendorEvent[] = [];
+    const mergedEvents =
+      shouldVendorVerify && provisionalRedisEvents.length > 0 && request.cursor === null
+        ? mergeEventLists(provisionalRedisEvents, vendor.events)
+        : vendor.events;
 
-    if (request.status === 'live') {
-      const response = await fetchVendorEvents(apiKey, {
-        ...baseParams,
-        live: true,
-        cursor: request.cursor || undefined,
-      });
-      nextCursor = response.nextCursor;
-      events = response.data.map(mapEventPayload);
-    } else if (request.status === 'upcoming') {
-      const response = await fetchVendorEvents(apiKey, {
-        ...baseParams,
-        live: false,
-        started: false,
-        finalized: false,
-        cursor: request.cursor || undefined,
-      });
-      nextCursor = response.nextCursor;
-      events = response.data.map(mapEventPayload);
-    } else {
-      const [liveResponse, upcomingResponse] = await Promise.all([
-        fetchVendorEvents(apiKey, {
-          ...baseParams,
-          live: true,
-        }),
-        fetchVendorEvents(apiKey, {
-          ...baseParams,
-          live: false,
-          started: false,
-          finalized: false,
-          cursor: request.cursor || undefined,
-        }),
-      ]);
-
-      const merged = [...liveResponse.data, ...upcomingResponse.data];
-      const unique = new Map<string, VendorEvent>();
-      for (const event of merged) {
-        if (!unique.has(event.eventID)) {
-          unique.set(event.eventID, mapEventPayload(event));
-        }
-      }
-
-      events = Array.from(unique.values());
-      nextCursor = upcomingResponse.nextCursor;
-    }
-
-    const searched = applyGameSearchFilter(events, request.q);
-    const sorted = sortEvents(searched);
-    const enriched = await enrichTeams(sorted, serviceClient);
+    const prepared = finalizeEvents(mergedEvents, request);
+    const enriched = await enrichTeams(prepared, serviceClient);
     const asOf = new Date().toISOString();
 
     const payload: SearchGamesResult = {
       success: true,
       data: enriched,
-      nextCursor,
+      nextCursor: vendor.nextCursor,
       asOf,
       freshnessSeconds: DEFAULT_FRESHNESS_SECONDS,
       source: 'vendor',
@@ -328,6 +385,18 @@ export async function searchGames(
 
     return payload;
   } catch (error) {
+    if (provisionalRedisPayload) {
+      recordMetric('tipoff.cache.stale_fallback.count', 1, { endpoint: 'games_search' });
+      return {
+        ...provisionalRedisPayload,
+        degraded: true,
+      };
+    }
+
+    if (!cachedPayload && redis) {
+      cachedPayload = await redis.getJson<CachedEnvelope<SearchGamesResult>>(cacheKey);
+    }
+
     if (cachedPayload?.payload) {
       const ageSeconds = cacheAgeSeconds(cachedPayload.asOf);
       recordMetric('tipoff.cache.stale_fallback.count', 1, { endpoint: 'games_search' });

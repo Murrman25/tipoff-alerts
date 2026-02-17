@@ -10,6 +10,20 @@ function normalizeLimit(rawLimit: string | null): number {
   return Math.max(1, Math.min(100, parsed));
 }
 
+function parseBoolean(raw: string | null): boolean | undefined {
+  if (raw === null) {
+    return undefined;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'false') {
+    return false;
+  }
+  return undefined;
+}
+
 export function parseGameSearchRequest(url: URL): SearchRequest {
   const statusParam = url.searchParams.get('status');
   const status: 'live' | 'upcoming' | 'all' =
@@ -21,6 +35,7 @@ export function parseGameSearchRequest(url: URL): SearchRequest {
     q: url.searchParams.get('q'),
     cursor: url.searchParams.get('cursor'),
     limit: normalizeLimit(url.searchParams.get('limit')),
+    oddsAvailable: parseBoolean(url.searchParams.get('oddsAvailable')),
     bookmakerID: url.searchParams.get('bookmakerID'),
     oddID: url.searchParams.get('oddID'),
   };

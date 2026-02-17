@@ -73,7 +73,6 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
         eventIDs: poll.eventIDs.join(","),
         oddID: CORE_ODD_IDS.join(","),
         bookmakerID: bookmakerIDs?.length ? bookmakerIDs.join(",") : undefined,
-        oddsAvailable: true,
         includeAltLines: false,
       });
 

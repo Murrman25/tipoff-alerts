@@ -15,7 +15,7 @@ import {
   LEAGUES,
   BOOKMAKERS,
   BET_TYPES,
-  DATE_RANGES,
+  GAME_STATUSES,
   LeagueID,
   BookmakerID,
   BetTypeID,
@@ -59,13 +59,14 @@ export const GamesFilters = ({
       leagueID: [],
       bookmakerID: [],
       betTypeID: [],
+      status: "live",
       searchQuery: "",
-      dateRange: "today",
-      oddsAvailable: true,
+      oddsAvailable: false,
     });
   };
 
   const activeFilterCount =
+    (filters.status !== "live" ? 1 : 0) +
     filters.leagueID.length +
     filters.bookmakerID.length +
     filters.betTypeID.length +
@@ -86,20 +87,20 @@ export const GamesFilters = ({
           />
         </div>
 
-        {/* Date range selector */}
+        {/* Game status selector */}
         <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg border border-border">
-          {DATE_RANGES.map((range) => (
+          {GAME_STATUSES.map((status) => (
             <button
-              key={range.id}
-              onClick={() => updateFilter("dateRange", range.id)}
+              key={status.id}
+              onClick={() => updateFilter("status", status.id)}
               className={cn(
                 "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
-                filters.dateRange === range.id
+                filters.status === status.id
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {range.name}
+              {status.name}
             </button>
           ))}
         </div>

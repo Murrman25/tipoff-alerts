@@ -8,12 +8,13 @@ import {
 
 describe("tipoff-api helpers", () => {
   it("parses and normalizes search request query params", () => {
-    const url = new URL("https://example.com/tipoff-api/games/search?status=live&limit=999&q=lakers");
+    const url = new URL("https://example.com/tipoff-api/games/search?status=live&limit=999&q=lakers&oddsAvailable=false");
     const parsed = parseGameSearchRequest(url);
 
     expect(parsed.status).toBe("live");
     expect(parsed.limit).toBe(100);
     expect(parsed.q).toBe("lakers");
+    expect(parsed.oddsAvailable).toBe(false);
   });
 
   it("sorts live events ahead of upcoming events", () => {

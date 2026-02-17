@@ -13,8 +13,14 @@ const getTeamName = (team: any): string => {
   return team?.canonical?.displayName || team?.name || team?.names?.long || team?.names?.medium || team?.teamID || 'Unknown Team';
 };
 
-const formatOdds = (odds: string) => {
+const formatOdds = (odds?: string) => {
+  if (!odds) {
+    return "--";
+  }
   const num = parseInt(odds);
+  if (!Number.isFinite(num)) {
+    return odds;
+  }
   return num > 0 ? `+${num}` : `${num}`;
 };
 
@@ -82,6 +88,7 @@ export const GameCard = ({
   const awaySpread = getOddsValue(awaySpreadKey, preferredBookmaker);
   const over = getOddsValue(overKey, preferredBookmaker);
   const under = getOddsValue(underKey, preferredBookmaker);
+  const hasStaleOdds = [homeML, awayML, homeSpread, awaySpread, over, under].some((quote) => quote?.stale);
 
   // Card styling based on state
   const cardClasses = cn(
@@ -106,6 +113,11 @@ export const GameCard = ({
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse mr-1.5" />
               LIVE
             </Badge>
+            {hasStaleOdds && (
+              <Badge variant="outline" className="text-amber-500 border-amber-500/40">
+                STALE ODDS
+              </Badge>
+            )}
             <span className="text-sm font-medium text-muted-foreground">
               {game.status.period} {game.status.clock}
             </span>
@@ -146,22 +158,24 @@ export const GameCard = ({
           
           <div className="flex items-center gap-2">
             {/* Spread */}
-            {awaySpread?.available && (
+            {(awaySpread?.available || awaySpread?.stale) && (
               <div className="text-right min-w-[60px]">
-                <span className="text-xs text-muted-foreground block">
-                  {awaySpread.spread}
+                <span className={cn("text-xs block", awaySpread?.stale ? "text-amber-500" : "text-muted-foreground")}>
+                  {awaySpread.spread || "—"}
                 </span>
-                <span className="font-mono text-sm">
+                <span className={cn("font-mono text-sm", awaySpread?.stale && "text-amber-500")}>
                   {formatOdds(awaySpread.odds)}
                 </span>
               </div>
             )}
             {/* Moneyline */}
-            {awayML?.available && (
+            {(awayML?.available || awayML?.stale) && (
               <div
                 className={cn(
                   "px-3 py-1.5 rounded-lg min-w-[70px] text-center",
-                  parseInt(awayML.odds) < 0
+                  awayML?.stale
+                    ? "bg-amber-500/10 text-amber-500"
+                    : parseInt(awayML?.odds || "0", 10) < 0
                     ? "bg-primary/10 text-primary"
                     : "bg-secondary"
                 )}
@@ -200,22 +214,24 @@ export const GameCard = ({
           
           <div className="flex items-center gap-2">
             {/* Spread */}
-            {homeSpread?.available && (
+            {(homeSpread?.available || homeSpread?.stale) && (
               <div className="text-right min-w-[60px]">
-                <span className="text-xs text-muted-foreground block">
-                  {homeSpread.spread}
+                <span className={cn("text-xs block", homeSpread?.stale ? "text-amber-500" : "text-muted-foreground")}>
+                  {homeSpread.spread || "—"}
                 </span>
-                <span className="font-mono text-sm">
+                <span className={cn("font-mono text-sm", homeSpread?.stale && "text-amber-500")}>
                   {formatOdds(homeSpread.odds)}
                 </span>
               </div>
             )}
             {/* Moneyline */}
-            {homeML?.available && (
+            {(homeML?.available || homeML?.stale) && (
               <div
                 className={cn(
                   "px-3 py-1.5 rounded-lg min-w-[70px] text-center",
-                  parseInt(homeML.odds) < 0
+                  homeML?.stale
+                    ? "bg-amber-500/10 text-amber-500"
+                    : parseInt(homeML?.odds || "0", 10) < 0
                     ? "bg-primary/10 text-primary"
                     : "bg-secondary"
                 )}
@@ -230,24 +246,24 @@ export const GameCard = ({
       </div>
 
       {/* Over/Under row */}
-      {(over?.available || under?.available) && (
+      {(over?.available || over?.stale || under?.available || under?.stale) && (
         <div className="flex items-center justify-between mt-5 pt-4 border-t border-border/50">
           <span className="text-sm text-muted-foreground font-medium">Total</span>
           <div className="flex items-center gap-2">
-            {over?.available && (
-              <div className="px-3 py-1.5 rounded-lg bg-secondary text-center">
-                <span className="text-xs text-muted-foreground block">
-                  O {over.overUnder}
+            {(over?.available || over?.stale) && (
+              <div className={cn("px-3 py-1.5 rounded-lg text-center", over?.stale ? "bg-amber-500/10 text-amber-500" : "bg-secondary")}>
+                <span className={cn("text-xs block", over?.stale ? "text-amber-500" : "text-muted-foreground")}>
+                  O {over.overUnder || "—"}
                 </span>
                 <span className="font-mono text-sm">
                   {formatOdds(over.odds)}
                 </span>
               </div>
             )}
-            {under?.available && (
-              <div className="px-3 py-1.5 rounded-lg bg-secondary text-center">
-                <span className="text-xs text-muted-foreground block">
-                  U {under.overUnder}
+            {(under?.available || under?.stale) && (
+              <div className={cn("px-3 py-1.5 rounded-lg text-center", under?.stale ? "bg-amber-500/10 text-amber-500" : "bg-secondary")}>
+                <span className={cn("text-xs block", under?.stale ? "text-amber-500" : "text-muted-foreground")}>
+                  U {under.overUnder || "—"}
                 </span>
                 <span className="font-mono text-sm">
                   {formatOdds(under.odds)}

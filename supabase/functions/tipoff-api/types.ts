@@ -7,7 +7,7 @@ export const CORE_ODD_IDS = [
   'points-all-game-ou-under',
 ] as const;
 
-export const DEFAULT_LEAGUES = 'NBA,NFL,MLB,NHL';
+export const DEFAULT_LEAGUES = 'NBA,NFL,MLB,NHL,NCAAB,NCAAF';
 export const DEFAULT_FRESHNESS_SECONDS = 45;
 
 export interface SearchRequest {
@@ -16,6 +16,7 @@ export interface SearchRequest {
   q?: string | null;
   cursor?: string | null;
   limit: number;
+  oddsAvailable?: boolean;
   bookmakerID?: string | null;
   oddID?: string | null;
 }
@@ -57,6 +58,9 @@ export interface VendorBookmakerOdds {
   spread?: string;
   overUnder?: string;
   deeplink?: string;
+  stale?: boolean;
+  lastSeenAt?: string;
+  staleAgeSeconds?: number;
 }
 
 export interface VendorOddNode {

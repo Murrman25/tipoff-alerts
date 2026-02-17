@@ -38,13 +38,16 @@ export interface EventStatus {
 }
 
 export interface BookmakerOdds {
-  odds: string;
+  odds?: string;
   available: boolean;
   spread?: string;
   overUnder?: string;
   deeplink?: string;
+  stale?: boolean;
+  lastSeenAt?: string;
+  staleAgeSeconds?: number;
   altLines?: {
-    odds: string;
+    odds?: string;
     available: boolean;
     spread?: string;
     overUnder?: string;
@@ -86,8 +89,8 @@ export interface GamesFilters {
   leagueID: LeagueID[];
   bookmakerID: BookmakerID[];
   betTypeID: BetTypeID[];
+  status: 'live' | 'upcoming' | 'all';
   searchQuery: string;
-  dateRange: 'today' | 'tomorrow' | 'week' | 'all';
   oddsAvailable: boolean;
   favoriteTeamIds?: string[];
 }
@@ -117,9 +120,8 @@ export const BET_TYPES: { id: BetTypeID; name: string; description: string }[] =
   { id: 'ou', name: 'Over/Under', description: 'Total points betting' },
 ];
 
-export const DATE_RANGES: { id: GamesFilters['dateRange']; name: string }[] = [
-  { id: 'today', name: 'Today' },
-  { id: 'tomorrow', name: 'Tomorrow' },
-  { id: 'week', name: 'This Week' },
-  { id: 'all', name: 'All Upcoming' },
+export const GAME_STATUSES: { id: GamesFilters['status']; name: string }[] = [
+  { id: 'live', name: 'Live' },
+  { id: 'upcoming', name: 'Upcoming' },
+  { id: 'all', name: 'All' },
 ];
