@@ -282,7 +282,10 @@ export const GameCard = ({
 
       {/* Create Alert Button */}
       <div className="mt-5 pt-4 border-t border-border/50">
-        <Link to={`/alerts/create?eventID=${game.eventID}`}>
+        <Link
+          to={`/alerts/create?eventID=${game.eventID}`}
+          state={{ preSelectedGame: game }}
+        >
           <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground">
             <Bell className="w-4 h-4 mr-2" />
             Create Alert

@@ -17,6 +17,7 @@ interface AlertEventSelectorProps {
   value: string | null;
   onChange: (value: string | null, game: GameEvent | null, isAutoSelect?: boolean) => void;
   preSelectedEventID?: string | null;
+  preSelectedGame?: GameEvent | null;
 }
 
 const leagueFilters: { id: "all" | LeagueID; label: string }[] = [
@@ -28,6 +29,7 @@ export const AlertEventSelector = ({
   value,
   onChange,
   preSelectedEventID,
+  preSelectedGame,
 }: AlertEventSelectorProps) => {
   const [selectedLeague, setSelectedLeague] = useState<"all" | LeagueID>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,29 +76,65 @@ export const AlertEventSelector = ({
     teamID: resolvedTeamIDs,
     from: teamSearchWindow.from,
     to: teamSearchWindow.to,
+    limit: 25,
   });
 
+  const effectivePreSelectedEventID = preSelectedEventID || preSelectedGame?.eventID || null;
+
   // Fetch specific game if pre-selected
-  const { data: preSelectedGame, isLoading: isLoadingPreSelected } = useGameById(
-    preSelectedEventID && !hasAutoSelected ? preSelectedEventID : null
+  const { data: fetchedPreSelectedGame, isLoading: isLoadingPreSelected } = useGameById(
+    effectivePreSelectedEventID && !preSelectedGame && !hasAutoSelected
+      ? effectivePreSelectedEventID
+      : null
   );
 
-  // Effect to auto-select when pre-selected game loads
+  // Effect to auto-select when a pre-selected game is available.
   useEffect(() => {
-    if (preSelectedEventID && preSelectedGame && !hasAutoSelected) {
-      onChange(preSelectedEventID, preSelectedGame, true); // Mark as auto-select
+    if (hasAutoSelected) {
+      return;
+    }
+
+    if (effectivePreSelectedEventID && preSelectedGame) {
+      onChange(effectivePreSelectedEventID, preSelectedGame, true);
+      setHasAutoSelected(true);
+      return;
+    }
+
+    if (effectivePreSelectedEventID && fetchedPreSelectedGame) {
+      onChange(effectivePreSelectedEventID, fetchedPreSelectedGame, true);
       setHasAutoSelected(true);
     }
-  }, [preSelectedGame, preSelectedEventID, hasAutoSelected, onChange]);
+  }, [
+    effectivePreSelectedEventID,
+    fetchedPreSelectedGame,
+    hasAutoSelected,
+    onChange,
+    preSelectedGame,
+  ]);
 
   // Combine pre-selected game with list (if not already present)
   const allGames = useMemo(() => {
     const gameList = [...(games || [])];
-    if (preSelectedGame && !gameList.find(g => g.eventID === preSelectedGame.eventID)) {
+    const shouldIncludePreselectedFromState =
+      !!preSelectedGame && (value === preSelectedGame.eventID || !hasAutoSelected);
+    if (
+      shouldIncludePreselectedFromState &&
+      preSelectedGame &&
+      !gameList.find(g => g.eventID === preSelectedGame.eventID)
+    ) {
       gameList.unshift(preSelectedGame);
     }
+    const shouldIncludeFetchedPreselected =
+      !!fetchedPreSelectedGame && (value === fetchedPreSelectedGame.eventID || !hasAutoSelected);
+    if (
+      shouldIncludeFetchedPreselected &&
+      fetchedPreSelectedGame &&
+      !gameList.find(g => g.eventID === fetchedPreSelectedGame.eventID)
+    ) {
+      gameList.unshift(fetchedPreSelectedGame);
+    }
     return gameList;
-  }, [games, preSelectedGame]);
+  }, [games, preSelectedGame, fetchedPreSelectedGame, value, hasAutoSelected]);
 
   // Client-side filtering (search + favorite teams)
   const filteredGames = useMemo(() => {
@@ -116,7 +154,7 @@ export const AlertEventSelector = ({
     return result;
   }, [allGames, selectedFavoriteTeamIds]);
 
-  const isLoadingAny = isLoading || isLoadingPreSelected;
+  const isLoadingAny = preSelectedGame ? isLoading : (isLoading || isLoadingPreSelected);
   const isRateLimited = isRateLimitedError(error);
 
   const handleSelect = (eventID: string) => {

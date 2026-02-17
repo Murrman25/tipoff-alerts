@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { PageGlow } from "@/components/PageGlow";
 import { ArrowLeft, Zap, HelpCircle, Target, GitCompareArrows, ChartNoAxesCombined, Timer, Mail, Bell, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,10 +42,21 @@ import { useFirstTimeVisit } from "@/hooks/useFirstTimeVisit";
 import { toast } from "sonner";
 import { createAlert } from "@/lib/alertsApi";
 
+interface CreateAlertLocationState {
+  preSelectedGame?: GameEvent | null;
+}
+
 const CreateAlert = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const preSelectedEventID = searchParams.get("eventID");
+  const locationState = (location.state as CreateAlertLocationState | null) || null;
+  const preSelectedGameFromState =
+    locationState?.preSelectedGame && locationState.preSelectedGame.eventID
+      ? locationState.preSelectedGame
+      : null;
+  const preSelectedEventID =
+    searchParams.get("eventID") || preSelectedGameFromState?.eventID || null;
   const { user, isLoading: authLoading } = useAuth();
   const { showHelp, toggleHelp } = useFirstTimeVisit("create_alert");
 
@@ -61,7 +72,11 @@ const CreateAlert = () => {
     runWindowMinutes: undefined,
     gamePeriod: undefined,
   });
-  const [selectedGame, setSelectedGame] = useState<GameEvent | null>(null);
+  const [selectedGame, setSelectedGame] = useState<GameEvent | null>(
+    preSelectedGameFromState && preSelectedGameFromState.eventID === preSelectedEventID
+      ? preSelectedGameFromState
+      : null,
+  );
   const [notificationChannels, setNotificationChannels] = useState<NotificationChannel[]>(["push"]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -409,6 +424,7 @@ const CreateAlert = () => {
                 value={condition.eventID}
                 onChange={handleGameSelect}
                 preSelectedEventID={preSelectedEventID}
+                preSelectedGame={preSelectedGameFromState}
               />
             </AlertStep>
 
