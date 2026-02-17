@@ -96,4 +96,38 @@ describe("NotificationWorker", () => {
     expect(sender.send).toHaveBeenCalledWith("email", "user@example.com", expect.any(Object));
     expect(dedupe.setNxEx).toHaveBeenCalledTimes(1);
   });
+
+  it("preserves generic value fields for O/U line notifications", async () => {
+    const sender: NotificationSender = {
+      send: vi.fn().mockResolvedValue({ providerMessageId: "m4" }),
+    };
+
+    const repository: NotificationRepository = {
+      resolveDestination: vi.fn().mockResolvedValue("user@example.com"),
+      saveDelivery: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const worker = new NotificationWorker(sender, repository);
+    await worker.process({
+      ...job,
+      channels: ["email"],
+      marketType: "ou",
+      currentValue: 224,
+      previousValue: 223.5,
+      valueMetric: "line_value",
+      currentOdds: -108,
+      previousOdds: -110,
+    });
+
+    expect(sender.send).toHaveBeenCalledWith(
+      "email",
+      "user@example.com",
+      expect.objectContaining({
+        marketType: "ou",
+        currentValue: 224,
+        previousValue: 223.5,
+        valueMetric: "line_value",
+      }),
+    );
+  });
 });

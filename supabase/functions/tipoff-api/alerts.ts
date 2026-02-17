@@ -167,9 +167,8 @@ function inferOddId(marketType: string, teamSide: string | null): string {
   }
 
   if (marketType === 'ou') {
-    return teamSide === 'under'
-      ? 'points-all-game-ou-under'
-      : 'points-all-game-ou-over';
+    // v1 O/U alerts track the total line only via one canonical odd key.
+    return 'points-all-game-ou-over';
   }
 
   return teamSide === 'away'
@@ -396,7 +395,10 @@ function timeWindowMet(window: TimeWindow, status: EventStatusSummary | null): b
 }
 
 function metricForMarketType(marketType: string): TargetMetric {
-  return marketType === 'sp' ? 'line_value' : 'odds_price';
+  if (marketType === 'sp' || marketType === 'ou') {
+    return 'line_value';
+  }
+  return 'odds_price';
 }
 
 function pickCurrentValue(
@@ -556,7 +558,8 @@ export async function createAlert(
   }
 
   const marketType = body.marketType || body.market_type || 'ml';
-  const teamSide = body.teamSide || body.team_side || null;
+  const rawTeamSide = body.teamSide || body.team_side || null;
+  const teamSide = marketType === 'ou' ? null : rawTeamSide;
   const direction = body.direction || 'at_or_above';
   const threshold = typeof body.threshold === 'number' ? body.threshold : 0;
   const comparator = uiDirectionToComparator(direction);

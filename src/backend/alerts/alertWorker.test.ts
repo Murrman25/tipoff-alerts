@@ -15,6 +15,13 @@ const sampleTick: OddsTick = {
   observedAt: "2026-02-12T10:00:01.000Z",
 };
 
+const ouTick: OddsTick = {
+  ...sampleTick,
+  oddID: "points-all-game-ou-over",
+  currentOdds: -108,
+  line: 224,
+};
+
 describe("AlertWorker", () => {
   it("publishes one notification when firing is newly inserted", async () => {
     const repo: AlertWorkerRepository = {
@@ -102,5 +109,61 @@ describe("AlertWorker", () => {
 
     expect(repo.tryCreateFiring).toHaveBeenCalledTimes(1);
     expect(notifications.publish).toHaveBeenCalledTimes(0);
+  });
+
+  it("publishes O/U notification payload with total line as currentValue", async () => {
+    const repo: AlertWorkerRepository = {
+      listMatchingAlerts: vi.fn().mockResolvedValue([
+        {
+          id: "a-ou-1",
+          userId: "u1",
+          eventID: ouTick.eventID,
+          oddID: ouTick.oddID,
+          bookmakerID: ouTick.bookmakerID,
+          comparator: "gte",
+          targetValue: 224,
+          targetMetric: "line_value",
+          timeWindow: "both",
+          uiRuleType: "ou_threshold",
+          uiMarketType: "ou",
+          uiDirection: "at_or_above",
+          oneShot: true,
+          cooldownSeconds: 0,
+          availableRequired: true,
+          lastFiredAt: null,
+          channels: ["email"],
+        },
+      ]),
+      getPreviousTick: vi.fn().mockResolvedValue({
+        ...ouTick,
+        line: 223.5,
+      }),
+      getEventStatus: vi.fn().mockResolvedValue({
+        started: false,
+        ended: false,
+        finalized: false,
+        live: false,
+      }),
+      saveLatestTick: vi.fn().mockResolvedValue(undefined),
+      tryCreateFiring: vi.fn().mockResolvedValue("f-ou-1"),
+      markAlertFired: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const notifications: NotificationJobPublisher = {
+      publish: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const worker = new AlertWorker(repo, notifications);
+    await worker.processOddsTick(ouTick);
+
+    expect(notifications.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ruleType: "ou_threshold",
+        marketType: "ou",
+        currentValue: 224,
+        previousValue: 223.5,
+        valueMetric: "line_value",
+      }),
+    );
   });
 });
