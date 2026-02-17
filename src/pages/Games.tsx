@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageGlow } from "@/components/PageGlow";
@@ -12,6 +12,25 @@ import { useGames } from "@/hooks/useGames";
 import { useFavoriteTeams } from "@/hooks/useFavoriteTeams";
 import { Button } from "@/components/ui/button";
 import { useGamesStream } from "@/hooks/useGamesStream";
+
+export function sortGamesForDisplay<T extends { eventID: string; status: { started: boolean; ended: boolean; startsAt: string } }>(
+  games: T[],
+): T[] {
+  return [...games].sort((a, b) => {
+    const aLive = a.status.started && !a.status.ended;
+    const bLive = b.status.started && !b.status.ended;
+
+    if (aLive && !bLive) return -1;
+    if (!aLive && bLive) return 1;
+
+    return new Date(a.status.startsAt).getTime() - new Date(b.status.startsAt).getTime();
+  });
+}
+
+export function buildVisibleEventIds<T extends { eventID: string }>(games: T[], limit = 12): string[] {
+  const unique = Array.from(new Set(games.map((game) => game.eventID).filter(Boolean)));
+  return unique.slice(0, limit);
+}
 
 const Games = () => {
   const [filters, setFilters] = useState<FiltersType>({
@@ -56,17 +75,7 @@ const Games = () => {
     }
     
     // Sort: live games first, then by start time
-    return result.sort((a, b) => {
-      const aLive = a.status.started && !a.status.ended;
-      const bLive = b.status.started && !b.status.ended;
-      
-      // Live games first
-      if (aLive && !bLive) return -1;
-      if (!aLive && bLive) return 1;
-      
-      // Then by start time
-      return new Date(a.status.startsAt).getTime() - new Date(b.status.startsAt).getTime();
-    });
+    return sortGamesForDisplay(result);
   }, [games, filters.searchQuery, selectedFavoriteTeamIds]);
 
   const hasActiveFilters =
@@ -89,13 +98,18 @@ const Games = () => {
     setSelectedFavoriteTeamIds([]);
   };
 
-  const visibleEventIds = useMemo(() => filteredGames.slice(0, 12).map((game) => game.eventID), [filteredGames]);
+  const visibleEventIds = useMemo(() => buildVisibleEventIds(filteredGames, 12), [filteredGames]);
+  const handleStreamDiff = useCallback(() => {
+    if (isFetching) {
+      return;
+    }
+    refetch();
+  }, [isFetching, refetch]);
   const { isConnected: streamConnected } = useGamesStream({
     eventIDs: visibleEventIds,
     enabled: !isLoading && !error && visibleEventIds.length > 0,
-    onDiff: () => {
-      refetch();
-    },
+    onDiff: handleStreamDiff,
+    minDiffRefetchMs: 4000,
   });
 
   return (
