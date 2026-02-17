@@ -9,6 +9,9 @@ export interface NotificationJob {
   eventID: string;
   oddID: string;
   bookmakerID: string;
+  currentValue?: number;
+  previousValue?: number | null;
+  valueMetric?: "odds_price" | "line_value";
   currentOdds: number;
   previousOdds?: number | null;
   ruleType?: string;

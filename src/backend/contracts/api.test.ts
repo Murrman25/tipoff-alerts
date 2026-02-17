@@ -91,11 +91,13 @@ describe("API contract schemas", () => {
           channels: ["push"],
           lastFiredAt: null,
           cooldownRemainingSeconds: 0,
+          valueMetric: "odds_price",
         },
       ],
     });
 
     expect(parsed.data[0].channels).toContain("push");
+    expect(parsed.data[0].valueMetric).toBe("odds_price");
   });
 
   it("validates admin monitoring summary payload", () => {
