@@ -114,6 +114,9 @@ describe("RedisIngestionSink", () => {
       finalized: false,
       cancelled: false,
       live: false,
+      period: "1",
+      clock: "12:00",
+      updatedAt: "2026-02-12T10:45:00.000Z",
       vendorUpdatedAt: "2026-02-12T10:45:00.000Z",
       observedAt: "2026-02-12T10:45:01.000Z",
     });
@@ -136,6 +139,9 @@ describe("RedisIngestionSink", () => {
       finalized: false,
       cancelled: false,
       live: false,
+      period: "1",
+      clock: "12:00",
+      updatedAt: "2026-02-12T10:45:00.000Z",
       vendorUpdatedAt: "2026-02-12T10:45:00.000Z",
       observedAt: "2026-02-12T10:45:01.000Z",
     });
@@ -149,10 +155,52 @@ describe("RedisIngestionSink", () => {
       finalized: false,
       cancelled: false,
       live: false,
+      period: "1",
+      clock: "12:00",
+      updatedAt: "2026-02-12T10:45:20.000Z",
       vendorUpdatedAt: "2026-02-12T10:45:20.000Z",
       observedAt: "2026-02-12T10:45:21.000Z",
     });
 
     expect(redis.getStreamEntries(redisKeys.streamEventStatusTicks()).length).toBe(1);
+  });
+
+  it("appends status ticks when live clock changes", async () => {
+    const redis = new InMemoryRedisClient();
+    const sink = new RedisIngestionSink(redis);
+
+    await sink.writeEventStatus({
+      type: "EVENT_STATUS_TICK",
+      eventID: "evt_2",
+      startsAt: "2026-02-12T11:00:00.000Z",
+      started: true,
+      ended: false,
+      finalized: false,
+      cancelled: false,
+      live: true,
+      period: "2",
+      clock: "08:13",
+      updatedAt: "2026-02-12T10:45:00.000Z",
+      vendorUpdatedAt: "2026-02-12T10:45:00.000Z",
+      observedAt: "2026-02-12T10:45:01.000Z",
+    });
+
+    await sink.writeEventStatus({
+      type: "EVENT_STATUS_TICK",
+      eventID: "evt_2",
+      startsAt: "2026-02-12T11:00:00.000Z",
+      started: true,
+      ended: false,
+      finalized: false,
+      cancelled: false,
+      live: true,
+      period: "2",
+      clock: "07:59",
+      updatedAt: "2026-02-12T10:45:10.000Z",
+      vendorUpdatedAt: "2026-02-12T10:45:10.000Z",
+      observedAt: "2026-02-12T10:45:11.000Z",
+    });
+
+    expect(redis.getStreamEntries(redisKeys.streamEventStatusTicks()).length).toBe(2);
   });
 });

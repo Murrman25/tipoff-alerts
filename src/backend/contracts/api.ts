@@ -80,6 +80,7 @@ export const gameEventCompatSchema = z.object({
     live: z.boolean().optional(),
     period: z.string().optional(),
     clock: z.string().optional(),
+    updatedAt: z.string().optional(),
   }),
   odds: z
     .record(

@@ -35,6 +35,7 @@ export interface EventStatus {
   live?: boolean;
   period?: string;
   clock?: string;
+  updatedAt?: string;
 }
 
 export interface BookmakerOdds {

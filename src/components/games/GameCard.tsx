@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TeamLogo } from "@/components/TeamLogo";
 import { Badge } from "@/components/ui/badge";
 import { LeagueLogo } from "./LeagueLogo";
+import { formatLiveStatusDisplay } from "@/lib/liveStatusDisplay";
 
 // Helper to safely get team name with fallbacks
 const getTeamName = (team: any): string => {
@@ -62,6 +63,11 @@ export const GameCard = ({
 }: GameCardProps) => {
   const isLive = game.status.started && !game.status.ended;
   const hasScore = isLive && game.score;
+  const liveStatusLabel = formatLiveStatusDisplay({
+    leagueID: game.leagueID,
+    period: game.status.period,
+    clock: game.status.clock,
+  });
   const startingSoon = !isLive && isStartingSoon(game.status.startsAt);
   const minutesUntil = startingSoon ? getMinutesUntilStart(game.status.startsAt) : 0;
   
@@ -119,7 +125,7 @@ export const GameCard = ({
               </Badge>
             )}
             <span className="text-sm font-medium text-muted-foreground">
-              {game.status.period} {game.status.clock}
+              {liveStatusLabel}
             </span>
           </div>
         ) : startingSoon ? (

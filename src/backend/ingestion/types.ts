@@ -65,6 +65,8 @@ export interface VendorIngestionEvent {
     ended?: boolean;
     finalized?: boolean;
     cancelled?: boolean;
+    period?: string;
+    clock?: string;
     updatedAt?: string;
     score?: { home?: number; away?: number };
   };

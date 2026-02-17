@@ -243,6 +243,13 @@ components:
           type: boolean
         live:
           type: boolean
+        period:
+          type: string
+        clock:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
     GameEventCompat:
       type: object
       properties:

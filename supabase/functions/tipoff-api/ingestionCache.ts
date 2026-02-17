@@ -10,7 +10,7 @@ const CORE_ODD_IDS = [
   'points-all-game-ou-under',
 ] as const;
 const LIVE_ODDS_STALE_WINDOW_SECONDS = 10 * 60;
-const KEY_PREFIX = (Deno.env.get('REDIS_KEY_PREFIX') || '').trim();
+const KEY_PREFIX = (globalThis as { Deno?: { env?: { get?: (name: string) => string | undefined } } }).Deno?.env?.get?.('REDIS_KEY_PREFIX')?.trim() || '';
 
 function prefixed(key: string): string {
   return KEY_PREFIX.length > 0 ? `${KEY_PREFIX}:${key}` : key;
@@ -218,6 +218,34 @@ function copyOdds(odds: VendorEvent['odds'] | null): VendorEvent['odds'] {
   return next;
 }
 
+function isPresentStatusValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  return true;
+}
+
+export function mergeEventStatus(
+  baseStatus: VendorEvent['status'] | undefined,
+  overlayStatus: VendorEvent['status'] | null,
+): VendorEvent['status'] {
+  const merged: VendorEvent['status'] = {
+    ...(baseStatus || {}),
+  };
+
+  if (!overlayStatus || typeof overlayStatus !== 'object') {
+    return merged;
+  }
+
+  for (const [key, value] of Object.entries(overlayStatus)) {
+    if (!isPresentStatusValue(value)) {
+      continue;
+    }
+    (merged as Record<string, unknown>)[key] = value;
+  }
+
+  return merged;
+}
+
 export async function loadEventFromIngestionCache(params: {
   redis: RedisCacheClient;
   eventID: string;
@@ -236,7 +264,7 @@ export async function loadEventFromIngestionCache(params: {
 
   if (!meta) return null;
 
-  const resolvedStatus = (status as VendorEvent['status']) || meta.status || {};
+  const resolvedStatus = mergeEventStatus(meta.status, status as VendorEvent['status'] | null);
   const isLive =
     resolvedStatus.started === true &&
     resolvedStatus.ended !== true &&

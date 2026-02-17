@@ -3,6 +3,7 @@ import { GameEvent, BookmakerID } from "@/types/games";
 import { TeamLogo } from "@/components/TeamLogo";
 import { LeagueLogo } from "@/components/games/LeagueLogo";
 import { cn } from "@/lib/utils";
+import { formatLiveStatusDisplay } from "@/lib/liveStatusDisplay";
 
 interface GameSelectCardProps {
   game: GameEvent;
@@ -33,6 +34,11 @@ export const GameSelectCard = ({
 }: GameSelectCardProps) => {
   const isLive = game.status.started && !game.status.ended;
   const hasScore = isLive && game.score;
+  const liveStatusLabel = formatLiveStatusDisplay({
+    leagueID: game.leagueID,
+    period: game.status.period,
+    clock: game.status.clock,
+  });
   const startTime = new Date(game.status.startsAt);
   const isStartingSoon = !game.status.started && 
     startTime.getTime() - Date.now() <= 60 * 60 * 1000;
@@ -71,11 +77,9 @@ export const GameSelectCard = ({
             <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
           </span>
           LIVE
-          {game.status.period && (
-            <span className="text-muted-foreground font-normal ml-1">
-              {game.status.period} {game.status.clock}
-            </span>
-          )}
+          <span className="text-muted-foreground font-normal ml-1">
+            {liveStatusLabel}
+          </span>
         </span>
       );
     }

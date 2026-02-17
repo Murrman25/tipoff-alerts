@@ -23,6 +23,8 @@ describe("IngestionWorker", () => {
                 ended: false,
                 finalized: false,
                 cancelled: false,
+                period: "3",
+                clock: "07:42",
                 updatedAt: "2026-02-12T10:00:20.000Z",
               },
               odds: {
@@ -41,7 +43,7 @@ describe("IngestionWorker", () => {
       },
     };
 
-    const statusTicks: Array<{ eventID: string }> = [];
+    const statusTicks: Array<{ eventID: string; period?: string; clock?: string }> = [];
     const oddsTicks: Array<{ eventID: string; currentOdds: number }> = [];
     const redis = new InMemoryRedisClient();
     const sink = new RedisIngestionSink(redis);
@@ -50,7 +52,7 @@ describe("IngestionWorker", () => {
       vendor,
       {
         publishEventStatusTick: async (tick) => {
-          statusTicks.push({ eventID: tick.eventID });
+          statusTicks.push({ eventID: tick.eventID, period: tick.period, clock: tick.clock });
         },
         publishOddsTick: async (tick) => {
           oddsTicks.push({ eventID: tick.eventID, currentOdds: tick.currentOdds });
@@ -76,6 +78,11 @@ describe("IngestionWorker", () => {
     ]);
 
     expect(statusTicks).toHaveLength(1);
+    expect(statusTicks[0]).toEqual({
+      eventID: "evt_1",
+      period: "3",
+      clock: "07:42",
+    });
     expect(oddsTicks).toHaveLength(1);
     expect(oddsTicks[0].currentOdds).toBe(140);
     expect(vendorRequests).toHaveLength(1);

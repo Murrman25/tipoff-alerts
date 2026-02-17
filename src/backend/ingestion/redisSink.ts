@@ -127,6 +127,8 @@ export class RedisIngestionSink {
     finalized: boolean;
     cancelled: boolean;
     live: boolean;
+    period: string;
+    clock: string;
   } | null {
     if (!serialized) return null;
     try {
@@ -139,6 +141,8 @@ export class RedisIngestionSink {
         finalized: Boolean(parsed.finalized),
         cancelled: Boolean(parsed.cancelled),
         live: Boolean(parsed.live),
+        period: typeof parsed.period === "string" ? parsed.period : "",
+        clock: typeof parsed.clock === "string" ? parsed.clock : "",
       };
     } catch {
       return null;
@@ -163,7 +167,9 @@ export class RedisIngestionSink {
       previous.ended !== status.ended ||
       previous.finalized !== status.finalized ||
       previous.cancelled !== status.cancelled ||
-      previous.live !== status.live;
+      previous.live !== status.live ||
+      previous.period !== (status.period || "") ||
+      previous.clock !== (status.clock || "");
 
     if (changed) {
       await this.redis.xadd(redisKeys.streamEventStatusTicks(), {
@@ -174,6 +180,9 @@ export class RedisIngestionSink {
         finalized: String(status.finalized),
         cancelled: String(status.cancelled),
         live: String(status.live),
+        period: status.period || "",
+        clock: status.clock || "",
+        updatedAt: status.updatedAt || "",
         vendorUpdatedAt: status.vendorUpdatedAt || "",
         observedAt: status.observedAt,
       }, {

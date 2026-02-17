@@ -112,6 +112,9 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
             ended: Boolean(event.status?.ended),
             finalized: Boolean(event.status?.finalized),
           }) === "live",
+          period: event.status?.period || undefined,
+          clock: event.status?.clock || undefined,
+          updatedAt: event.status?.updatedAt || undefined,
           vendorUpdatedAt: event.status?.updatedAt || null,
           observedAt: new Date().toISOString(),
         };

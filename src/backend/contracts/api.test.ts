@@ -36,6 +36,9 @@ describe("API contract schemas", () => {
             started: false,
             ended: false,
             finalized: false,
+            period: "2",
+            clock: "08:13",
+            updatedAt: "2026-02-12T10:02:00.000Z",
           },
           odds: {
             "points-home-game-ml-home": {
@@ -55,6 +58,9 @@ describe("API contract schemas", () => {
 
     expect(parsed.success).toBe(true);
     expect(parsed.data).toHaveLength(1);
+    expect(parsed.data[0].status.period).toBe("2");
+    expect(parsed.data[0].status.clock).toBe("08:13");
+    expect(parsed.data[0].status.updatedAt).toBe("2026-02-12T10:02:00.000Z");
   });
 
   it("validates game detail nullable payload", () => {

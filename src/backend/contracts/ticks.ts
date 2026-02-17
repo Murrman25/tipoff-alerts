@@ -19,6 +19,9 @@ export interface EventStatusTick {
   finalized: boolean;
   cancelled: boolean;
   live: boolean;
+  period?: string;
+  clock?: string;
+  updatedAt?: string;
   vendorUpdatedAt: string | null;
   observedAt: string;
 }
