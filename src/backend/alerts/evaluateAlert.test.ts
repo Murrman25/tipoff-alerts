@@ -22,6 +22,13 @@ const spreadTick: OddsTick = {
   line: 3.5,
 };
 
+const ouTick: OddsTick = {
+  ...baseTick,
+  oddID: "points-all-game-ou-over",
+  currentOdds: -108,
+  line: 42.5,
+};
+
 describe("evaluateAlert", () => {
   it("fires when gte comparator threshold is met", () => {
     const result = evaluateAlert({
@@ -259,6 +266,93 @@ describe("evaluateAlert", () => {
 
     expect(live.shouldFire).toBe(true);
     expect(live.reason).toBe("fire");
+  });
+
+  it("fires O/U alerts for lte comparator at decimal boundary", () => {
+    const result = evaluateAlert({
+      alert: {
+        id: "ou-1",
+        comparator: "lte",
+        targetValue: 42.5,
+        targetMetric: "line_value",
+      },
+      currentTick: ouTick,
+    });
+
+    expect(result.shouldFire).toBe(true);
+    expect(result.reason).toBe("fire");
+    expect(result.triggeredValue).toBe(42.5);
+  });
+
+  it("fires O/U alerts for gte comparator at integer boundary", () => {
+    const result = evaluateAlert({
+      alert: {
+        id: "ou-2",
+        comparator: "gte",
+        targetValue: 224,
+        targetMetric: "line_value",
+      },
+      currentTick: {
+        ...ouTick,
+        line: 224,
+      },
+    });
+
+    expect(result.shouldFire).toBe(true);
+    expect(result.reason).toBe("fire");
+  });
+
+  it("fires O/U alerts for eq comparator only at exact value", () => {
+    const exactMatch = evaluateAlert({
+      alert: {
+        id: "ou-3",
+        comparator: "eq",
+        targetValue: 42.5,
+        targetMetric: "line_value",
+      },
+      currentTick: ouTick,
+    });
+
+    expect(exactMatch.shouldFire).toBe(true);
+    expect(exactMatch.reason).toBe("fire");
+
+    const mismatch = evaluateAlert({
+      alert: {
+        id: "ou-4",
+        comparator: "eq",
+        targetValue: 42.5,
+        targetMetric: "line_value",
+      },
+      currentTick: {
+        ...ouTick,
+        line: 43,
+      },
+    });
+
+    expect(mismatch.shouldFire).toBe(false);
+    expect(mismatch.reason).toBe("comparator_not_met");
+  });
+
+  it("does not fire live-only O/U alerts before game start", () => {
+    const result = evaluateAlert({
+      alert: {
+        id: "ou-5",
+        comparator: "gte",
+        targetValue: 42,
+        targetMetric: "line_value",
+        timeWindow: "live",
+      },
+      currentTick: ouTick,
+      eventStatus: {
+        started: false,
+        ended: false,
+        finalized: false,
+        live: false,
+      },
+    });
+
+    expect(result.shouldFire).toBe(false);
+    expect(result.reason).toBe("time_window_not_met");
   });
 });
 

@@ -52,9 +52,12 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
     }
   };
 
-  const formatThreshold = (): string => {
+  const formatThreshold = (showPlusForPositive = true): string => {
     if (condition.threshold === null) return "[value]";
-    return condition.threshold >= 0 ? `+${condition.threshold}` : condition.threshold.toString();
+    if (showPlusForPositive && condition.threshold >= 0) {
+      return `+${condition.threshold}`;
+    }
+    return condition.threshold.toString();
   };
 
   const getPeriodName = (): string => {
@@ -66,7 +69,7 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
 
   const generateSummary = (): string => {
     const teamName = getTeamName();
-    const thresholdFormatted = formatThreshold();
+    const thresholdFormatted = formatThreshold(condition.ruleType !== "ou_threshold");
 
     switch (condition.ruleType) {
       case "ml_threshold":

@@ -189,12 +189,21 @@ const MyAlerts = () => {
 
   const AlertCard = ({ alert }: { alert: Alert }) => {
     const game = getGameInfo(alert.event_id);
+    const metricBadgeLabel =
+      alert.valueMetric === "line_value"
+        ? alert.market_type === "ou"
+          ? "Total line"
+          : "Spread line"
+        : null;
+    const showLegacyOuHint = alert.market_type === "ou" && alert.valueMetric === "odds_price";
     const teamName =
       alert.teamName ||
       (game
-        ? alert.team_side === "home"
-          ? game.teams.home.name
-          : game.teams.away.name
+        ? alert.market_type === "ou"
+          ? "Game Total"
+          : alert.team_side === "home"
+            ? game.teams.home.name
+            : game.teams.away.name
         : "Unknown Team");
 
     return (
@@ -210,9 +219,9 @@ const MyAlerts = () => {
                 <Badge variant="secondary" className="text-xs">
                   {getMarketName(alert.market_type)}
                 </Badge>
-                {alert.valueMetric === "line_value" && (
+                {metricBadgeLabel && (
                   <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
-                    Spread line
+                    {metricBadgeLabel}
                   </Badge>
                 )}
                 {alert.time_window === "live" && (
@@ -233,6 +242,11 @@ const MyAlerts = () => {
                   </span>
                 )}
               </div>
+              {showLegacyOuHint && (
+                <p className="text-xs text-amber-400/90">
+                  Legacy O/U alert is price-based. Recreate this alert to use total-line tracking.
+                </p>
+              )}
 
               {/* Game info */}
               {game ? (
