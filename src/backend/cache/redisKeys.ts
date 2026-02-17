@@ -1,20 +1,26 @@
+const KEY_PREFIX = (process.env.REDIS_KEY_PREFIX || "").trim();
+
+function prefixed(key: string): string {
+  return KEY_PREFIX.length > 0 ? `${KEY_PREFIX}:${key}` : key;
+}
+
 export const redisKeys = {
-  eventStatus: (eventID: string) => `odds:event:${eventID}:status`,
-  eventBooks: (eventID: string) => `odds:event:${eventID}:books`,
+  eventStatus: (eventID: string) => prefixed(`odds:event:${eventID}:status`),
+  eventBooks: (eventID: string) => prefixed(`odds:event:${eventID}:books`),
   marketBookQuote: (eventID: string, oddID: string, bookmakerID: string) =>
-    `odds:event:${eventID}:market:${oddID}:book:${bookmakerID}`,
-  eventMeta: (eventID: string) => `event:${eventID}:meta`,
-  eventOddsCore: (eventID: string) => `odds:event:${eventID}:odds_core`,
-  leagueLiveIndex: (leagueID: string) => `idx:league:${leagueID}:live`,
-  leagueUpcomingIndex: (leagueID: string) => `idx:league:${leagueID}:upcoming`,
-  pollNextAt: (eventID: string) => `poll:event:${eventID}:next_at`,
+    prefixed(`odds:event:${eventID}:market:${oddID}:book:${bookmakerID}`),
+  eventMeta: (eventID: string) => prefixed(`event:${eventID}:meta`),
+  eventOddsCore: (eventID: string) => prefixed(`odds:event:${eventID}:odds_core`),
+  leagueLiveIndex: (leagueID: string) => prefixed(`idx:league:${leagueID}:live`),
+  leagueUpcomingIndex: (leagueID: string) => prefixed(`idx:league:${leagueID}:upcoming`),
+  pollNextAt: (eventID: string) => prefixed(`poll:event:${eventID}:next_at`),
   alertByEventOddBook: (eventID: string, oddID: string, bookmakerID: string) =>
-    `alerts:idx:event:${eventID}:odd:${oddID}:book:${bookmakerID}`,
-  alertMeta: (alertID: string) => `alerts:meta:${alertID}`,
-  alertsByUser: (userID: string) => `alerts:idx:user:${userID}`,
-  streamOddsTicks: () => "stream:odds_ticks",
-  streamEventStatusTicks: () => "stream:event_status_ticks",
-  streamNotificationJobs: () => "stream:notification_jobs",
-  streamAlertDeadLetter: () => "stream:alert_dead_letter",
-  streamNotificationDeadLetter: () => "stream:notification_dead_letter",
+    prefixed(`alerts:idx:event:${eventID}:odd:${oddID}:book:${bookmakerID}`),
+  alertMeta: (alertID: string) => prefixed(`alerts:meta:${alertID}`),
+  alertsByUser: (userID: string) => prefixed(`alerts:idx:user:${userID}`),
+  streamOddsTicks: () => prefixed("stream:odds_ticks"),
+  streamEventStatusTicks: () => prefixed("stream:event_status_ticks"),
+  streamNotificationJobs: () => prefixed("stream:notification_jobs"),
+  streamAlertDeadLetter: () => prefixed("stream:alert_dead_letter"),
+  streamNotificationDeadLetter: () => prefixed("stream:notification_dead_letter"),
 };

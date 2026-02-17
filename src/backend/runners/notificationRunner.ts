@@ -87,6 +87,24 @@ function intEnv(name: string, fallback: number): number {
   return Math.max(1, parsed);
 }
 
+function asFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function asNotificationChannel(value: unknown): NotificationChannel | null {
+  if (value === "email" || value === "push" || value === "sms") {
+    return value;
+  }
+  return null;
+}
+
 type RedisStreamEntry = Awaited<ReturnType<UpstashRedisClient["xreadgroup"]>>[number];
 
 class SupabaseNotificationRepository implements NotificationRepository {
@@ -148,6 +166,37 @@ class SupabaseNotificationRepository implements NotificationRepository {
       throw new Error(`saveDelivery failed: ${error.message}`);
     }
   }
+}
+
+interface ReconcileFiringRow {
+  id: string;
+  alert_id: string;
+  event_id: string;
+  odd_id: string;
+  bookmaker_id: string;
+  triggered_value: number | string;
+  observed_at: string | null;
+}
+
+interface ReconcileAlertRow {
+  id: string;
+  user_id: string;
+  target_value: number | string;
+  ui_rule_type: string | null;
+  ui_market_type: string | null;
+  ui_team_side: string | null;
+  ui_direction: string | null;
+}
+
+interface ReconcileChannelRow {
+  alert_id: string;
+  channel_type: string;
+  is_enabled: boolean;
+}
+
+interface ReconcileDeliveryRow {
+  alert_firing_id: string;
+  channel_type: string;
 }
 
 class LoggingNotificationSender implements NotificationSender {
@@ -289,7 +338,7 @@ class SupabaseEdgeNotificationSender implements NotificationSender {
 
 async function processNotificationEntry(params: {
   entry: RedisStreamEntry;
-  source: "new" | "pending";
+  source: "new" | "pending" | "claimed";
   redis: UpstashRedisClient;
   config: ReturnType<typeof loadWorkerConfig>;
   worker: NotificationWorker;
@@ -313,6 +362,7 @@ async function processNotificationEntry(params: {
       error: errorText,
     });
 
+    let movedToDeadLetter = false;
     try {
       await redis.xadd(redisKeys.streamNotificationDeadLetter(), {
         stream: redisKeys.streamNotificationJobs(),
@@ -323,13 +373,56 @@ async function processNotificationEntry(params: {
         error: errorText,
         payload: JSON.stringify(entry.fields),
         observedAt: new Date().toISOString(),
+      }, {
+        maxLenApprox: config.streamDeadLetterMaxLen,
       });
+      movedToDeadLetter = true;
     } catch (deadLetterError) {
       console.error("[notification-runner] dead-letter publish failed", deadLetterError);
     }
 
-    await redis.xack(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup, entry.id);
+    if (movedToDeadLetter) {
+      await redis.xack(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup, entry.id);
+      return;
+    }
+
+    throw error;
   }
+}
+
+async function claimStaleNotificationEntries(params: {
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  worker: NotificationWorker;
+  readCount: number;
+}): Promise<number> {
+  const { redis, config, worker, readCount } = params;
+  let total = 0;
+  let cursor = "0-0";
+
+  for (let i = 0; i < 40; i += 1) {
+    const claimed = await redis.xautoclaim({
+      stream: redisKeys.streamNotificationJobs(),
+      group: config.notifyConsumerGroup,
+      consumer: config.notifyConsumerName,
+      minIdleMs: config.streamClaimIdleMs,
+      startId: cursor,
+      count: readCount,
+    });
+
+    cursor = claimed.nextStartId;
+    if (claimed.entries.length === 0) {
+      break;
+    }
+
+    for (const entry of claimed.entries) {
+      await processNotificationEntry({ entry, source: "claimed", redis, config, worker });
+    }
+
+    total += claimed.entries.length;
+  }
+
+  return total;
 }
 
 async function drainPendingNotificationEntries(params: {
@@ -365,6 +458,148 @@ async function drainPendingNotificationEntries(params: {
   return total;
 }
 
+async function reconcileMissingNotificationJobs(params: {
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  supabase: ReturnType<typeof createServiceSupabaseClient>;
+}): Promise<number> {
+  const { redis, config, supabase } = params;
+  const lookbackIso = new Date(
+    Date.now() - config.notifyReconcileLookbackMinutes * 60 * 1000,
+  ).toISOString();
+
+  const { data: firings, error: firingsError } = await supabase
+    .from("odds_alert_firings")
+    .select("id,alert_id,event_id,odd_id,bookmaker_id,triggered_value,observed_at,created_at")
+    .gte("created_at", lookbackIso)
+    .order("created_at", { ascending: false })
+    .limit(config.notifyReconcileBatchSize);
+
+  if (firingsError) {
+    throw new Error(`reconcile firings query failed: ${firingsError.message}`);
+  }
+
+  const typedFirings = ((firings || []) as ReconcileFiringRow[]).filter((row) => {
+    return Boolean(row.id && row.alert_id && row.event_id && row.odd_id && row.bookmaker_id);
+  });
+  if (typedFirings.length === 0) {
+    return 0;
+  }
+
+  const alertIDs = Array.from(new Set(typedFirings.map((item) => item.alert_id)));
+  const firingIDs = typedFirings.map((item) => item.id);
+
+  const [{ data: alerts, error: alertsError }, { data: channels, error: channelsError }, { data: deliveries, error: deliveriesError }] = await Promise.all([
+    supabase
+      .from("odds_alerts")
+      .select("id,user_id,target_value,ui_rule_type,ui_market_type,ui_team_side,ui_direction")
+      .in("id", alertIDs),
+    supabase
+      .from("odds_alert_channels")
+      .select("alert_id,channel_type,is_enabled")
+      .in("alert_id", alertIDs)
+      .eq("is_enabled", true),
+    supabase
+      .from("odds_notification_deliveries")
+      .select("alert_firing_id,channel_type")
+      .in("alert_firing_id", firingIDs),
+  ]);
+
+  if (alertsError) {
+    throw new Error(`reconcile alerts query failed: ${alertsError.message}`);
+  }
+  if (channelsError) {
+    throw new Error(`reconcile channels query failed: ${channelsError.message}`);
+  }
+  if (deliveriesError) {
+    throw new Error(`reconcile deliveries query failed: ${deliveriesError.message}`);
+  }
+
+  const alertsByID = new Map<string, ReconcileAlertRow>();
+  for (const alert of (alerts || []) as ReconcileAlertRow[]) {
+    alertsByID.set(alert.id, alert);
+  }
+
+  const channelsByAlertID = new Map<string, NotificationChannel[]>();
+  for (const channel of (channels || []) as ReconcileChannelRow[]) {
+    const normalized = asNotificationChannel(channel.channel_type);
+    if (!channel.is_enabled || !normalized) {
+      continue;
+    }
+    const existing = channelsByAlertID.get(channel.alert_id) || [];
+    if (!existing.includes(normalized)) {
+      existing.push(normalized);
+      channelsByAlertID.set(channel.alert_id, existing);
+    }
+  }
+
+  const deliveryChannelsByFiringID = new Map<string, Set<NotificationChannel>>();
+  for (const delivery of (deliveries || []) as ReconcileDeliveryRow[]) {
+    const normalized = asNotificationChannel(delivery.channel_type);
+    if (!normalized) {
+      continue;
+    }
+    const existing = deliveryChannelsByFiringID.get(delivery.alert_firing_id) || new Set<NotificationChannel>();
+    existing.add(normalized);
+    deliveryChannelsByFiringID.set(delivery.alert_firing_id, existing);
+  }
+
+  let enqueued = 0;
+  for (const firing of typedFirings) {
+    const alert = alertsByID.get(firing.alert_id);
+    if (!alert) {
+      continue;
+    }
+
+    const enabledChannels = channelsByAlertID.get(alert.id) || ["push"];
+    const deliveredChannels = deliveryChannelsByFiringID.get(firing.id) || new Set<NotificationChannel>();
+    const missingChannels = enabledChannels.filter((channel) => !deliveredChannels.has(channel));
+    if (missingChannels.length === 0) {
+      continue;
+    }
+
+    const triggeredValue = asFiniteNumber(firing.triggered_value);
+    if (triggeredValue === null) {
+      continue;
+    }
+
+    const dedupeSuffix = [...missingChannels].sort().join(",");
+    const dedupeKey = `notify:reconcile:queue:${firing.id}:${dedupeSuffix}`;
+    const acquired = await redis.setNxEx(
+      dedupeKey,
+      "1",
+      config.notifyReconcileQueueDedupeTtlSeconds,
+    );
+    if (!acquired) {
+      continue;
+    }
+
+    const threshold = asFiniteNumber(alert.target_value);
+    await redis.xadd(redisKeys.streamNotificationJobs(), {
+      alertFiringId: firing.id,
+      alertId: alert.id,
+      userId: alert.user_id,
+      channels: JSON.stringify(missingChannels),
+      eventID: firing.event_id,
+      oddID: firing.odd_id,
+      bookmakerID: firing.bookmaker_id,
+      currentOdds: String(triggeredValue),
+      previousOdds: "",
+      ruleType: alert.ui_rule_type || "odds_threshold",
+      marketType: alert.ui_market_type || "ml",
+      teamSide: alert.ui_team_side || "",
+      threshold: threshold === null ? "" : String(threshold),
+      direction: alert.ui_direction || "at_or_above",
+      observedAt: firing.observed_at || new Date().toISOString(),
+    }, {
+      maxLenApprox: config.streamNotificationMaxLen,
+    });
+    enqueued += 1;
+  }
+
+  return enqueued;
+}
+
 async function main() {
   const config = loadWorkerConfig();
   const redis = createUpstashRedisFromEnv();
@@ -381,7 +616,13 @@ async function main() {
     dryRun,
   });
   const repository = new SupabaseNotificationRepository(supabase);
-  const worker = new NotificationWorker(sender, repository, 3);
+  const worker = new NotificationWorker(
+    sender,
+    repository,
+    3,
+    redis,
+    config.notifyDedupeTtlSeconds,
+  );
 
   console.log("[notification-runner] started", {
     group: config.notifyConsumerGroup,
@@ -396,8 +637,34 @@ async function main() {
       .catch((error) => console.error("[notification-runner] heartbeat failed", error));
   }, 30000).unref();
 
+  let nextReconcileAtMs = 0;
   while (true) {
     try {
+      const nowMs = Date.now();
+      if (nowMs >= nextReconcileAtMs) {
+        const enqueued = await reconcileMissingNotificationJobs({
+          redis,
+          config,
+          supabase,
+        });
+        if (enqueued > 0) {
+          console.log("[notification-runner] reconciled missing notification jobs", {
+            enqueued,
+            lookbackMinutes: config.notifyReconcileLookbackMinutes,
+            batchSize: config.notifyReconcileBatchSize,
+          });
+        }
+        nextReconcileAtMs = nowMs + config.notifyReconcileIntervalSeconds * 1000;
+      }
+
+      const claimed = await claimStaleNotificationEntries({ redis, config, worker, readCount });
+      if (claimed > 0) {
+        console.log("[notification-runner] claimed stale pending entries", {
+          claimed,
+          minIdleMs: config.streamClaimIdleMs,
+        });
+      }
+
       const drained = await drainPendingNotificationEntries({ redis, config, worker, readCount });
       if (drained > 0) {
         console.log("[notification-runner] drained pending entries", { drained });

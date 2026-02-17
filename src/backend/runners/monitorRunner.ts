@@ -27,6 +27,22 @@ function ageSeconds(isoString: string | null, nowMs: number): number | null {
   return Math.max(0, Math.floor((nowMs - parsedMs) / 1000));
 }
 
+function groupLag(groups: Array<{ name: string; lag: number | null }> | null, groupName: string): number | null {
+  if (!groups || groups.length === 0) {
+    return null;
+  }
+  const group = groups.find((item) => item.name === groupName);
+  return group?.lag ?? null;
+}
+
+function oldestPendingAgeSeconds(entries: Array<{ idleMs: number }> | null): number | null {
+  if (!entries || entries.length === 0) {
+    return 0;
+  }
+  const maxIdleMs = entries.reduce((max, entry) => Math.max(max, entry.idleMs), 0);
+  return Math.max(0, Math.floor(maxIdleMs / 1000));
+}
+
 async function fetchVendorUsage(apiKey: string | null): Promise<VendorUsageSnapshot> {
   if (!apiKey) {
     return {
@@ -111,6 +127,7 @@ async function runSample() {
     heartbeatStaleSeconds: config.monitorHeartbeatStaleSeconds,
     ingestionCycleStaleSeconds: config.monitorIngestionCycleStaleSeconds,
     streamBacklogWarn: config.monitorStreamBacklogWarn,
+    streamOldestPendingWarnSeconds: config.monitorStreamOldestPendingWarnSeconds,
   });
 
   setInterval(() => {
@@ -140,6 +157,12 @@ async function runSample() {
     let streamOddsLen: number | null = null;
     let streamStatusLen: number | null = null;
     let streamNotificationLen: number | null = null;
+    let streamOddsLag: number | null = null;
+    let streamNotificationLag: number | null = null;
+    let streamOddsPending: number | null = null;
+    let streamNotificationPending: number | null = null;
+    let streamOddsOldestPendingAgeSeconds: number | null = null;
+    let streamNotificationOldestPendingAgeSeconds: number | null = null;
 
     try {
       const [
@@ -153,6 +176,12 @@ async function runSample() {
         oddsLen,
         statusLen,
         notifyLen,
+        oddsGroups,
+        notifyGroups,
+        oddsPendingSummary,
+        notifyPendingSummary,
+        oddsPendingEntries,
+        notifyPendingEntries,
       ] = await Promise.all([
         redis.get("workers:ingestion:last_heartbeat"),
         redis.get("workers:ingestion:last_cycle_at"),
@@ -164,6 +193,24 @@ async function runSample() {
         redis.xlen(redisKeys.streamOddsTicks()),
         redis.xlen(redisKeys.streamEventStatusTicks()),
         redis.xlen(redisKeys.streamNotificationJobs()),
+        redis.xinfoGroups(redisKeys.streamOddsTicks()).catch(() => null),
+        redis.xinfoGroups(redisKeys.streamNotificationJobs()).catch(() => null),
+        redis.xpendingSummary(redisKeys.streamOddsTicks(), config.alertConsumerGroup).catch(() => null),
+        redis.xpendingSummary(redisKeys.streamNotificationJobs(), config.notifyConsumerGroup).catch(() => null),
+        redis
+          .xpending({
+            stream: redisKeys.streamOddsTicks(),
+            group: config.alertConsumerGroup,
+            count: 10,
+          })
+          .catch(() => null),
+        redis
+          .xpending({
+            stream: redisKeys.streamNotificationJobs(),
+            group: config.notifyConsumerGroup,
+            count: 10,
+          })
+          .catch(() => null),
       ]);
 
       ingestionHeartbeatAgeSeconds = ageSeconds(ingestionHeartbeat, cycleStartedAt);
@@ -176,6 +223,12 @@ async function runSample() {
       streamOddsLen = oddsLen;
       streamStatusLen = statusLen;
       streamNotificationLen = notifyLen;
+      streamOddsLag = groupLag(oddsGroups, config.alertConsumerGroup);
+      streamNotificationLag = groupLag(notifyGroups, config.notifyConsumerGroup);
+      streamOddsPending = oddsPendingSummary?.pending ?? null;
+      streamNotificationPending = notifyPendingSummary?.pending ?? null;
+      streamOddsOldestPendingAgeSeconds = oldestPendingAgeSeconds(oddsPendingEntries);
+      streamNotificationOldestPendingAgeSeconds = oldestPendingAgeSeconds(notifyPendingEntries);
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";
       errors.push(`redis probes failed: ${message}`);
@@ -194,11 +247,18 @@ async function runSample() {
         streamOddsLen,
         streamStatusLen,
         streamNotificationLen,
+        streamOddsLag,
+        streamNotificationLag,
+        streamOddsPending,
+        streamNotificationPending,
+        streamOddsOldestPendingAgeSeconds,
+        streamNotificationOldestPendingAgeSeconds,
       },
       {
         heartbeatStaleSeconds: config.monitorHeartbeatStaleSeconds,
         ingestionCycleStaleSeconds: config.monitorIngestionCycleStaleSeconds,
         streamBacklogWarn: config.monitorStreamBacklogWarn,
+        streamOldestPendingWarnSeconds: config.monitorStreamOldestPendingWarnSeconds,
       },
     );
 
@@ -212,6 +272,23 @@ async function runSample() {
       notificationHeartbeatStale: status.notificationHeartbeatStale,
       redisStale: status.redisStale,
       streamBacklogWarnExceeded: status.streamBacklogWarnExceeded,
+      streamDiagnostics: {
+        oddsTicks: {
+          length: streamOddsLen,
+          lag: streamOddsLag,
+          pending: streamOddsPending,
+          oldestPendingAgeSeconds: streamOddsOldestPendingAgeSeconds,
+        },
+        eventStatusTicks: {
+          length: streamStatusLen,
+        },
+        notificationJobs: {
+          length: streamNotificationLen,
+          lag: streamNotificationLag,
+          pending: streamNotificationPending,
+          oldestPendingAgeSeconds: streamNotificationOldestPendingAgeSeconds,
+        },
+      },
     };
 
     const { error: insertError } = await supabase.from("ops_monitor_samples").insert({
@@ -259,6 +336,7 @@ async function runSample() {
       vendorStale: vendorUsage.stale,
       redisPingMs,
       streamOddsLen,
+      streamOddsLag,
       errors: errors.length,
     });
 

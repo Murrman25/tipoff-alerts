@@ -63,7 +63,7 @@ export default function AdminMonitoring() {
         time: new Date(point.sampledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         utilization: point.vendorUtilizationPct,
         redisPingMs: point.redisPingMs,
-        oddsBacklog: point.streamOddsLen,
+        oddsStreamLength: point.streamOddsLen,
       })),
     [history],
   );
@@ -73,7 +73,7 @@ export default function AdminMonitoring() {
     [chartData],
   );
   const hasRedisTrendSeries = useMemo(
-    () => chartData.some((point) => hasNumber(point.redisPingMs) || hasNumber(point.oddsBacklog)),
+    () => chartData.some((point) => hasNumber(point.redisPingMs) || hasNumber(point.oddsStreamLength)),
     [chartData],
   );
 
@@ -232,9 +232,22 @@ export default function AdminMonitoring() {
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div>Ping: {fmtNumber(summary?.redis.pingMs)} ms</div>
-              <div>Odds stream backlog: {fmtNumber(summary?.redis.streams.oddsTicks)}</div>
-              <div>Status stream backlog: {fmtNumber(summary?.redis.streams.eventStatusTicks)}</div>
-              <div>Notification stream backlog: {fmtNumber(summary?.redis.streams.notificationJobs)}</div>
+              <div>Odds stream length: {fmtNumber(summary?.redis.streams.oddsTicks.length)}</div>
+              <div>Odds group lag: {fmtNumber(summary?.redis.streams.oddsTicks.groupLag)}</div>
+              <div>Odds pending: {fmtNumber(summary?.redis.streams.oddsTicks.pending)}</div>
+              <div>
+                Odds oldest pending age: {fmtNumber(summary?.redis.streams.oddsTicks.oldestPendingAgeSeconds)}s
+              </div>
+              <div>Status stream length: {fmtNumber(summary?.redis.streams.eventStatusTicks.length)}</div>
+              <div>Notification stream length: {fmtNumber(summary?.redis.streams.notificationJobs.length)}</div>
+              <div>
+                Notification group lag: {fmtNumber(summary?.redis.streams.notificationJobs.groupLag)}
+              </div>
+              <div>Notification pending: {fmtNumber(summary?.redis.streams.notificationJobs.pending)}</div>
+              <div>
+                Notification oldest pending age:{" "}
+                {fmtNumber(summary?.redis.streams.notificationJobs.oldestPendingAgeSeconds)}s
+              </div>
               <div>Backlog warn: {summary?.redis.backlogWarnExceeded ? "yes" : "no"}</div>
             </CardContent>
           </Card>
@@ -277,7 +290,7 @@ export default function AdminMonitoring() {
 
           <Card>
             <CardHeader>
-              <CardTitle>24h Redis / Backlog Trend</CardTitle>
+              <CardTitle>24h Redis / Stream Length Trend</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -306,7 +319,7 @@ export default function AdminMonitoring() {
                       />
                       <Line
                         type="monotone"
-                        dataKey="oddsBacklog"
+                        dataKey="oddsStreamLength"
                         yAxisId="backlog"
                         stroke="#f59e0b"
                         dot={history.length < 2}

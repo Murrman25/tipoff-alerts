@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  NotificationDedupeStore,
   NotificationJob,
   NotificationRepository,
   NotificationSender,
@@ -66,5 +67,33 @@ describe("NotificationWorker", () => {
       2,
       expect.objectContaining({ status: "sent", attemptNumber: 2 }),
     );
+  });
+
+  it("skips sending when dedupe key indicates a channel was already sent", async () => {
+    const sender: NotificationSender = {
+      send: vi.fn().mockResolvedValue({ providerMessageId: "m3" }),
+    };
+
+    const repository: NotificationRepository = {
+      resolveDestination: vi.fn().mockResolvedValue("user@example.com"),
+      saveDelivery: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const dedupe: NotificationDedupeStore = {
+      get: vi.fn().mockImplementation(async (key: string) => {
+        return key.endsWith(":push") ? "1" : null;
+      }),
+      setNxEx: vi.fn().mockResolvedValue(true),
+    };
+
+    const worker = new NotificationWorker(sender, repository, 3, dedupe, 3600);
+    await worker.process({
+      ...job,
+      channels: ["push", "email"],
+    });
+
+    expect(sender.send).toHaveBeenCalledTimes(1);
+    expect(sender.send).toHaveBeenCalledWith("email", "user@example.com", expect.any(Object));
+    expect(dedupe.setNxEx).toHaveBeenCalledTimes(1);
   });
 });

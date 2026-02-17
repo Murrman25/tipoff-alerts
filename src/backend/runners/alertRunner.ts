@@ -69,6 +69,12 @@ function isPelLimitError(error: unknown): boolean {
   return message.includes("Pending Entries List limit") || message.includes("XReadGroup is cancelled");
 }
 
+function tickTimestampMs(tick: OddsTick): number {
+  const source = tick.vendorUpdatedAt || tick.observedAt;
+  const parsed = new Date(source).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 type RedisStreamEntry = Awaited<ReturnType<UpstashRedisClient["xreadgroup"]>>[number];
 
 class SupabaseAlertRepository implements AlertWorkerRepository {
@@ -136,6 +142,10 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
   }
 
   async saveLatestTick(tick: OddsTick): Promise<void> {
+    const existing = await this.getPreviousTick(tick);
+    if (existing && tickTimestampMs(existing) > tickTimestampMs(tick)) {
+      return;
+    }
     await this.redis.set(previousTickKey(tick), JSON.stringify(tick), 4 * 60 * 60);
   }
 
@@ -188,7 +198,7 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
 
 async function processAlertEntry(params: {
   entry: RedisStreamEntry;
-  source: "new" | "pending";
+  source: "new" | "pending" | "claimed";
   redis: UpstashRedisClient;
   config: ReturnType<typeof loadWorkerConfig>;
   worker: AlertWorker;
@@ -212,6 +222,7 @@ async function processAlertEntry(params: {
       error: errorText,
     });
 
+    let movedToDeadLetter = false;
     try {
       await redis.xadd(redisKeys.streamAlertDeadLetter(), {
         stream: redisKeys.streamOddsTicks(),
@@ -222,13 +233,56 @@ async function processAlertEntry(params: {
         error: errorText,
         payload: JSON.stringify(entry.fields),
         observedAt: new Date().toISOString(),
+      }, {
+        maxLenApprox: config.streamDeadLetterMaxLen,
       });
+      movedToDeadLetter = true;
     } catch (deadLetterError) {
       console.error("[alert-runner] dead-letter publish failed", deadLetterError);
     }
 
-    await redis.xack(redisKeys.streamOddsTicks(), config.alertConsumerGroup, entry.id);
+    if (movedToDeadLetter) {
+      await redis.xack(redisKeys.streamOddsTicks(), config.alertConsumerGroup, entry.id);
+      return;
+    }
+
+    throw error;
   }
+}
+
+async function claimStaleAlertEntries(params: {
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  worker: AlertWorker;
+  readCount: number;
+}): Promise<number> {
+  const { redis, config, worker, readCount } = params;
+  let total = 0;
+  let cursor = "0-0";
+
+  for (let i = 0; i < 40; i += 1) {
+    const claimed = await redis.xautoclaim({
+      stream: redisKeys.streamOddsTicks(),
+      group: config.alertConsumerGroup,
+      consumer: config.alertConsumerName,
+      minIdleMs: config.streamClaimIdleMs,
+      startId: cursor,
+      count: readCount,
+    });
+
+    cursor = claimed.nextStartId;
+    if (claimed.entries.length === 0) {
+      break;
+    }
+
+    for (const entry of claimed.entries) {
+      await processAlertEntry({ entry, source: "claimed", redis, config, worker });
+    }
+
+    total += claimed.entries.length;
+  }
+
+  return total;
 }
 
 async function drainPendingAlertEntries(params: {
@@ -307,6 +361,8 @@ async function main() {
         threshold: String(job.threshold),
         direction: job.direction,
         observedAt: job.observedAt,
+      }, {
+        maxLenApprox: config.streamNotificationMaxLen,
       });
     },
   };
@@ -327,6 +383,14 @@ async function main() {
 
   while (true) {
     try {
+      const claimed = await claimStaleAlertEntries({ redis, config, worker, readCount });
+      if (claimed > 0) {
+        console.log("[alert-runner] claimed stale pending entries", {
+          claimed,
+          minIdleMs: config.streamClaimIdleMs,
+        });
+      }
+
       const drained = await drainPendingAlertEntries({
         redis,
         config,

@@ -27,7 +27,6 @@ async function discoverEventSummaries(
     vendor.getEvents({
       leagueID,
       live: true,
-      oddsAvailable: true,
       includeAltLines: false,
       oddID: CORE_ODD_IDS.join(","),
       limit: 300,
@@ -70,7 +69,10 @@ async function main() {
   }
   const redis = createUpstashRedisFromEnv();
   const vendor = new SportsGameOddsSdkClient<VendorIngestionEvent>(config.sportsGameOddsApiKey);
-  const sink = new RedisIngestionSink(redis);
+  const sink = new RedisIngestionSink(redis, {
+    oddsStreamMaxLen: config.streamOddsMaxLen,
+    statusStreamMaxLen: config.streamStatusMaxLen,
+  });
 
   const worker = new IngestionWorker(
     vendor,

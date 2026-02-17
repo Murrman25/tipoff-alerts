@@ -40,19 +40,36 @@ export interface NotificationRepository {
   resolveDestination(userId: string, channel: NotificationChannel): Promise<string>;
 }
 
+export interface NotificationDedupeStore {
+  get(key: string): Promise<string | null>;
+  setNxEx(key: string, value: string, ttlSeconds: number): Promise<boolean>;
+}
+
 export class NotificationWorker {
   private readonly maxAttempts: number;
+  private readonly dedupeTtlSeconds: number;
 
   constructor(
     private readonly sender: NotificationSender,
     private readonly repository: NotificationRepository,
     maxAttempts = 3,
+    private readonly dedupeStore?: NotificationDedupeStore,
+    dedupeTtlSeconds = 7 * 24 * 60 * 60,
   ) {
     this.maxAttempts = Math.max(1, maxAttempts);
+    this.dedupeTtlSeconds = Math.max(60, Math.floor(dedupeTtlSeconds));
   }
 
   async process(job: NotificationJob) {
     for (const channel of job.channels) {
+      const dedupeKey = `notify:sent:${job.alertFiringId}:${channel}`;
+      if (this.dedupeStore) {
+        const alreadySent = await this.dedupeStore.get(dedupeKey);
+        if (alreadySent) {
+          continue;
+        }
+      }
+
       const destination = await this.repository.resolveDestination(job.userId, channel);
       for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
         try {
@@ -65,6 +82,9 @@ export class NotificationWorker {
             providerMessageId: result.providerMessageId,
             attemptNumber: attempt,
           });
+          if (this.dedupeStore) {
+            await this.dedupeStore.setNxEx(dedupeKey, "1", this.dedupeTtlSeconds);
+          }
           break;
         } catch (error) {
           const message = error instanceof Error ? error.message : "delivery failed";

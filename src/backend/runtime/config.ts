@@ -23,6 +23,17 @@ export interface WorkerConfig {
   monitorHeartbeatStaleSeconds: number;
   monitorIngestionCycleStaleSeconds: number;
   monitorStreamBacklogWarn: number;
+  monitorStreamOldestPendingWarnSeconds: number;
+  streamOddsMaxLen: number;
+  streamStatusMaxLen: number;
+  streamNotificationMaxLen: number;
+  streamDeadLetterMaxLen: number;
+  streamClaimIdleMs: number;
+  notifyDedupeTtlSeconds: number;
+  notifyReconcileIntervalSeconds: number;
+  notifyReconcileLookbackMinutes: number;
+  notifyReconcileBatchSize: number;
+  notifyReconcileQueueDedupeTtlSeconds: number;
   pollLoopDelayMs: number;
 }
 
@@ -74,7 +85,7 @@ export function loadWorkerConfig(): WorkerConfig {
     supabaseAnonKey: requireEnv("SUPABASE_ANON_KEY"),
     ingestionMaxRpm: intEnv("INGESTION_MAX_RPM", 240),
     ingestionBatchSize: intEnv("INGESTION_BATCH_SIZE", 25),
-    ingestionLeagueIDs: (process.env.INGESTION_LEAGUE_IDS || "NBA,NFL,MLB,NHL")
+    ingestionLeagueIDs: (process.env.INGESTION_LEAGUE_IDS || "NBA,NFL,MLB,NHL,NCAAB,NCAAF")
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean),
@@ -93,6 +104,17 @@ export function loadWorkerConfig(): WorkerConfig {
     monitorHeartbeatStaleSeconds: intEnv("MONITOR_HEARTBEAT_STALE_SECONDS", 120),
     monitorIngestionCycleStaleSeconds: intEnv("MONITOR_INGESTION_CYCLE_STALE_SECONDS", 300),
     monitorStreamBacklogWarn: intEnv("MONITOR_STREAM_BACKLOG_WARN", 5000),
+    monitorStreamOldestPendingWarnSeconds: intEnv("MONITOR_STREAM_OLDEST_PENDING_WARN_SECONDS", 180),
+    streamOddsMaxLen: intEnv("STREAM_ODDS_MAXLEN", 200000),
+    streamStatusMaxLen: intEnv("STREAM_STATUS_MAXLEN", 20000),
+    streamNotificationMaxLen: intEnv("STREAM_NOTIFICATION_MAXLEN", 100000),
+    streamDeadLetterMaxLen: intEnv("STREAM_DEAD_LETTER_MAXLEN", 20000),
+    streamClaimIdleMs: intEnv("STREAM_CLAIM_IDLE_MS", 60000),
+    notifyDedupeTtlSeconds: intEnv("NOTIFY_DEDUPE_TTL_SECONDS", 7 * 24 * 60 * 60),
+    notifyReconcileIntervalSeconds: intEnv("NOTIFY_RECONCILE_INTERVAL_SECONDS", 60),
+    notifyReconcileLookbackMinutes: intEnv("NOTIFY_RECONCILE_LOOKBACK_MINUTES", 120),
+    notifyReconcileBatchSize: intEnv("NOTIFY_RECONCILE_BATCH_SIZE", 200),
+    notifyReconcileQueueDedupeTtlSeconds: intEnv("NOTIFY_RECONCILE_QUEUE_DEDUPE_TTL_SECONDS", 120),
     pollLoopDelayMs: intEnv("INGESTION_LOOP_DELAY_MS", 30000),
   };
 }

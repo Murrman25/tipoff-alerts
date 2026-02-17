@@ -13,6 +13,7 @@
   - Default: `https://wxcezmqaknhftwnpkanu.supabase.co/functions/v1/tipoff-api`
 - `REDIS_REST_URL`: Upstash Redis REST endpoint used by edge API cache reads.
 - `REDIS_REST_TOKEN`: Upstash Redis REST auth token.
+- `REDIS_KEY_PREFIX`: Optional key prefix for Redis multi-env isolation (for example `tipoff:staging`).
 - `INGESTION_MAX_RPM`: Worker-level request budget cap.
 - `INGESTION_BATCH_SIZE`: Max event IDs per ingestion poll request.
 - `INGESTION_LEAGUE_IDS`: Comma list for discovery scans.
@@ -22,12 +23,23 @@
 - `NOTIFY_CONSUMER_GROUP`: Redis stream consumer group for notifications.
 - `NOTIFY_CONSUMER_NAME`: Redis stream consumer identity for notification worker.
 - `NOTIFY_DRY_RUN`: `true|false` to disable provider sends in staging.
+- `NOTIFY_RECONCILE_INTERVAL_SECONDS`: Interval for reconciliation sweep that re-enqueues missing notification jobs (default `60`).
+- `NOTIFY_RECONCILE_LOOKBACK_MINUTES`: Lookback window for reconciliation over recent firings (default `120`).
+- `NOTIFY_RECONCILE_BATCH_SIZE`: Max firings scanned per reconciliation pass (default `200`).
+- `NOTIFY_RECONCILE_QUEUE_DEDUPE_TTL_SECONDS`: Dedupe TTL for reconciliation enqueue keys (default `120`).
 - `MONITOR_ENVIRONMENT`: Label used when storing monitoring samples (`staging|production`).
 - `MONITOR_SAMPLE_INTERVAL_SECONDS`: Sampling interval for monitor worker (default `60`).
 - `MONITOR_RETENTION_DAYS`: DB retention for `ops_monitor_samples` (default `7`).
 - `MONITOR_HEARTBEAT_STALE_SECONDS`: Worker heartbeat stale threshold (default `120`).
 - `MONITOR_INGESTION_CYCLE_STALE_SECONDS`: Ingestion cycle stale threshold (default `300`).
-- `MONITOR_STREAM_BACKLOG_WARN`: Warn threshold for Redis stream backlogs (default `5000`).
+- `MONITOR_STREAM_BACKLOG_WARN`: Warn threshold for Redis consumer lag/pending count (default `5000`).
+- `MONITOR_STREAM_OLDEST_PENDING_WARN_SECONDS`: Warn threshold for oldest pending message age (default `180`).
+- `STREAM_ODDS_MAXLEN`: Approximate max retained entries for `stream:odds_ticks` (default `200000`).
+- `STREAM_STATUS_MAXLEN`: Approximate max retained entries for `stream:event_status_ticks` (default `20000`).
+- `STREAM_NOTIFICATION_MAXLEN`: Approximate max retained entries for `stream:notification_jobs` (default `100000`).
+- `STREAM_DEAD_LETTER_MAXLEN`: Approximate max retained entries for dead-letter streams (default `20000`).
+- `STREAM_CLAIM_IDLE_MS`: Idle threshold before stale pending messages are claimed by active consumers (default `60000`).
+- `NOTIFY_DEDUPE_TTL_SECONDS`: TTL for notification dedupe keys (`notify:sent:*`) (default `604800`).
 - `TIPOFF_GAMES_SOURCE`: `redis|vendor` games read source override.
 - `TIPOFF_ALERTS_SOURCE`: `odds_v2|legacy` alert persistence/read source.
 - `TIPOFF_STREAM_ENABLED`: `true|false` kill switch for SSE endpoint.

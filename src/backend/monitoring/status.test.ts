@@ -6,6 +6,7 @@ const thresholds: MonitoringThresholds = {
   heartbeatStaleSeconds: 120,
   ingestionCycleStaleSeconds: 300,
   streamBacklogWarn: 5000,
+  streamOldestPendingWarnSeconds: 180,
 };
 
 function baseInput(): MonitoringSnapshotInput {
@@ -21,6 +22,12 @@ function baseInput(): MonitoringSnapshotInput {
     streamOddsLen: 30,
     streamStatusLen: 10,
     streamNotificationLen: 2,
+    streamOddsLag: 0,
+    streamNotificationLag: 0,
+    streamOddsPending: 0,
+    streamNotificationPending: 0,
+    streamOddsOldestPendingAgeSeconds: 0,
+    streamNotificationOldestPendingAgeSeconds: 0,
   };
 }
 
@@ -38,7 +45,16 @@ describe("computeMonitoringStatus", () => {
 
   it("marks degraded when backlog warning threshold is exceeded", () => {
     const status = computeMonitoringStatus(
-      { ...baseInput(), streamOddsLen: 7000 },
+      { ...baseInput(), streamOddsLag: 7000 },
+      thresholds,
+    );
+    expect(status.overallStatus).toBe("degraded");
+    expect(status.streamBacklogWarnExceeded).toBe(true);
+  });
+
+  it("marks degraded when oldest pending age exceeds threshold", () => {
+    const status = computeMonitoringStatus(
+      { ...baseInput(), streamNotificationOldestPendingAgeSeconds: 600 },
       thresholds,
     );
     expect(status.overallStatus).toBe("degraded");

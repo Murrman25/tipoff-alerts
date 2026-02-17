@@ -4,6 +4,15 @@ import { OddsAlertChannelRow, OddsAlertRow } from './types.ts';
 import { RedisCacheClient } from './redis.ts';
 
 type Comparator = 'gte' | 'lte' | 'eq' | 'crosses_up' | 'crosses_down';
+const NOTIFICATION_STREAM_MAXLEN = Number.parseInt(
+  Deno.env.get('STREAM_NOTIFICATION_MAXLEN') || '100000',
+  10,
+);
+const KEY_PREFIX = (Deno.env.get('REDIS_KEY_PREFIX') || '').trim();
+
+function prefixed(key: string): string {
+  return KEY_PREFIX.length > 0 ? `${KEY_PREFIX}:${key}` : key;
+}
 
 type UiDirection =
   | 'at_or_above'
@@ -252,7 +261,7 @@ function toApiItem(alert: OddsAlertRow, channels: OddsAlertChannelRow[]): AlertA
 }
 
 function eventMetaKey(eventID: string) {
-  return `event:${eventID}:meta`;
+  return prefixed(`event:${eventID}:meta`);
 }
 
 function pickTeamName(team: unknown): string | null {
@@ -284,7 +293,7 @@ function computeEventAndTeamNames(meta: unknown, teamSide: string | null): { eve
 }
 
 function marketQuoteKey(eventID: string, oddID: string, bookmakerID: string) {
-  return `odds:event:${eventID}:market:${oddID}:book:${bookmakerID}`;
+  return prefixed(`odds:event:${eventID}:market:${oddID}:book:${bookmakerID}`);
 }
 
 function parseCachedOddsTick(
@@ -559,7 +568,7 @@ export async function createAlert(
               .update({ last_fired_at: observedAt })
               .eq('id', (insertedAlert as OddsAlertRow).id);
 
-            await redis.xadd('stream:notification_jobs', {
+            await redis.xadd(prefixed('stream:notification_jobs'), {
               alertFiringId: String(firing.id),
               alertId: String((insertedAlert as OddsAlertRow).id),
               userId: String(userId),
@@ -575,6 +584,8 @@ export async function createAlert(
               threshold: String(payload.target_value),
               direction: payload.ui_direction,
               observedAt,
+            }, {
+              maxLenApprox: Number.isFinite(NOTIFICATION_STREAM_MAXLEN) ? NOTIFICATION_STREAM_MAXLEN : 100000,
             });
           }
         }

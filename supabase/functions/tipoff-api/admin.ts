@@ -14,6 +14,7 @@ interface AdminThresholds {
   heartbeatStaleSeconds: number;
   ingestionCycleStaleSeconds: number;
   streamBacklogWarn: number;
+  streamOldestPendingWarnSeconds: number;
 }
 
 interface AdminDeps {
@@ -61,6 +62,7 @@ function monitoringThresholds(): AdminThresholds {
     heartbeatStaleSeconds: intEnv('MONITOR_HEARTBEAT_STALE_SECONDS', 120),
     ingestionCycleStaleSeconds: intEnv('MONITOR_INGESTION_CYCLE_STALE_SECONDS', 300),
     streamBacklogWarn: intEnv('MONITOR_STREAM_BACKLOG_WARN', 5000),
+    streamOldestPendingWarnSeconds: intEnv('MONITOR_STREAM_OLDEST_PENDING_WARN_SECONDS', 180),
   };
 }
 
@@ -155,14 +157,34 @@ function asNumber(value: unknown): number | null {
   return null;
 }
 
+function asStreamMetric(value: unknown): {
+  length: number | null;
+  lag: number | null;
+  pending: number | null;
+  oldestPendingAgeSeconds: number | null;
+} {
+  const objectValue = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  return {
+    length: asNumber(objectValue.length),
+    lag: asNumber(objectValue.lag),
+    pending: asNumber(objectValue.pending),
+    oldestPendingAgeSeconds: asNumber(objectValue.oldestPendingAgeSeconds),
+  };
+}
+
 function rowToSummaryData(row: OpsMonitorSampleRow | null, environment: string) {
   const thresholds = monitoringThresholds();
 
   const details = row?.details || {};
+  const detailsRecord = details as Record<string, unknown>;
   const alertProcessedAge = asNumber((details as Record<string, unknown>).alertProcessedAgeSeconds);
   const notificationProcessedAge = asNumber(
     (details as Record<string, unknown>).notificationProcessedAgeSeconds,
   );
+  const diagnosticsRaw =
+    detailsRecord.streamDiagnostics && typeof detailsRecord.streamDiagnostics === 'object'
+      ? (detailsRecord.streamDiagnostics as Record<string, unknown>)
+      : {};
 
   const ingestionHeartbeatAge = row?.ingestion_heartbeat_age_s ?? null;
   const ingestionCycleAge = row?.ingestion_cycle_age_s ?? null;
@@ -181,10 +203,21 @@ function rowToSummaryData(row: OpsMonitorSampleRow | null, environment: string) 
   const oddsLen = row?.stream_odds_len ?? null;
   const statusLen = row?.stream_status_len ?? null;
   const notifyLen = row?.stream_notification_len ?? null;
+  const oddsMetrics = asStreamMetric(diagnosticsRaw.oddsTicks);
+  const statusMetrics = asStreamMetric(diagnosticsRaw.eventStatusTicks);
+  const notifyMetrics = asStreamMetric(diagnosticsRaw.notificationJobs);
   const backlogWarnExceeded =
-    (oddsLen ?? 0) > thresholds.streamBacklogWarn ||
-    (statusLen ?? 0) > thresholds.streamBacklogWarn ||
-    (notifyLen ?? 0) > thresholds.streamBacklogWarn;
+    detailsRecord.streamBacklogWarnExceeded === true ||
+    ((oddsMetrics.lag ?? 0) > thresholds.streamBacklogWarn) ||
+    ((notifyMetrics.lag ?? 0) > thresholds.streamBacklogWarn) ||
+    ((oddsMetrics.pending ?? 0) > thresholds.streamBacklogWarn) ||
+    ((notifyMetrics.pending ?? 0) > thresholds.streamBacklogWarn) ||
+    ((oddsMetrics.oldestPendingAgeSeconds ?? 0) > thresholds.streamOldestPendingWarnSeconds) ||
+    ((notifyMetrics.oldestPendingAgeSeconds ?? 0) > thresholds.streamOldestPendingWarnSeconds) ||
+    ((oddsMetrics.lag === null && notifyMetrics.lag === null) &&
+      (((oddsLen ?? 0) > thresholds.streamBacklogWarn) ||
+        ((statusLen ?? 0) > thresholds.streamBacklogWarn) ||
+        ((notifyLen ?? 0) > thresholds.streamBacklogWarn)));
 
   return {
     asOf: row?.sampled_at || new Date().toISOString(),
@@ -225,9 +258,24 @@ function rowToSummaryData(row: OpsMonitorSampleRow | null, environment: string) 
       pingMs: row?.redis_ping_ms ?? null,
       stale: row?.redis_ping_ms === null,
       streams: {
-        oddsTicks: oddsLen,
-        eventStatusTicks: statusLen,
-        notificationJobs: notifyLen,
+        oddsTicks: {
+          length: oddsLen,
+          groupLag: oddsMetrics.lag,
+          pending: oddsMetrics.pending,
+          oldestPendingAgeSeconds: oddsMetrics.oldestPendingAgeSeconds,
+        },
+        eventStatusTicks: {
+          length: statusLen,
+          groupLag: statusMetrics.lag,
+          pending: statusMetrics.pending,
+          oldestPendingAgeSeconds: statusMetrics.oldestPendingAgeSeconds,
+        },
+        notificationJobs: {
+          length: notifyLen,
+          groupLag: notifyMetrics.lag,
+          pending: notifyMetrics.pending,
+          oldestPendingAgeSeconds: notifyMetrics.oldestPendingAgeSeconds,
+        },
       },
       backlogWarnExceeded,
     },

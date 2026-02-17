@@ -4,6 +4,7 @@ export interface MonitoringThresholds {
   heartbeatStaleSeconds: number;
   ingestionCycleStaleSeconds: number;
   streamBacklogWarn: number;
+  streamOldestPendingWarnSeconds: number;
 }
 
 export interface MonitoringSnapshotInput {
@@ -18,6 +19,12 @@ export interface MonitoringSnapshotInput {
   streamOddsLen: number | null;
   streamStatusLen: number | null;
   streamNotificationLen: number | null;
+  streamOddsLag: number | null;
+  streamNotificationLag: number | null;
+  streamOddsPending: number | null;
+  streamNotificationPending: number | null;
+  streamOddsOldestPendingAgeSeconds: number | null;
+  streamNotificationOldestPendingAgeSeconds: number | null;
 }
 
 export interface MonitoringComputedStatus {
@@ -58,9 +65,12 @@ export function computeMonitoringStatus(
   const redisStale = input.redisPingMs === null;
 
   const streamBacklogWarnExceeded =
-    (input.streamOddsLen ?? 0) > thresholds.streamBacklogWarn ||
-    (input.streamStatusLen ?? 0) > thresholds.streamBacklogWarn ||
-    (input.streamNotificationLen ?? 0) > thresholds.streamBacklogWarn;
+    (input.streamOddsLag ?? 0) > thresholds.streamBacklogWarn ||
+    (input.streamNotificationLag ?? 0) > thresholds.streamBacklogWarn ||
+    (input.streamOddsPending ?? 0) > thresholds.streamBacklogWarn ||
+    (input.streamNotificationPending ?? 0) > thresholds.streamBacklogWarn ||
+    (input.streamOddsOldestPendingAgeSeconds ?? 0) > thresholds.streamOldestPendingWarnSeconds ||
+    (input.streamNotificationOldestPendingAgeSeconds ?? 0) > thresholds.streamOldestPendingWarnSeconds;
 
   const down =
     input.ingestionHeartbeatAgeSeconds === null ||
