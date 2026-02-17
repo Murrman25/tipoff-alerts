@@ -94,6 +94,10 @@ export interface GamesFilters {
   searchQuery: string;
   oddsAvailable: boolean;
   favoriteTeamIds?: string[];
+  teamID?: string[];
+  from?: string;
+  to?: string;
+  limit?: number;
 }
 
 // Display metadata for filters

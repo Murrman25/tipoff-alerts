@@ -11,6 +11,7 @@ export interface Team {
   league: string;
   sport: string;
   logo_filename: string | null;
+  sportsgameodds_id: string | null;
 }
 
 export const useFavoriteTeams = () => {
@@ -23,7 +24,7 @@ export const useFavoriteTeams = () => {
     queryFn: async (): Promise<Team[]> => {
       const { data, error } = await supabase
         .from("teams")
-        .select("id, display_name, short_name, city, league, sport, logo_filename")
+        .select("id, display_name, short_name, city, league, sport, logo_filename, sportsgameodds_id")
         .order("display_name");
 
       if (error) throw error;

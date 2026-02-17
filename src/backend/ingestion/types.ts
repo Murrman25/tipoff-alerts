@@ -22,6 +22,7 @@ export interface PollingSegment {
 
 export interface VendorGetEventsParams {
   leagueID?: string;
+  teamID?: string;
   eventID?: string;
   eventIDs?: string;
   oddID?: string;
@@ -31,6 +32,8 @@ export interface VendorGetEventsParams {
   live?: boolean;
   started?: boolean;
   finalized?: boolean;
+  startsAfter?: string;
+  startsBefore?: string;
   limit?: number;
   cursor?: string;
 }
@@ -56,8 +59,14 @@ export interface VendorIngestionEvent {
   sportID?: string;
   leagueID: string;
   teams?: {
-    home?: unknown;
-    away?: unknown;
+    home?: {
+      teamID?: string;
+      [key: string]: unknown;
+    };
+    away?: {
+      teamID?: string;
+      [key: string]: unknown;
+    };
   };
   status?: {
     startsAt?: string;

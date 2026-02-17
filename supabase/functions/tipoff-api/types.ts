@@ -14,6 +14,9 @@ export interface SearchRequest {
   leagueID?: string | null;
   status: 'live' | 'upcoming' | 'all';
   q?: string | null;
+  teamID?: string[];
+  from?: string | null;
+  to?: string | null;
   cursor?: string | null;
   limit: number;
   oddsAvailable?: boolean;

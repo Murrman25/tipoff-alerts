@@ -5,13 +5,18 @@ import { PageGlow } from "@/components/PageGlow";
 import { GamesFilters } from "@/components/games/GamesFilters";
 import { GameCard } from "@/components/games/GameCard";
 import { GameCardSkeleton } from "@/components/games/GameCardSkeleton";
-import { EmptyGamesState } from "@/components/games/EmptyGamesState";
+import { EmptyGamesState, EmptyGamesStateVariant } from "@/components/games/EmptyGamesState";
 import { FavoriteTeamsFilter } from "@/components/games/FavoriteTeamsFilter";
 import { GamesFilters as FiltersType } from "@/types/games";
 import { useGames } from "@/hooks/useGames";
 import { useFavoriteTeams } from "@/hooks/useFavoriteTeams";
 import { Button } from "@/components/ui/button";
 import { useGamesStream } from "@/hooks/useGamesStream";
+import { resolveCanonicalTeamIDs } from "@/lib/teamSearch";
+
+const LEAGUE_MIXED_WINDOW_DAYS = 3;
+const LEAGUE_MIXED_LIMIT = 25;
+const TEAM_SEARCH_HORIZON_DAYS = 30;
 
 export function sortGamesForDisplay<T extends { eventID: string; status: { started: boolean; ended: boolean; startsAt: string } }>(
   games: T[],
@@ -32,6 +37,80 @@ export function buildVisibleEventIds<T extends { eventID: string }>(games: T[], 
   return unique.slice(0, limit);
 }
 
+export function buildEffectiveGamesFilters(
+  filters: FiltersType,
+  resolvedTeamIDs: string[],
+  nowMs = Date.now(),
+): { isLeagueMixedMode: boolean; effectiveFilters: FiltersType } {
+  const isLeagueMixedMode = filters.leagueID.length > 0;
+  const nowIso = new Date(nowMs).toISOString();
+
+  const nextFilters: FiltersType = {
+    ...filters,
+    teamID: resolvedTeamIDs,
+    from: undefined,
+    to: undefined,
+    limit: undefined,
+  };
+
+  if (isLeagueMixedMode) {
+    return {
+      isLeagueMixedMode,
+      effectiveFilters: {
+        ...nextFilters,
+        status: "all",
+        from: nowIso,
+        to: new Date(nowMs + LEAGUE_MIXED_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+        limit: LEAGUE_MIXED_LIMIT,
+      },
+    };
+  }
+
+  if (resolvedTeamIDs.length > 0) {
+    return {
+      isLeagueMixedMode,
+      effectiveFilters: {
+        ...nextFilters,
+        from: nowIso,
+        to: new Date(nowMs + TEAM_SEARCH_HORIZON_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    };
+  }
+
+  return {
+    isLeagueMixedMode,
+    effectiveFilters: nextFilters,
+  };
+}
+
+export function deriveEmptyStateVariant(params: {
+  isLeagueMixedMode: boolean;
+  isDefaultLiveView: boolean;
+  hasNarrowingFilters: boolean;
+}): EmptyGamesStateVariant {
+  if (params.isLeagueMixedMode && !params.hasNarrowingFilters) {
+    return "leagueWindowEmpty";
+  }
+  if (params.isDefaultLiveView && !params.hasNarrowingFilters) {
+    return "globalNoLive";
+  }
+  return "filtered";
+}
+
+export function normalizeGamesFiltersOnLeagueChange(
+  previousFilters: FiltersType,
+  nextFilters: FiltersType,
+): FiltersType {
+  if (previousFilters.leagueID.length > 0 && nextFilters.leagueID.length === 0) {
+    return {
+      ...nextFilters,
+      status: "live",
+    };
+  }
+
+  return nextFilters;
+}
+
 const Games = () => {
   const [filters, setFilters] = useState<FiltersType>({
     leagueID: [],
@@ -44,10 +123,24 @@ const Games = () => {
   const [selectedFavoriteTeamIds, setSelectedFavoriteTeamIds] = useState<string[]>([]);
 
   // Fetch favorite teams
-  const { favoriteTeams, isLoading: favoritesLoading } = useFavoriteTeams();
+  const { allTeams, favoriteTeams, isLoading: favoritesLoading } = useFavoriteTeams();
+
+  const resolvedTeamIDs = useMemo(
+    () =>
+      resolveCanonicalTeamIDs(filters.searchQuery, allTeams, {
+        leagueIDs: filters.leagueID,
+        maxResults: 3,
+      }),
+    [allTeams, filters.searchQuery, filters.leagueID],
+  );
+
+  const { isLeagueMixedMode, effectiveFilters } = useMemo(
+    () => buildEffectiveGamesFilters(filters, resolvedTeamIDs),
+    [filters, resolvedTeamIDs],
+  );
 
   // Fetch games from the API
-  const { data: games, isLoading, error, refetch, isFetching } = useGames(filters);
+  const { data: games, isLoading, error, refetch, isFetching } = useGames(effectiveFilters);
 
   const handleToggleFavoriteTeam = (teamId: string) => {
     setSelectedFavoriteTeamIds((prev) =>
@@ -76,15 +169,27 @@ const Games = () => {
     
     // Sort: live games first, then by start time
     return sortGamesForDisplay(result);
-  }, [games, filters.searchQuery, selectedFavoriteTeamIds]);
+  }, [games, selectedFavoriteTeamIds]);
 
-  const hasActiveFilters =
-    filters.status !== "live" ||
-    filters.leagueID.length > 0 ||
+  const hasNarrowingFilters =
     filters.bookmakerID.length > 0 ||
     filters.betTypeID.length > 0 ||
+    filters.oddsAvailable ||
     filters.searchQuery.length > 0 ||
     selectedFavoriteTeamIds.length > 0;
+  const isDefaultLiveView = !isLeagueMixedMode && filters.status === "live";
+  const emptyStateVariant = deriveEmptyStateVariant({
+    isLeagueMixedMode,
+    isDefaultLiveView,
+    hasNarrowingFilters,
+  });
+
+  const liveGamesCount = useMemo(
+    () => filteredGames.filter((game) => game.status.started && !game.status.ended).length,
+    [filteredGames],
+  );
+  const showLeagueUpcomingFallbackBanner =
+    isLeagueMixedMode && filteredGames.length > 0 && liveGamesCount === 0;
 
   const clearFilters = () => {
     setFilters({
@@ -97,6 +202,15 @@ const Games = () => {
     });
     setSelectedFavoriteTeamIds([]);
   };
+  const showUpcoming = () => {
+    setFilters((prev) => ({
+      ...prev,
+      status: "upcoming",
+    }));
+  };
+  const handleFiltersChange = useCallback((nextFilters: FiltersType) => {
+    setFilters((prev) => normalizeGamesFiltersOnLeagueChange(prev, nextFilters));
+  }, []);
 
   const visibleEventIds = useMemo(() => buildVisibleEventIds(filteredGames, 12), [filteredGames]);
   const handleStreamDiff = useCallback(() => {
@@ -160,9 +274,16 @@ const Games = () => {
         <div className="mb-6">
           <GamesFilters
             filters={filters}
-            onFiltersChange={setFilters}
+            onFiltersChange={handleFiltersChange}
             totalResults={filteredGames.length}
             isLoading={isLoading}
+            statusLocked={isLeagueMixedMode}
+            statusLockLabel={isLeagueMixedMode ? "Live + Next 3 Days" : undefined}
+            statusHelperText={
+              isLeagueMixedMode
+                ? "League mode prioritizes live games and includes upcoming games within the next 3 days."
+                : undefined
+            }
           />
         </div>
 
@@ -183,6 +304,24 @@ const Games = () => {
           </div>
         )}
 
+        {isLeagueMixedMode && (
+          <div className="mb-4 flex items-center gap-2">
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
+              Live + Next 3 Days • Max 25
+            </span>
+          </div>
+        )}
+
+        {isFetching && !isLoading && (
+          <p className="mb-4 text-xs text-muted-foreground">Refreshing games for your current filters...</p>
+        )}
+
+        {showLeagueUpcomingFallbackBanner && (
+          <div className="mb-4 rounded-lg border border-primary/20 bg-primary/10 p-3 text-sm text-muted-foreground">
+            No live games in this league right now. Showing upcoming games in the next 3 days.
+          </div>
+        )}
+
         {/* Games grid */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -192,8 +331,9 @@ const Games = () => {
           </div>
         ) : filteredGames.length === 0 ? (
           <EmptyGamesState
-            hasFilters={hasActiveFilters}
-            onClearFilters={clearFilters}
+            variant={emptyStateVariant}
+            onClearFilters={emptyStateVariant === "filtered" ? clearFilters : undefined}
+            onShowUpcoming={emptyStateVariant === "globalNoLive" ? showUpcoming : undefined}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

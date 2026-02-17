@@ -13,6 +13,8 @@ export const redisKeys = {
   eventOddsCore: (eventID: string) => prefixed(`odds:event:${eventID}:odds_core`),
   leagueLiveIndex: (leagueID: string) => prefixed(`idx:league:${leagueID}:live`),
   leagueUpcomingIndex: (leagueID: string) => prefixed(`idx:league:${leagueID}:upcoming`),
+  teamLiveIndex: (teamID: string) => prefixed(`idx:team:${teamID}:live`),
+  teamUpcomingIndex: (teamID: string) => prefixed(`idx:team:${teamID}:upcoming`),
   pollNextAt: (eventID: string) => prefixed(`poll:event:${eventID}:next_at`),
   alertByEventOddBook: (eventID: string, oddID: string, bookmakerID: string) =>
     prefixed(`alerts:idx:event:${eventID}:odd:${oddID}:book:${bookmakerID}`),

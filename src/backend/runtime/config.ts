@@ -13,6 +13,7 @@ export interface WorkerConfig {
   ingestionBookmakerIDsCold: string[];
   ingestionDiscoveryIntervalMs: number;
   ingestionPollTickMs: number;
+  ingestionUpcomingCacheWindowDays: number;
   alertConsumerGroup: string;
   alertConsumerName: string;
   notifyConsumerGroup: string;
@@ -94,6 +95,7 @@ export function loadWorkerConfig(): WorkerConfig {
     ingestionBookmakerIDsCold: bookmakersCold.length > 0 ? bookmakersCold : legacyBookmakers,
     ingestionDiscoveryIntervalMs: intEnv("INGESTION_DISCOVERY_INTERVAL_MS", 300000),
     ingestionPollTickMs: intEnv("INGESTION_POLL_TICK_MS", 5000),
+    ingestionUpcomingCacheWindowDays: intEnv("INGESTION_UPCOMING_CACHE_WINDOW_DAYS", 3),
     alertConsumerGroup: process.env.ALERT_CONSUMER_GROUP || "tipoff-alert-workers",
     alertConsumerName: process.env.ALERT_CONSUMER_NAME || `alert-${process.pid}`,
     notifyConsumerGroup: process.env.NOTIFY_CONSUMER_GROUP || "tipoff-notify-workers",

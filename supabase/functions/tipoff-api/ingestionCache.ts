@@ -26,7 +26,8 @@ interface CachedOddsQuote {
 
 export interface IndexedEventCandidate {
   eventID: string;
-  leagueID: string;
+  leagueIDs: string[];
+  teamIDs: string[];
   fromLiveIndex: boolean;
   fromUpcomingIndex: boolean;
 }
@@ -37,6 +38,14 @@ function leagueLiveIndex(leagueID: string) {
 
 function leagueUpcomingIndex(leagueID: string) {
   return prefixed(`idx:league:${leagueID}:upcoming`);
+}
+
+function teamLiveIndex(teamID: string) {
+  return prefixed(`idx:team:${teamID}:live`);
+}
+
+function teamUpcomingIndex(teamID: string) {
+  return prefixed(`idx:team:${teamID}:upcoming`);
 }
 
 function eventMetaKey(eventID: string) {
@@ -65,7 +74,7 @@ function sortUnique(values: string[]): string[] {
 
 function addCandidate(
   candidates: Map<string, IndexedEventCandidate>,
-  leagueID: string,
+  context: { leagueID?: string; teamID?: string },
   eventID: string,
   source: 'live' | 'upcoming',
 ) {
@@ -73,11 +82,19 @@ function addCandidate(
   if (!existing) {
     candidates.set(eventID, {
       eventID,
-      leagueID,
+      leagueIDs: context.leagueID ? [context.leagueID] : [],
+      teamIDs: context.teamID ? [context.teamID] : [],
       fromLiveIndex: source === 'live',
       fromUpcomingIndex: source === 'upcoming',
     });
     return;
+  }
+
+  if (context.leagueID && !existing.leagueIDs.includes(context.leagueID)) {
+    existing.leagueIDs.push(context.leagueID);
+  }
+  if (context.teamID && !existing.teamIDs.includes(context.teamID)) {
+    existing.teamIDs.push(context.teamID);
   }
 
   if (source === 'live') {
@@ -90,31 +107,55 @@ function addCandidate(
 export async function loadEventIDsFromIndexes(params: {
   redis: RedisCacheClient;
   leagueIDs: string[];
+  teamIDs?: string[];
   status: 'live' | 'upcoming' | 'all';
   limit: number;
 }): Promise<IndexedEventCandidate[]> {
-  const { redis, leagueIDs, status, limit } = params;
+  const { redis, leagueIDs, teamIDs = [], status, limit } = params;
   const unique = new Map<string, IndexedEventCandidate>();
-  const perLeague = Math.max(1, Math.ceil(limit / Math.max(1, leagueIDs.length)));
+  const leagueCount = Math.max(1, leagueIDs.length);
+  const teamCount = Math.max(1, teamIDs.length);
+  const perLeague = Math.max(1, Math.ceil(limit / leagueCount));
+  const perTeam = Math.max(1, Math.ceil(limit / teamCount));
   const perLeagueLiveFetch = Math.max(perLeague * 3, perLeague + 2);
   const perLeagueUpcomingFetch = Math.max(perLeague * 2, perLeague + 2);
+  const perTeamLiveFetch = Math.max(perTeam * 3, perTeam + 2);
+  const perTeamUpcomingFetch = Math.max(perTeam * 2, perTeam + 2);
   const maxCandidates = Math.max(limit * 3, limit + 12);
 
   for (const leagueID of leagueIDs) {
     if (status === 'live' || status === 'all') {
       const live = sortUnique(await redis.smembers(leagueLiveIndex(leagueID)));
       for (const id of live.slice(0, perLeagueLiveFetch)) {
-        addCandidate(unique, leagueID, id, 'live');
+        addCandidate(unique, { leagueID }, id, 'live');
       }
     }
     if (status === 'upcoming' || status === 'all') {
       // Grab nearest upcoming by startsAt score.
       const upcoming = await redis.zrange(leagueUpcomingIndex(leagueID), 0, perLeagueUpcomingFetch - 1);
       for (const id of upcoming) {
-        addCandidate(unique, leagueID, id, 'upcoming');
+        addCandidate(unique, { leagueID }, id, 'upcoming');
       }
     }
     if (unique.size >= maxCandidates) break;
+  }
+
+  if (unique.size < maxCandidates) {
+    for (const teamID of teamIDs) {
+      if (status === 'live' || status === 'all') {
+        const live = sortUnique(await redis.smembers(teamLiveIndex(teamID)));
+        for (const id of live.slice(0, perTeamLiveFetch)) {
+          addCandidate(unique, { teamID }, id, 'live');
+        }
+      }
+      if (status === 'upcoming' || status === 'all') {
+        const upcoming = await redis.zrange(teamUpcomingIndex(teamID), 0, perTeamUpcomingFetch - 1);
+        for (const id of upcoming) {
+          addCandidate(unique, { teamID }, id, 'upcoming');
+        }
+      }
+      if (unique.size >= maxCandidates) break;
+    }
   }
 
   return Array.from(unique.values()).slice(0, maxCandidates);
@@ -127,10 +168,20 @@ export async function pruneStaleEventFromIndexes(params: {
   const { redis, candidate } = params;
 
   if (candidate.fromLiveIndex) {
-    await redis.srem(leagueLiveIndex(candidate.leagueID), [candidate.eventID]);
+    for (const leagueID of candidate.leagueIDs) {
+      await redis.srem(leagueLiveIndex(leagueID), [candidate.eventID]);
+    }
+    for (const teamID of candidate.teamIDs) {
+      await redis.srem(teamLiveIndex(teamID), [candidate.eventID]);
+    }
   }
   if (candidate.fromUpcomingIndex) {
-    await redis.zrem(leagueUpcomingIndex(candidate.leagueID), [candidate.eventID]);
+    for (const leagueID of candidate.leagueIDs) {
+      await redis.zrem(leagueUpcomingIndex(leagueID), [candidate.eventID]);
+    }
+    for (const teamID of candidate.teamIDs) {
+      await redis.zrem(teamUpcomingIndex(teamID), [candidate.eventID]);
+    }
   }
 }
 

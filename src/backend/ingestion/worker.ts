@@ -25,6 +25,7 @@ const CORE_ODD_IDS = [
 export interface IngestionWorkerConfig {
   maxRequestsPerMinute: number;
   maxEventIdsPerRequest: number;
+  upcomingCacheWindowDays?: number;
   bookmakerIDs?: string[];
   bookmakerIDsLive?: string[];
   bookmakerIDsCold?: string[];
@@ -229,9 +230,19 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
 
           const liveKey = redisKeys.leagueLiveIndex(event.leagueID);
           const upcomingKey = redisKeys.leagueUpcomingIndex(event.leagueID);
+          const teamIDs = Array.from(
+            new Set(
+              [event.teams?.home?.teamID, event.teams?.away?.teamID]
+                .filter((teamID): teamID is string => typeof teamID === "string" && teamID.length > 0),
+            ),
+          );
 
           const startsAtMs = new Date(statusTick.startsAt).getTime();
           const score = Number.isFinite(startsAtMs) ? startsAtMs : Date.now();
+          const nowMs = Date.now();
+          const upcomingWindowDays = Math.max(1, Math.floor(this.config.upcomingCacheWindowDays ?? 3));
+          const upcomingWindowMs = upcomingWindowDays * 24 * 60 * 60 * 1000;
+          const withinUpcomingWindow = Number.isFinite(startsAtMs) && startsAtMs <= nowMs + upcomingWindowMs;
 
           // Keep league indexes alive with a fixed TTL; ingestion refreshes frequently.
           const indexTtlSeconds = 12 * 60 * 60;
@@ -239,16 +250,40 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
           if (lifecycle === "live") {
             await this.redis.sadd(liveKey, [event.eventID]);
             await this.redis.zrem(upcomingKey, [event.eventID]);
+            for (const teamID of teamIDs) {
+              await this.redis.sadd(redisKeys.teamLiveIndex(teamID), [event.eventID]);
+              await this.redis.zrem(redisKeys.teamUpcomingIndex(teamID), [event.eventID]);
+            }
           } else if (lifecycle === "finalized") {
             await this.redis.srem(liveKey, [event.eventID]);
             await this.redis.zrem(upcomingKey, [event.eventID]);
+            for (const teamID of teamIDs) {
+              await this.redis.srem(redisKeys.teamLiveIndex(teamID), [event.eventID]);
+              await this.redis.zrem(redisKeys.teamUpcomingIndex(teamID), [event.eventID]);
+            }
           } else {
             await this.redis.srem(liveKey, [event.eventID]);
-            await this.redis.zadd(upcomingKey, [{ score, member: event.eventID }]);
+            if (withinUpcomingWindow) {
+              await this.redis.zadd(upcomingKey, [{ score, member: event.eventID }]);
+            } else {
+              await this.redis.zrem(upcomingKey, [event.eventID]);
+            }
+            for (const teamID of teamIDs) {
+              await this.redis.srem(redisKeys.teamLiveIndex(teamID), [event.eventID]);
+              if (withinUpcomingWindow) {
+                await this.redis.zadd(redisKeys.teamUpcomingIndex(teamID), [{ score, member: event.eventID }]);
+              } else {
+                await this.redis.zrem(redisKeys.teamUpcomingIndex(teamID), [event.eventID]);
+              }
+            }
           }
 
           await this.redis.expire(liveKey, indexTtlSeconds);
           await this.redis.expire(upcomingKey, indexTtlSeconds);
+          for (const teamID of teamIDs) {
+            await this.redis.expire(redisKeys.teamLiveIndex(teamID), indexTtlSeconds);
+            await this.redis.expire(redisKeys.teamUpcomingIndex(teamID), indexTtlSeconds);
+          }
         }
       }
     }

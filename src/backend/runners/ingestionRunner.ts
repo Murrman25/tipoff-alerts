@@ -20,8 +20,11 @@ const CORE_ODD_IDS = [
 async function discoverEventSummaries(
   vendor: SportsGameOddsSdkClient<VendorIngestionEvent>,
   leagueIDs: string[],
+  upcomingWindowDays: number,
 ): Promise<IngestionEventSummary[]> {
   const leagueID = leagueIDs.join(",");
+  const boundedDays = Math.max(1, Math.floor(upcomingWindowDays));
+  const startsBefore = new Date(Date.now() + boundedDays * 24 * 60 * 60 * 1000).toISOString();
 
   const [live, upcoming] = await Promise.all([
     vendor.getEvents({
@@ -36,7 +39,7 @@ async function discoverEventSummaries(
       live: false,
       started: false,
       finalized: false,
-      oddsAvailable: true,
+      startsBefore,
       includeAltLines: false,
       oddID: CORE_ODD_IDS.join(","),
       limit: 300,
@@ -86,6 +89,7 @@ async function main() {
       bookmakerIDs: config.ingestionBookmakerIDs,
       bookmakerIDsLive: config.ingestionBookmakerIDsLive,
       bookmakerIDsCold: config.ingestionBookmakerIDsCold,
+      upcomingCacheWindowDays: config.ingestionUpcomingCacheWindowDays,
     },
     redis,
     sink,
@@ -96,6 +100,7 @@ async function main() {
     bookmakers: config.ingestionBookmakerIDs,
     maxRequestsPerMinute: config.ingestionMaxRpm,
     batchSize: config.ingestionBatchSize,
+    upcomingCacheWindowDays: config.ingestionUpcomingCacheWindowDays,
   });
 
   // Keep a lightweight heartbeat in Redis for synthetic checks.
@@ -112,7 +117,11 @@ async function main() {
     const nowMs = Date.now();
     try {
       if (nowMs - lastDiscoveryMs >= config.ingestionDiscoveryIntervalMs || cachedSummaries.length === 0) {
-        cachedSummaries = await discoverEventSummaries(vendor, config.ingestionLeagueIDs);
+        cachedSummaries = await discoverEventSummaries(
+          vendor,
+          config.ingestionLeagueIDs,
+          config.ingestionUpcomingCacheWindowDays,
+        );
         lastDiscoveryMs = nowMs;
       }
 

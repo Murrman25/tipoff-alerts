@@ -28,6 +28,9 @@ interface GamesFiltersProps {
   onFiltersChange: (filters: FiltersType) => void;
   totalResults: number;
   isLoading?: boolean;
+  statusLocked?: boolean;
+  statusLockLabel?: string;
+  statusHelperText?: string;
 }
 
 export const GamesFilters = ({
@@ -35,6 +38,9 @@ export const GamesFilters = ({
   onFiltersChange,
   totalResults,
   isLoading,
+  statusLocked = false,
+  statusLockLabel,
+  statusHelperText,
 }: GamesFiltersProps) => {
   const updateFilter = <K extends keyof FiltersType>(
     key: K,
@@ -66,11 +72,14 @@ export const GamesFilters = ({
   };
 
   const activeFilterCount =
-    (filters.status !== "live" ? 1 : 0) +
+    (!statusLocked && filters.status !== "live" ? 1 : 0) +
     filters.leagueID.length +
     filters.bookmakerID.length +
     filters.betTypeID.length +
+    (filters.oddsAvailable ? 1 : 0) +
     (filters.searchQuery ? 1 : 0);
+
+  const displayedStatus = statusLocked ? "all" : filters.status;
 
   return (
     <div className="space-y-4">
@@ -80,7 +89,7 @@ export const GamesFilters = ({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search teams, players..."
+            placeholder="Search teams or games..."
             value={filters.searchQuery}
             onChange={(e) => updateFilter("searchQuery", e.target.value)}
             className="pl-9 bg-secondary/50 border-border"
@@ -88,23 +97,39 @@ export const GamesFilters = ({
         </div>
 
         {/* Game status selector */}
-        <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg border border-border">
-          {GAME_STATUSES.map((status) => (
-            <button
-              key={status.id}
-              onClick={() => updateFilter("status", status.id)}
-              className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
-                filters.status === status.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {status.name}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg border border-border">
+            {GAME_STATUSES.map((status) => (
+              <button
+                key={status.id}
+                onClick={() => {
+                  if (statusLocked) return;
+                  updateFilter("status", status.id);
+                }}
+                disabled={statusLocked}
+                className={cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
+                  statusLocked && "cursor-not-allowed opacity-70",
+                  displayedStatus === status.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {status.name}
+              </button>
+            ))}
+          </div>
+          {statusLocked && statusLockLabel && (
+            <Badge variant="secondary" className="whitespace-nowrap">
+              {statusLockLabel}
+            </Badge>
+          )}
         </div>
       </div>
+
+      {statusLocked && statusHelperText && (
+        <p className="text-xs text-muted-foreground">{statusHelperText}</p>
+      )}
 
       {/* Filter dropdowns row */}
       <div className="flex flex-wrap items-center gap-2">

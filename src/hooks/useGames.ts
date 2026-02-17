@@ -4,10 +4,16 @@ import { toast } from "@/hooks/use-toast";
 import { gamesSearchResponseSchema } from "@/backend/contracts/api";
 import { adaptGameEvents } from "@/lib/gameEventAdapter";
 import { isRateLimitedError, tipoffFetch } from "@/lib/tipoffApi";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 const DEFAULT_LIMIT = 40;
+const SEARCH_DEBOUNCE_MS = 300;
 
 export function useGames(filters: GamesFilters) {
+  const debouncedSearchQuery = useDebouncedValue(filters.searchQuery.trim(), SEARCH_DEBOUNCE_MS);
+  const teamIDs = (filters.teamID || []).filter((id) => id.length > 0);
+  const requestLimit = typeof filters.limit === "number" ? Math.max(1, Math.min(100, filters.limit)) : DEFAULT_LIMIT;
+
   return useQuery({
     queryKey: [
       'games',
@@ -16,15 +22,22 @@ export function useGames(filters: GamesFilters) {
       filters.betTypeID,
       filters.status,
       filters.oddsAvailable,
-      filters.searchQuery,
+      debouncedSearchQuery,
+      teamIDs,
+      filters.from || null,
+      filters.to || null,
+      requestLimit,
     ],
     queryFn: async (): Promise<GameEvent[]> => {
       const payload = await tipoffFetch<unknown>("/games/search", {
         query: {
           leagueID: filters.leagueID.length > 0 ? filters.leagueID.join(",") : undefined,
           status: filters.status,
-          q: filters.searchQuery || undefined,
-          limit: DEFAULT_LIMIT,
+          q: debouncedSearchQuery || undefined,
+          teamID: teamIDs.length > 0 ? teamIDs.join(",") : undefined,
+          from: filters.from || undefined,
+          to: filters.to || undefined,
+          limit: requestLimit,
           bookmakerID: filters.bookmakerID.length > 0 ? filters.bookmakerID.join(",") : undefined,
           oddsAvailable: filters.oddsAvailable,
         },
@@ -35,6 +48,7 @@ export function useGames(filters: GamesFilters) {
       const activeGames = parsed.data.filter((event) => !event.status?.ended && !event.status?.cancelled);
       return adaptGameEvents(activeGames);
     },
+    placeholderData: (previousData) => previousData,
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
     retry: (failureCount, error) => {

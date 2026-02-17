@@ -198,5 +198,68 @@ describe("IngestionWorker", () => {
 
     const liveMembers = await redis.smembers(redisKeys.leagueLiveIndex("NBA"));
     expect(liveMembers).toContain("evt_3");
+    const homeTeamLiveMembers = await redis.smembers(redisKeys.teamLiveIndex("h"));
+    const awayTeamLiveMembers = await redis.smembers(redisKeys.teamLiveIndex("a"));
+    expect(homeTeamLiveMembers).toContain("evt_3");
+    expect(awayTeamLiveMembers).toContain("evt_3");
+  });
+
+  it("keeps upcoming indexes bounded to near-term cache window", async () => {
+    const farFutureStartsAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+    const vendor = {
+      getEvents: async () => {
+        return {
+          data: [
+            {
+              eventID: "evt_future",
+              leagueID: "NHL",
+              teams: { home: { teamID: "nhl_home" }, away: { teamID: "nhl_away" } },
+              status: {
+                startsAt: farFutureStartsAt,
+                started: false,
+                ended: false,
+                finalized: false,
+                cancelled: false,
+                updatedAt: "2026-02-12T10:00:20.000Z",
+              },
+              odds: {},
+            },
+          ],
+        };
+      },
+    };
+
+    const redis = new InMemoryRedisClient();
+    const sink = new RedisIngestionSink(redis);
+    const worker = new IngestionWorker(
+      vendor,
+      {
+        publishEventStatusTick: async () => undefined,
+        publishOddsTick: async () => undefined,
+      },
+      {
+        maxRequestsPerMinute: 10,
+        maxEventIdsPerRequest: 10,
+        upcomingCacheWindowDays: 3,
+      },
+      redis,
+      sink,
+    );
+
+    await worker.runCycle([
+      {
+        eventID: "evt_future",
+        leagueID: "NHL",
+        startsAt: farFutureStartsAt,
+        started: false,
+        ended: false,
+        finalized: false,
+      },
+    ]);
+
+    const leagueUpcoming = await redis.zrange(redisKeys.leagueUpcomingIndex("NHL"), 0, 5);
+    const homeTeamUpcoming = await redis.zrange(redisKeys.teamUpcomingIndex("nhl_home"), 0, 5);
+    expect(leagueUpcoming).not.toContain("evt_future");
+    expect(homeTeamUpcoming).not.toContain("evt_future");
   });
 });

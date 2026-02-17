@@ -22,6 +22,8 @@ import { recordMetric } from './metrics.ts';
 const STORAGE_URL = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/team-logos`;
 const SEARCH_CACHE_TTL_SECONDS = 180;
 const DETAIL_CACHE_TTL_SECONDS = 120;
+const TEAM_QUERY_DEFAULT_HORIZON_DAYS = 30;
+const TEAM_QUERY_MAX_IDS = 5;
 
 export type ServiceClient = ReturnType<typeof createClient>;
 
@@ -144,11 +146,15 @@ export async function enrichTeams(events: VendorEvent[], serviceClient: ServiceC
 }
 
 function buildSearchCacheKey(request: SearchRequest): string {
+  const teamIDs = (request.teamID || []).slice().sort().join(',');
   return [
     'games:search',
     request.leagueID || DEFAULT_LEAGUES,
     request.status,
     request.q || '',
+    teamIDs,
+    request.from || '',
+    request.to || '',
     request.cursor || '',
     String(request.limit),
     request.oddsAvailable === undefined ? '' : String(request.oddsAvailable),
@@ -173,8 +179,41 @@ function isFresh(ageSeconds: number, freshnessSeconds: number): boolean {
   return ageSeconds <= freshnessSeconds;
 }
 
+function applyTimeBounds(
+  events: VendorEvent[],
+  fromIso: string | null | undefined,
+  toIso: string | null | undefined,
+): VendorEvent[] {
+  const fromMs = fromIso ? new Date(fromIso).getTime() : NaN;
+  const toMs = toIso ? new Date(toIso).getTime() : NaN;
+  const hasFrom = Number.isFinite(fromMs);
+  const hasTo = Number.isFinite(toMs);
+
+  if (!hasFrom && !hasTo) {
+    return events;
+  }
+
+  return events.filter((event) => {
+    const startMs = new Date(event.status?.startsAt || '').getTime();
+    if (!Number.isFinite(startMs)) {
+      return false;
+    }
+    if (hasFrom && startMs < fromMs) {
+      return false;
+    }
+    if (hasTo && startMs > toMs) {
+      return false;
+    }
+    return true;
+  });
+}
+
 function finalizeEvents(events: VendorEvent[], request: SearchRequest): VendorEvent[] {
-  const searched = applyGameSearchFilter(events, request.q);
+  const bounded = applyTimeBounds(events, request.from, request.to);
+  const searched =
+    request.teamID && request.teamID.length > 0
+      ? bounded
+      : applyGameSearchFilter(bounded, request.q);
   const sorted = sortEvents(searched);
   return sorted.slice(0, request.limit);
 }
@@ -190,11 +229,91 @@ function mergeEventLists(base: VendorEvent[], override: VendorEvent[]): VendorEv
   return Array.from(merged.values());
 }
 
+function sanitizeLikeQuery(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function resolveTeamIDsFromQuery(params: {
+  request: SearchRequest;
+  serviceClient: ServiceClient;
+}): Promise<string[]> {
+  const { request, serviceClient } = params;
+  if (request.teamID && request.teamID.length > 0) {
+    return request.teamID.slice(0, TEAM_QUERY_MAX_IDS);
+  }
+
+  const query = request.q?.trim();
+  if (!query) {
+    return [];
+  }
+
+  const like = sanitizeLikeQuery(query);
+  if (!like) {
+    return [];
+  }
+
+  const leagues = (request.leagueID || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  let supabaseQuery = serviceClient
+    .from('teams')
+    .select('sportsgameodds_id, display_name')
+    .or(`display_name.ilike.%${like}%,short_name.ilike.%${like}%,city.ilike.%${like}%`)
+    .limit(8);
+
+  if (leagues.length > 0) {
+    supabaseQuery = supabaseQuery.in('league', leagues);
+  }
+
+  const { data, error } = await supabaseQuery;
+  if (error || !data) {
+    console.error('Team query resolution failed:', error?.message || 'unknown error');
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      (data as Array<{ sportsgameodds_id?: string | null }>)
+        .map((row) => row.sportsgameodds_id)
+        .filter((teamID): teamID is string => typeof teamID === 'string' && teamID.length > 0),
+    ),
+  ).slice(0, TEAM_QUERY_MAX_IDS);
+}
+
+function resolveSearchBounds(request: SearchRequest, hasTeamScope: boolean): {
+  from: string | undefined;
+  to: string | undefined;
+} {
+  const from = request.from || undefined;
+  const to = request.to || undefined;
+
+  if (!hasTeamScope) {
+    return { from, to };
+  }
+
+  const defaultFrom = from || new Date().toISOString();
+  const defaultTo =
+    to ||
+    new Date(Date.now() + TEAM_QUERY_DEFAULT_HORIZON_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  return { from: defaultFrom, to: defaultTo };
+}
+
 async function fetchVendorEventsForSearch(params: {
   apiKey: string;
   request: SearchRequest;
+  teamIDs?: string[];
 }): Promise<{ events: VendorEvent[]; nextCursor?: string }> {
   const { apiKey, request } = params;
+  const teamIDs = (params.teamIDs || []).slice(0, TEAM_QUERY_MAX_IDS);
+  const scopedTeamSearch = teamIDs.length > 0;
+  const bounds = resolveSearchBounds(request, scopedTeamSearch);
   const leagueID = request.leagueID || DEFAULT_LEAGUES;
   const oddID = request.oddID || CORE_ODD_IDS.join(',');
   const baseParams = {
@@ -204,57 +323,85 @@ async function fetchVendorEventsForSearch(params: {
     oddID,
     bookmakerID: request.bookmakerID || undefined,
     limit: request.limit,
+    startsAfter: bounds.from,
+    startsBefore: bounds.to,
   };
 
-  if (request.status === 'live') {
-    const response = await fetchVendorEvents(apiKey, {
-      ...baseParams,
-      live: true,
-      cursor: request.cursor || undefined,
-    });
+  async function fetchForTeam(teamID?: string): Promise<{ events: VendorEvent[]; nextCursor?: string }> {
+    const scopedParams = teamID ? { ...baseParams, teamID } : baseParams;
+    const canUseCursor = !teamID || teamIDs.length === 1;
+    const cursor = canUseCursor ? request.cursor || undefined : undefined;
+
+    if (request.status === 'live') {
+      const response = await fetchVendorEvents(apiKey, {
+        ...scopedParams,
+        live: true,
+        cursor,
+      });
+      return {
+        events: response.data.map(mapEventPayload),
+        nextCursor: response.nextCursor,
+      };
+    }
+
+    if (request.status === 'upcoming') {
+      const response = await fetchVendorEvents(apiKey, {
+        ...scopedParams,
+        live: false,
+        started: false,
+        finalized: false,
+        cursor,
+      });
+      return {
+        events: response.data.map(mapEventPayload),
+        nextCursor: response.nextCursor,
+      };
+    }
+
+    const [liveResponse, upcomingResponse] = await Promise.all([
+      fetchVendorEvents(apiKey, {
+        ...scopedParams,
+        live: true,
+      }),
+      fetchVendorEvents(apiKey, {
+        ...scopedParams,
+        live: false,
+        started: false,
+        finalized: false,
+        cursor,
+      }),
+    ]);
+
+    const unique = new Map<string, VendorEvent>();
+    for (const event of [...liveResponse.data, ...upcomingResponse.data]) {
+      unique.set(event.eventID, mapEventPayload(event));
+    }
     return {
-      events: response.data.map(mapEventPayload),
-      nextCursor: response.nextCursor,
+      events: Array.from(unique.values()),
+      nextCursor: upcomingResponse.nextCursor,
     };
   }
 
-  if (request.status === 'upcoming') {
-    const response = await fetchVendorEvents(apiKey, {
-      ...baseParams,
-      live: false,
-      started: false,
-      finalized: false,
-      cursor: request.cursor || undefined,
-    });
-    return {
-      events: response.data.map(mapEventPayload),
-      nextCursor: response.nextCursor,
-    };
+  if (!scopedTeamSearch) {
+    return fetchForTeam(undefined);
   }
 
-  const [liveResponse, upcomingResponse] = await Promise.all([
-    fetchVendorEvents(apiKey, {
-      ...baseParams,
-      live: true,
-    }),
-    fetchVendorEvents(apiKey, {
-      ...baseParams,
-      live: false,
-      started: false,
-      finalized: false,
-      cursor: request.cursor || undefined,
-    }),
-  ]);
-
-  const merged = [...liveResponse.data, ...upcomingResponse.data];
+  const results = await Promise.all(teamIDs.map((teamID) => fetchForTeam(teamID)));
   const unique = new Map<string, VendorEvent>();
-  for (const event of merged) {
-    unique.set(event.eventID, mapEventPayload(event));
+  let nextCursor: string | undefined;
+
+  for (const result of results) {
+    for (const event of result.events) {
+      unique.set(event.eventID, event);
+    }
+    if (!nextCursor && result.nextCursor) {
+      nextCursor = result.nextCursor;
+    }
   }
 
   return {
     events: Array.from(unique.values()),
-    nextCursor: upcomingResponse.nextCursor,
+    nextCursor,
   };
 }
 
@@ -264,25 +411,43 @@ export async function searchGames(
   serviceClient: ServiceClient,
   redis: RedisCacheClient | null,
 ): Promise<SearchGamesResult> {
-  const cacheKey = buildSearchCacheKey(request);
+  const resolvedTeamIDs = await resolveTeamIDsFromQuery({ request, serviceClient });
+  const bounds = resolveSearchBounds(request, resolvedTeamIDs.length > 0);
+  const resolvedRequest: SearchRequest = {
+    ...request,
+    teamID: resolvedTeamIDs,
+    from: bounds.from || null,
+    to: bounds.to || null,
+  };
+
+  const cacheKey = buildSearchCacheKey(resolvedRequest);
   let cachedPayload: CachedEnvelope<SearchGamesResult> | null = null;
   let provisionalRedisPayload: SearchGamesResult | null = null;
   let provisionalRedisEvents: VendorEvent[] = [];
-  let shouldVendorVerify = false;
+  const hasSearchQuery = Boolean(resolvedRequest.q && resolvedRequest.q.trim().length > 0);
+  const requiresVendorQuery =
+    hasSearchQuery ||
+    resolvedTeamIDs.length > 0 ||
+    Boolean(resolvedRequest.from) ||
+    Boolean(resolvedRequest.to);
+  let shouldVendorVerify = requiresVendorQuery;
 
-  const leagueIDs = (request.leagueID || DEFAULT_LEAGUES)
+  const leagueIDs = (resolvedRequest.leagueID || DEFAULT_LEAGUES)
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+  const redisLeagueIDs =
+    resolvedTeamIDs.length > 0 && !resolvedRequest.leagueID ? [] : leagueIDs;
 
   // Prefer ingestion cache (Redis indexes + hot keys). We still keep the envelope cache as a cheap fast path.
-  if (redis && request.cursor === null) {
+  if (redis && resolvedRequest.cursor === null) {
     try {
       const candidates = await loadEventIDsFromIndexes({
         redis,
-        leagueIDs,
-        status: request.status,
-        limit: request.limit,
+        leagueIDs: redisLeagueIDs,
+        teamIDs: resolvedTeamIDs,
+        status: resolvedRequest.status,
+        limit: resolvedRequest.limit,
       });
 
       if (candidates.length > 0) {
@@ -298,7 +463,7 @@ export async function searchGames(
           }
         }
 
-        const prepared = finalizeEvents(events, request);
+        const prepared = finalizeEvents(events, resolvedRequest);
         const enriched = await enrichTeams(prepared, serviceClient);
         const asOf = new Date().toISOString();
 
@@ -316,8 +481,10 @@ export async function searchGames(
 
         const minHealthyCoverage = Math.ceil(candidates.length * 0.6);
         const healthyCoverage = cacheMisses === 0 && events.length >= minHealthyCoverage;
-        shouldVendorVerify = !healthyCoverage;
-        if (healthyCoverage) {
+        if (!healthyCoverage) {
+          shouldVendorVerify = true;
+        }
+        if (healthyCoverage && !requiresVendorQuery) {
           return provisionalRedisPayload;
         }
       } else {
@@ -349,15 +516,16 @@ export async function searchGames(
   try {
     const vendor = await fetchVendorEventsForSearch({
       apiKey,
-      request,
+      request: resolvedRequest,
+      teamIDs: resolvedTeamIDs,
     });
 
     const mergedEvents =
-      shouldVendorVerify && provisionalRedisEvents.length > 0 && request.cursor === null
+      shouldVendorVerify && provisionalRedisEvents.length > 0 && resolvedRequest.cursor === null
         ? mergeEventLists(provisionalRedisEvents, vendor.events)
         : vendor.events;
 
-    const prepared = finalizeEvents(mergedEvents, request);
+    const prepared = finalizeEvents(mergedEvents, resolvedRequest);
     const enriched = await enrichTeams(prepared, serviceClient);
     const asOf = new Date().toISOString();
 

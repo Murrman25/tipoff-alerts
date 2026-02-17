@@ -21,11 +21,29 @@ paths:
             type: string
             enum: [live, upcoming, all]
             default: all
+          description: Status filter. For league-focused browse mode, clients should use `all` with bounded `from`/`to`.
         - in: query
           name: q
           schema:
             type: string
           description: Team name search filter
+        - in: query
+          name: teamID
+          schema:
+            type: string
+          description: Optional comma-separated SportsGameOdds team IDs for deterministic team search
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+          description: Optional inclusive lower bound for game start time (ISO datetime). Recommended for league-focused browse windows.
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+          description: Optional inclusive upper bound for game start time (ISO datetime). Recommended for league-focused browse windows.
         - in: query
           name: cursor
           schema:
@@ -37,6 +55,7 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
+          description: Maximum events returned. League-focused browse mode should typically use `25`.
         - in: query
           name: oddsAvailable
           schema:

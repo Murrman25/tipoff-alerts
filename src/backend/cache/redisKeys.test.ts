@@ -26,5 +26,7 @@ describe("redisKeys", () => {
     expect(redisKeys.eventOddsCore("evt1")).toBe("odds:event:evt1:odds_core");
     expect(redisKeys.leagueLiveIndex("NBA")).toBe("idx:league:NBA:live");
     expect(redisKeys.leagueUpcomingIndex("NBA")).toBe("idx:league:NBA:upcoming");
+    expect(redisKeys.teamLiveIndex("NHL-BOS")).toBe("idx:team:NHL-BOS:live");
+    expect(redisKeys.teamUpcomingIndex("NHL-BOS")).toBe("idx:team:NHL-BOS:upcoming");
   });
 });

@@ -24,6 +24,34 @@ function parseBoolean(raw: string | null): boolean | undefined {
   return undefined;
 }
 
+function parseCsv(raw: string | null): string[] {
+  if (!raw) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      raw
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0),
+    ),
+  );
+}
+
+function parseIsoDate(raw: string | null): string | null {
+  if (!raw || raw.trim().length === 0) {
+    return null;
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isFinite(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString();
+}
+
 export function parseGameSearchRequest(url: URL): SearchRequest {
   const statusParam = url.searchParams.get('status');
   const status: 'live' | 'upcoming' | 'all' =
@@ -33,6 +61,9 @@ export function parseGameSearchRequest(url: URL): SearchRequest {
     leagueID: url.searchParams.get('leagueID'),
     status,
     q: url.searchParams.get('q'),
+    teamID: parseCsv(url.searchParams.get('teamID')),
+    from: parseIsoDate(url.searchParams.get('from')),
+    to: parseIsoDate(url.searchParams.get('to')),
     cursor: url.searchParams.get('cursor'),
     limit: normalizeLimit(url.searchParams.get('limit')),
     oddsAvailable: parseBoolean(url.searchParams.get('oddsAvailable')),

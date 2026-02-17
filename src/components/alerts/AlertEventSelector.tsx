@@ -11,6 +11,7 @@ import { FavoriteTeamsFilter } from "@/components/games/FavoriteTeamsFilter";
 import { GameSelectCard } from "./GameSelectCard";
 import { cn } from "@/lib/utils";
 import { isRateLimitedError } from "@/lib/tipoffApi";
+import { resolveCanonicalTeamIDs } from "@/lib/teamSearch";
 
 interface AlertEventSelectorProps {
   value: string | null;
@@ -34,7 +35,25 @@ export const AlertEventSelector = ({
   const [selectedFavoriteTeamIds, setSelectedFavoriteTeamIds] = useState<string[]>([]);
 
   // Fetch favorite teams
-  const { favoriteTeams, isLoading: favoritesLoading } = useFavoriteTeams();
+  const { allTeams, favoriteTeams, isLoading: favoritesLoading } = useFavoriteTeams();
+
+  const resolvedTeamIDs = useMemo(
+    () =>
+      resolveCanonicalTeamIDs(searchQuery, allTeams, {
+        leagueIDs: selectedLeague === "all" ? undefined : [selectedLeague],
+        maxResults: 3,
+      }),
+    [allTeams, searchQuery, selectedLeague],
+  );
+
+  const teamSearchWindow = useMemo(() => {
+    if (resolvedTeamIDs.length === 0) {
+      return { from: undefined, to: undefined };
+    }
+    const from = new Date().toISOString();
+    const to = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    return { from, to };
+  }, [resolvedTeamIDs]);
 
   const handleToggleFavoriteTeam = (teamId: string) => {
     setSelectedFavoriteTeamIds((prev) =>
@@ -52,6 +71,9 @@ export const AlertEventSelector = ({
     status: "all",
     searchQuery,
     oddsAvailable: false,
+    teamID: resolvedTeamIDs,
+    from: teamSearchWindow.from,
+    to: teamSearchWindow.to,
   });
 
   // Fetch specific game if pre-selected
