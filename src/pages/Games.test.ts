@@ -5,6 +5,7 @@ import {
   buildVisibleEventIds,
   deriveEmptyStateVariant,
   normalizeGamesFiltersOnLeagueChange,
+  shouldFetchGlobalUpcomingFallback,
   sortGamesForDisplay,
 } from "@/pages/Games";
 
@@ -121,5 +122,39 @@ describe("Games helpers", () => {
 
     const normalized = normalizeGamesFiltersOnLeagueChange(previous, next);
     expect(normalized.status).toBe("live");
+  });
+
+  it("enables global upcoming fallback only when default live slate is empty", () => {
+    expect(
+      shouldFetchGlobalUpcomingFallback({
+        isLeagueMixedMode: false,
+        status: "live",
+        hasNarrowingFilters: false,
+        isPrimaryLoading: false,
+        hasPrimaryError: false,
+        primaryVisibleCount: 0,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldFetchGlobalUpcomingFallback({
+        isLeagueMixedMode: false,
+        status: "live",
+        hasNarrowingFilters: false,
+        isPrimaryLoading: false,
+        hasPrimaryError: false,
+        primaryVisibleCount: 2,
+      }),
+    ).toBe(false);
+    expect(
+      shouldFetchGlobalUpcomingFallback({
+        isLeagueMixedMode: true,
+        status: "live",
+        hasNarrowingFilters: false,
+        isPrimaryLoading: false,
+        hasPrimaryError: false,
+        primaryVisibleCount: 0,
+      }),
+    ).toBe(false);
   });
 });

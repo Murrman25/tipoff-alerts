@@ -9,7 +9,12 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 const DEFAULT_LIMIT = 40;
 const SEARCH_DEBOUNCE_MS = 300;
 
-export function useGames(filters: GamesFilters) {
+export function useGames(
+  filters: GamesFilters,
+  options?: {
+    enabled?: boolean;
+  },
+) {
   const debouncedSearchQuery = useDebouncedValue(filters.searchQuery.trim(), SEARCH_DEBOUNCE_MS);
   const teamIDs = (filters.teamID || []).filter((id) => id.length > 0);
   const requestLimit = typeof filters.limit === "number" ? Math.max(1, Math.min(100, filters.limit)) : DEFAULT_LIMIT;
@@ -48,6 +53,7 @@ export function useGames(filters: GamesFilters) {
       const activeGames = parsed.data.filter((event) => !event.status?.ended && !event.status?.cancelled);
       return adaptGameEvents(activeGames);
     },
+    enabled: options?.enabled ?? true,
     placeholderData: (previousData) => previousData,
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,

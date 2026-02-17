@@ -16,6 +16,7 @@ import { resolveCanonicalTeamIDs } from "@/lib/teamSearch";
 
 const LEAGUE_MIXED_WINDOW_DAYS = 3;
 const LEAGUE_MIXED_LIMIT = 25;
+const GLOBAL_UPCOMING_FALLBACK_LIMIT = 25;
 const TEAM_SEARCH_HORIZON_DAYS = 30;
 
 export function sortGamesForDisplay<T extends { eventID: string; status: { started: boolean; ended: boolean; startsAt: string } }>(
@@ -35,6 +36,28 @@ export function sortGamesForDisplay<T extends { eventID: string; status: { start
 export function buildVisibleEventIds<T extends { eventID: string }>(games: T[], limit = 12): string[] {
   const unique = Array.from(new Set(games.map((game) => game.eventID).filter(Boolean)));
   return unique.slice(0, limit);
+}
+
+function applyFavoriteFilterAndSort<T extends { status: { started: boolean; ended: boolean; startsAt: string }; teams: { home: { canonical?: { id: string } | null }; away: { canonical?: { id: string } | null } } }>(
+  games: T[] | undefined,
+  favoriteTeamIds: string[],
+): T[] {
+  if (!games) {
+    return [];
+  }
+
+  let result = games;
+  if (favoriteTeamIds.length > 0) {
+    result = result.filter((game) =>
+      favoriteTeamIds.some(
+        (teamId) =>
+          game.teams.home.canonical?.id === teamId ||
+          game.teams.away.canonical?.id === teamId,
+      ),
+    );
+  }
+
+  return sortGamesForDisplay(result);
 }
 
 export function buildEffectiveGamesFilters(
@@ -111,6 +134,24 @@ export function normalizeGamesFiltersOnLeagueChange(
   return nextFilters;
 }
 
+export function shouldFetchGlobalUpcomingFallback(params: {
+  isLeagueMixedMode: boolean;
+  status: FiltersType["status"];
+  hasNarrowingFilters: boolean;
+  isPrimaryLoading: boolean;
+  hasPrimaryError: boolean;
+  primaryVisibleCount: number;
+}): boolean {
+  return (
+    !params.isLeagueMixedMode &&
+    params.status === "live" &&
+    !params.hasNarrowingFilters &&
+    !params.isPrimaryLoading &&
+    !params.hasPrimaryError &&
+    params.primaryVisibleCount === 0
+  );
+}
+
 const Games = () => {
   const [filters, setFilters] = useState<FiltersType>({
     leagueID: [],
@@ -139,8 +180,14 @@ const Games = () => {
     [filters, resolvedTeamIDs],
   );
 
-  // Fetch games from the API
-  const { data: games, isLoading, error, refetch, isFetching } = useGames(effectiveFilters);
+  // Fetch primary games from the API
+  const {
+    data: primaryGames,
+    isLoading: isPrimaryLoading,
+    error: primaryError,
+    refetch: refetchPrimary,
+    isFetching: isPrimaryFetching,
+  } = useGames(effectiveFilters);
 
   const handleToggleFavoriteTeam = (teamId: string) => {
     setSelectedFavoriteTeamIds((prev) =>
@@ -150,26 +197,10 @@ const Games = () => {
     );
   };
 
-  // Client-side filtering (search + favorite teams)
-  const filteredGames = useMemo(() => {
-    if (!games) return [];
-    
-    let result = games;
-    
-    // Apply favorite teams filter
-    if (selectedFavoriteTeamIds.length > 0) {
-      result = result.filter((game) =>
-        selectedFavoriteTeamIds.some(
-          (teamId) =>
-            game.teams.home.canonical?.id === teamId ||
-            game.teams.away.canonical?.id === teamId
-        )
-      );
-    }
-    
-    // Sort: live games first, then by start time
-    return sortGamesForDisplay(result);
-  }, [games, selectedFavoriteTeamIds]);
+  const primaryFilteredGames = useMemo(
+    () => applyFavoriteFilterAndSort(primaryGames, selectedFavoriteTeamIds),
+    [primaryGames, selectedFavoriteTeamIds],
+  );
 
   const hasNarrowingFilters =
     filters.bookmakerID.length > 0 ||
@@ -178,6 +209,46 @@ const Games = () => {
     filters.searchQuery.length > 0 ||
     selectedFavoriteTeamIds.length > 0;
   const isDefaultLiveView = !isLeagueMixedMode && filters.status === "live";
+
+  const shouldLoadGlobalUpcomingFallback = shouldFetchGlobalUpcomingFallback({
+    isLeagueMixedMode,
+    status: filters.status,
+    hasNarrowingFilters,
+    isPrimaryLoading,
+    hasPrimaryError: Boolean(primaryError),
+    primaryVisibleCount: primaryFilteredGames.length,
+  });
+
+  const globalUpcomingFallbackFilters = useMemo<FiltersType>(
+    () => ({
+      ...filters,
+      leagueID: [],
+      status: "upcoming",
+      teamID: undefined,
+      from: undefined,
+      to: undefined,
+      limit: GLOBAL_UPCOMING_FALLBACK_LIMIT,
+    }),
+    [filters],
+  );
+
+  const {
+    data: globalFallbackGames,
+    isLoading: isGlobalFallbackLoading,
+    error: globalFallbackError,
+    refetch: refetchGlobalFallback,
+    isFetching: isGlobalFallbackFetching,
+  } = useGames(globalUpcomingFallbackFilters, {
+    enabled: shouldLoadGlobalUpcomingFallback,
+  });
+
+  const globalFallbackFilteredGames = useMemo(
+    () => applyFavoriteFilterAndSort(globalFallbackGames, selectedFavoriteTeamIds),
+    [globalFallbackGames, selectedFavoriteTeamIds],
+  );
+  const isUsingGlobalUpcomingFallback = shouldLoadGlobalUpcomingFallback && globalFallbackFilteredGames.length > 0;
+  const filteredGames = isUsingGlobalUpcomingFallback ? globalFallbackFilteredGames : primaryFilteredGames;
+
   const emptyStateVariant = deriveEmptyStateVariant({
     isLeagueMixedMode,
     isDefaultLiveView,
@@ -190,6 +261,7 @@ const Games = () => {
   );
   const showLeagueUpcomingFallbackBanner =
     isLeagueMixedMode && filteredGames.length > 0 && liveGamesCount === 0;
+  const showGlobalUpcomingFallbackBanner = isUsingGlobalUpcomingFallback;
 
   const clearFilters = () => {
     setFilters({
@@ -213,12 +285,25 @@ const Games = () => {
   }, []);
 
   const visibleEventIds = useMemo(() => buildVisibleEventIds(filteredGames, 12), [filteredGames]);
+  const isLoading = isPrimaryLoading || (shouldLoadGlobalUpcomingFallback && isGlobalFallbackLoading);
+  const isFetching =
+    isPrimaryFetching || (shouldLoadGlobalUpcomingFallback && isGlobalFallbackFetching);
+  const error = primaryError || (shouldLoadGlobalUpcomingFallback ? globalFallbackError : null);
+  const refreshGames = useCallback(() => {
+    void refetchPrimary();
+    if (shouldLoadGlobalUpcomingFallback) {
+      void refetchGlobalFallback();
+    }
+  }, [refetchPrimary, refetchGlobalFallback, shouldLoadGlobalUpcomingFallback]);
   const handleStreamDiff = useCallback(() => {
     if (isFetching) {
       return;
     }
-    refetch();
-  }, [isFetching, refetch]);
+    void refetchPrimary();
+    if (shouldLoadGlobalUpcomingFallback) {
+      void refetchGlobalFallback();
+    }
+  }, [isFetching, refetchPrimary, refetchGlobalFallback, shouldLoadGlobalUpcomingFallback]);
   const { isConnected: streamConnected } = useGamesStream({
     eventIDs: visibleEventIds,
     enabled: !isLoading && !error && visibleEventIds.length > 0,
@@ -245,7 +330,7 @@ const Games = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
+              onClick={refreshGames}
               disabled={isFetching}
               className="gap-2"
             >
@@ -296,7 +381,7 @@ const Games = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
+              onClick={refreshGames}
               className="mt-2"
             >
               Retry
@@ -319,6 +404,11 @@ const Games = () => {
         {showLeagueUpcomingFallbackBanner && (
           <div className="mb-4 rounded-lg border border-primary/20 bg-primary/10 p-3 text-sm text-muted-foreground">
             No live games in this league right now. Showing upcoming games in the next 3 days.
+          </div>
+        )}
+        {showGlobalUpcomingFallbackBanner && (
+          <div className="mb-4 rounded-lg border border-primary/20 bg-primary/10 p-3 text-sm text-muted-foreground">
+            No live games right now. Showing the next 25 upcoming games across all leagues.
           </div>
         )}
 
@@ -344,10 +434,10 @@ const Games = () => {
         )}
 
         {/* Live data indicator */}
-        {!isLoading && !error && games && games.length > 0 && (
+        {!isLoading && !error && filteredGames.length > 0 && (
           <div className="mt-8 p-4 rounded-xl bg-primary/10 border border-primary/20">
             <p className="text-sm text-muted-foreground">
-              <span className="text-primary font-medium">Live Data:</span> Showing {games.length} events from Tipoff backend.
+              <span className="text-primary font-medium">Live Data:</span> Showing {filteredGames.length} events from Tipoff backend.
               {streamConnected ? " Streaming is active for visible games." : " Polling fallback refreshes every minute."}
             </p>
           </div>
