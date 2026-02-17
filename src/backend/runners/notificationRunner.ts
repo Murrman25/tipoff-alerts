@@ -25,6 +25,14 @@ function parseChannels(value: string): NotificationChannel[] {
   }
 }
 
+function parseNullableNumber(value: string | undefined | null): number | null {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function asNotificationJob(fields: Record<string, string>): NotificationJob | null {
   const alertFiringId = fields.alertFiringId;
   const alertId = fields.alertId;
@@ -32,15 +40,13 @@ function asNotificationJob(fields: Record<string, string>): NotificationJob | nu
   const eventID = fields.eventID;
   const oddID = fields.oddID;
   const bookmakerID = fields.bookmakerID;
-  const currentOdds = Number(fields.currentOdds);
-  const previousOddsRaw = fields.previousOdds;
-  const previousOdds =
-    previousOddsRaw === undefined || previousOddsRaw === null || previousOddsRaw === ""
-      ? null
-      : Number(previousOddsRaw);
-  const thresholdRaw = fields.threshold;
-  const threshold =
-    thresholdRaw === undefined || thresholdRaw === null || thresholdRaw === "" ? null : Number(thresholdRaw);
+  const currentOdds = parseNullableNumber(fields.currentOdds);
+  const previousOdds = parseNullableNumber(fields.previousOdds);
+  const currentValue = parseNullableNumber(fields.currentValue);
+  const previousValue = parseNullableNumber(fields.previousValue);
+  const threshold = parseNullableNumber(fields.threshold);
+  const valueMetric = fields.valueMetric === "line_value" ? "line_value" : "odds_price";
+  const resolvedCurrentOdds = currentOdds ?? currentValue;
 
   if (
     !alertFiringId ||
@@ -49,7 +55,7 @@ function asNotificationJob(fields: Record<string, string>): NotificationJob | nu
     !eventID ||
     !oddID ||
     !bookmakerID ||
-    !Number.isFinite(currentOdds)
+    !Number.isFinite(resolvedCurrentOdds)
   ) {
     return null;
   }
@@ -62,12 +68,15 @@ function asNotificationJob(fields: Record<string, string>): NotificationJob | nu
     eventID,
     oddID,
     bookmakerID,
-    currentOdds,
-    previousOdds: Number.isFinite(previousOdds as number) ? (previousOdds as number) : null,
+    currentValue: currentValue ?? resolvedCurrentOdds ?? undefined,
+    previousValue,
+    valueMetric,
+    currentOdds: resolvedCurrentOdds as number,
+    previousOdds,
     ruleType: fields.ruleType || undefined,
     marketType: fields.marketType || undefined,
     teamSide: fields.teamSide ? fields.teamSide : undefined,
-    threshold: Number.isFinite(threshold as number) ? (threshold as number) : null,
+    threshold,
     direction: fields.direction || undefined,
     observedAt: fields.observedAt || new Date().toISOString(),
   };
@@ -175,6 +184,7 @@ interface ReconcileFiringRow {
   odd_id: string;
   bookmaker_id: string;
   triggered_value: number | string;
+  triggered_metric: string | null;
   observed_at: string | null;
 }
 
@@ -182,6 +192,7 @@ interface ReconcileAlertRow {
   id: string;
   user_id: string;
   target_value: number | string;
+  target_metric: string | null;
   ui_rule_type: string | null;
   ui_market_type: string | null;
   ui_team_side: string | null;
@@ -303,6 +314,13 @@ class SupabaseEdgeNotificationSender implements NotificationSender {
     const ruleType = job.ruleType || "odds_threshold";
     const direction = job.direction || "at_or_above";
     const threshold = typeof job.threshold === "number" ? job.threshold : null;
+    const currentValue = typeof job.currentValue === "number" ? job.currentValue : job.currentOdds;
+    const previousValue =
+      typeof job.previousValue === "number"
+        ? job.previousValue
+        : typeof job.previousOdds === "number"
+          ? job.previousOdds
+          : undefined;
 
     const response = await fetch(`${this.params.supabaseUrl}/functions/v1/send-alert-notification`, {
       method: "POST",
@@ -320,8 +338,8 @@ class SupabaseEdgeNotificationSender implements NotificationSender {
           threshold,
           direction,
           ruleType,
-          currentValue: job.currentOdds,
-          previousValue: typeof job.previousOdds === "number" ? job.previousOdds : undefined,
+          currentValue,
+          previousValue,
         },
       }),
     });
@@ -470,7 +488,7 @@ async function reconcileMissingNotificationJobs(params: {
 
   const { data: firings, error: firingsError } = await supabase
     .from("odds_alert_firings")
-    .select("id,alert_id,event_id,odd_id,bookmaker_id,triggered_value,observed_at,created_at")
+    .select("id,alert_id,event_id,odd_id,bookmaker_id,triggered_value,triggered_metric,observed_at,created_at")
     .gte("created_at", lookbackIso)
     .order("created_at", { ascending: false })
     .limit(config.notifyReconcileBatchSize);
@@ -492,7 +510,7 @@ async function reconcileMissingNotificationJobs(params: {
   const [{ data: alerts, error: alertsError }, { data: channels, error: channelsError }, { data: deliveries, error: deliveriesError }] = await Promise.all([
     supabase
       .from("odds_alerts")
-      .select("id,user_id,target_value,ui_rule_type,ui_market_type,ui_team_side,ui_direction")
+      .select("id,user_id,target_value,target_metric,ui_rule_type,ui_market_type,ui_team_side,ui_direction")
       .in("id", alertIDs),
     supabase
       .from("odds_alert_channels")
@@ -575,6 +593,12 @@ async function reconcileMissingNotificationJobs(params: {
     }
 
     const threshold = asFiniteNumber(alert.target_value);
+    const valueMetric =
+      firing.triggered_metric === "line_value" || firing.triggered_metric === "odds_price"
+        ? firing.triggered_metric
+        : alert.target_metric === "line_value" || alert.target_metric === "odds_price"
+          ? alert.target_metric
+          : "odds_price";
     await redis.xadd(redisKeys.streamNotificationJobs(), {
       alertFiringId: firing.id,
       alertId: alert.id,
@@ -583,6 +607,9 @@ async function reconcileMissingNotificationJobs(params: {
       eventID: firing.event_id,
       oddID: firing.odd_id,
       bookmakerID: firing.bookmaker_id,
+      currentValue: String(triggeredValue),
+      previousValue: "",
+      valueMetric,
       currentOdds: String(triggeredValue),
       previousOdds: "",
       ruleType: alert.ui_rule_type || "odds_threshold",

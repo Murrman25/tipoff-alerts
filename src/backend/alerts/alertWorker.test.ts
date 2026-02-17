@@ -35,6 +35,12 @@ describe("AlertWorker", () => {
         },
       ]),
       getPreviousTick: vi.fn().mockResolvedValue(null),
+      getEventStatus: vi.fn().mockResolvedValue({
+        started: false,
+        ended: false,
+        finalized: false,
+        live: false,
+      }),
       saveLatestTick: vi.fn().mockResolvedValue(undefined),
       tryCreateFiring: vi.fn().mockResolvedValue("f1"),
       markAlertFired: vi.fn().mockResolvedValue(undefined),
@@ -49,6 +55,12 @@ describe("AlertWorker", () => {
 
     expect(repo.tryCreateFiring).toHaveBeenCalledTimes(1);
     expect(notifications.publish).toHaveBeenCalledTimes(1);
+    expect(notifications.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentValue: 155,
+        valueMetric: "odds_price",
+      }),
+    );
   });
 
   it("skips notification when firing insert is duplicate", async () => {
@@ -70,6 +82,12 @@ describe("AlertWorker", () => {
         },
       ]),
       getPreviousTick: vi.fn().mockResolvedValue(null),
+      getEventStatus: vi.fn().mockResolvedValue({
+        started: false,
+        ended: false,
+        finalized: false,
+        live: false,
+      }),
       saveLatestTick: vi.fn().mockResolvedValue(undefined),
       tryCreateFiring: vi.fn().mockResolvedValue(null),
       markAlertFired: vi.fn().mockResolvedValue(undefined),

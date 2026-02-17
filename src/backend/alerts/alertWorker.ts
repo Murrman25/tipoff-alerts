@@ -1,4 +1,9 @@
-import { evaluateAlert } from "@/backend/alerts/evaluateAlert";
+import {
+  AlertEventStatus,
+  AlertTargetMetric,
+  AlertTimeWindow,
+  evaluateAlert,
+} from "@/backend/alerts/evaluateAlert";
 import { OddsTick } from "@/backend/contracts/ticks";
 
 export interface StoredAlert {
@@ -13,6 +18,8 @@ export interface StoredAlert {
   uiMarketType?: string | null;
   uiTeamSide?: string | null;
   uiDirection?: string | null;
+  targetMetric?: AlertTargetMetric | null;
+  timeWindow?: AlertTimeWindow | null;
   oneShot: boolean;
   cooldownSeconds: number;
   availableRequired: boolean;
@@ -23,6 +30,7 @@ export interface StoredAlert {
 export interface AlertWorkerRepository {
   listMatchingAlerts(tick: OddsTick): Promise<StoredAlert[]>;
   getPreviousTick(tick: OddsTick): Promise<OddsTick | null>;
+  getEventStatus(eventID: string): Promise<AlertEventStatus | null>;
   saveLatestTick(tick: OddsTick): Promise<void>;
   tryCreateFiring(params: {
     alertId: string;
@@ -31,6 +39,7 @@ export interface AlertWorkerRepository {
     oddID: string;
     bookmakerID: string;
     triggeredValue: number;
+    triggeredMetric?: AlertTargetMetric;
     vendorUpdatedAt: string | null;
     observedAt: string;
   }): Promise<string | null>;
@@ -46,6 +55,9 @@ export interface NotificationJobPublisher {
     eventID: string;
     oddID: string;
     bookmakerID: string;
+    currentValue: number;
+    previousValue: number | null;
+    valueMetric: AlertTargetMetric;
     currentOdds: number;
     previousOdds: number | null;
     ruleType: string;
@@ -65,6 +77,7 @@ export class AlertWorker {
 
   async processOddsTick(tick: OddsTick) {
     const previousTick = await this.repository.getPreviousTick(tick);
+    const eventStatus = await this.repository.getEventStatus(tick.eventID);
     const alerts = await this.repository.listMatchingAlerts(tick);
 
     for (const alert of alerts) {
@@ -73,6 +86,8 @@ export class AlertWorker {
           id: alert.id,
           comparator: alert.comparator,
           targetValue: alert.targetValue,
+          targetMetric: alert.targetMetric || "odds_price",
+          timeWindow: alert.timeWindow || "both",
           oneShot: alert.oneShot,
           cooldownSeconds: alert.cooldownSeconds,
           availableRequired: alert.availableRequired,
@@ -80,9 +95,10 @@ export class AlertWorker {
         },
         currentTick: tick,
         previousTick,
+        eventStatus,
       });
 
-      if (!result.shouldFire || !result.firingKey) {
+      if (!result.shouldFire || !result.firingKey || !Number.isFinite(result.triggeredValue)) {
         continue;
       }
 
@@ -92,7 +108,8 @@ export class AlertWorker {
         eventID: tick.eventID,
         oddID: tick.oddID,
         bookmakerID: tick.bookmakerID,
-        triggeredValue: tick.currentOdds,
+        triggeredValue: result.triggeredValue as number,
+        triggeredMetric: alert.targetMetric || "odds_price",
         vendorUpdatedAt: tick.vendorUpdatedAt,
         observedAt: tick.observedAt,
       });
@@ -110,6 +127,9 @@ export class AlertWorker {
         eventID: tick.eventID,
         oddID: tick.oddID,
         bookmakerID: tick.bookmakerID,
+        currentValue: result.triggeredValue as number,
+        previousValue: result.previousValue ?? null,
+        valueMetric: alert.targetMetric || "odds_price",
         currentOdds: tick.currentOdds,
         previousOdds: previousTick?.currentOdds ?? null,
         ruleType: alert.uiRuleType || "odds_threshold",

@@ -15,6 +15,13 @@ const baseTick: OddsTick = {
   observedAt: "2026-02-12T10:00:02.000Z",
 };
 
+const spreadTick: OddsTick = {
+  ...baseTick,
+  oddID: "points-home-game-sp-home",
+  currentOdds: -110,
+  line: 3.5,
+};
+
 describe("evaluateAlert", () => {
   it("fires when gte comparator threshold is met", () => {
     const result = evaluateAlert({
@@ -160,6 +167,98 @@ describe("evaluateAlert", () => {
 
     expect(result.shouldFire).toBe(false);
     expect(result.reason).toBe("cooldown_active");
+  });
+
+  it("evaluates spread thresholds using line when target metric is line_value", () => {
+    const result = evaluateAlert({
+      alert: {
+        id: "spread-1",
+        comparator: "gte",
+        targetValue: 3.5,
+        targetMetric: "line_value",
+      },
+      currentTick: spreadTick,
+    });
+
+    expect(result.shouldFire).toBe(true);
+    expect(result.reason).toBe("fire");
+    expect(result.triggeredValue).toBe(3.5);
+  });
+
+  it("does not fire spread alerts when line value is missing", () => {
+    const result = evaluateAlert({
+      alert: {
+        id: "spread-2",
+        comparator: "lte",
+        targetValue: -7,
+        targetMetric: "line_value",
+      },
+      currentTick: {
+        ...spreadTick,
+        line: null,
+      },
+    });
+
+    expect(result.shouldFire).toBe(false);
+    expect(result.reason).toBe("missing_line_value");
+  });
+
+  it("requires event status for live or pregame windows", () => {
+    const result = evaluateAlert({
+      alert: {
+        id: "window-1",
+        comparator: "gte",
+        targetValue: 3,
+        targetMetric: "line_value",
+        timeWindow: "live",
+      },
+      currentTick: spreadTick,
+    });
+
+    expect(result.shouldFire).toBe(false);
+    expect(result.reason).toBe("missing_event_status");
+  });
+
+  it("enforces live time window", () => {
+    const pregame = evaluateAlert({
+      alert: {
+        id: "window-2",
+        comparator: "gte",
+        targetValue: 3,
+        targetMetric: "line_value",
+        timeWindow: "live",
+      },
+      currentTick: spreadTick,
+      eventStatus: {
+        started: false,
+        ended: false,
+        finalized: false,
+        live: false,
+      },
+    });
+
+    expect(pregame.shouldFire).toBe(false);
+    expect(pregame.reason).toBe("time_window_not_met");
+
+    const live = evaluateAlert({
+      alert: {
+        id: "window-3",
+        comparator: "gte",
+        targetValue: 3,
+        targetMetric: "line_value",
+        timeWindow: "live",
+      },
+      currentTick: spreadTick,
+      eventStatus: {
+        started: true,
+        ended: false,
+        finalized: false,
+        live: true,
+      },
+    });
+
+    expect(live.shouldFire).toBe(true);
+    expect(live.reason).toBe("fire");
   });
 });
 

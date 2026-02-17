@@ -1,4 +1,5 @@
 import { AlertWorker, AlertWorkerRepository, StoredAlert } from "@/backend/alerts/alertWorker";
+import { AlertEventStatus, AlertTargetMetric, AlertTimeWindow } from "@/backend/alerts/evaluateAlert";
 import { redisKeys } from "@/backend/cache/redisKeys";
 import { OddsTick } from "@/backend/contracts/ticks";
 import { loadWorkerConfig, sleep } from "@/backend/runtime/config";
@@ -22,6 +23,39 @@ function asBoolean(value: unknown, fallback = false): boolean {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") return value.toLowerCase() === "true";
   return fallback;
+}
+
+function asTargetMetric(value: unknown): AlertTargetMetric {
+  return value === "line_value" ? "line_value" : "odds_price";
+}
+
+function asTimeWindow(value: unknown): AlertTimeWindow {
+  if (value === "live" || value === "pregame" || value === "both") {
+    return value;
+  }
+  return "both";
+}
+
+function asEventStatus(value: unknown): AlertEventStatus | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  if (
+    typeof record.started !== "boolean" ||
+    typeof record.ended !== "boolean" ||
+    typeof record.finalized !== "boolean"
+  ) {
+    return null;
+  }
+
+  return {
+    started: record.started,
+    ended: record.ended,
+    finalized: record.finalized,
+    cancelled: typeof record.cancelled === "boolean" ? record.cancelled : false,
+    live: typeof record.live === "boolean" ? record.live : undefined,
+  };
 }
 
 function asOddsTick(fields: Record<string, string>): OddsTick | null {
@@ -86,7 +120,7 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
   async listMatchingAlerts(tick: OddsTick): Promise<StoredAlert[]> {
     const { data: alerts, error } = await this.supabase
       .from("odds_alerts")
-      .select("id,user_id,event_id,odd_id,bookmaker_id,comparator,target_value,ui_rule_type,ui_market_type,ui_team_side,ui_direction,one_shot,cooldown_seconds,available_required,last_fired_at,is_active")
+      .select("id,user_id,event_id,odd_id,bookmaker_id,comparator,target_value,target_metric,ui_rule_type,ui_market_type,ui_team_side,ui_direction,ui_time_window,one_shot,cooldown_seconds,available_required,last_fired_at,is_active")
       .eq("event_id", tick.eventID)
       .eq("odd_id", tick.oddID)
       .eq("bookmaker_id", tick.bookmakerID)
@@ -127,6 +161,8 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
         uiMarketType: (item.ui_market_type as string | null) || null,
         uiTeamSide: (item.ui_team_side as string | null) || null,
         uiDirection: (item.ui_direction as string | null) || null,
+        targetMetric: asTargetMetric(item.target_metric),
+        timeWindow: asTimeWindow(item.ui_time_window),
         oneShot: asBoolean(item.one_shot, true),
         cooldownSeconds: asNumber(item.cooldown_seconds),
         availableRequired: asBoolean(item.available_required, true),
@@ -139,6 +175,11 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
   async getPreviousTick(tick: OddsTick): Promise<OddsTick | null> {
     const payload = await this.redis.get(previousTickKey(tick));
     return parseJson<OddsTick>(payload);
+  }
+
+  async getEventStatus(eventID: string): Promise<AlertEventStatus | null> {
+    const payload = await this.redis.get(redisKeys.eventStatus(eventID));
+    return asEventStatus(parseJson<unknown>(payload));
   }
 
   async saveLatestTick(tick: OddsTick): Promise<void> {
@@ -156,6 +197,7 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
     oddID: string;
     bookmakerID: string;
     triggeredValue: number;
+    triggeredMetric?: AlertTargetMetric;
     vendorUpdatedAt: string | null;
     observedAt: string;
   }): Promise<string | null> {
@@ -168,6 +210,7 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
         bookmaker_id: params.bookmakerID,
         firing_key: params.firingKey,
         triggered_value: params.triggeredValue,
+        triggered_metric: params.triggeredMetric || "odds_price",
         vendor_updated_at: params.vendorUpdatedAt,
         observed_at: params.observedAt,
       })
@@ -336,6 +379,9 @@ async function main() {
       eventID: string;
       oddID: string;
       bookmakerID: string;
+      currentValue: number;
+      previousValue: number | null;
+      valueMetric: AlertTargetMetric;
       currentOdds: number;
       previousOdds: number | null;
       ruleType: string;
@@ -353,6 +399,9 @@ async function main() {
         eventID: job.eventID,
         oddID: job.oddID,
         bookmakerID: job.bookmakerID,
+        currentValue: String(job.currentValue),
+        previousValue: job.previousValue === null ? "" : String(job.previousValue),
+        valueMetric: job.valueMetric,
         currentOdds: String(job.currentOdds),
         previousOdds: job.previousOdds === null ? "" : String(job.previousOdds),
         ruleType: job.ruleType,

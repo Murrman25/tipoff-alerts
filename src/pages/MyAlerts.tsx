@@ -37,6 +37,7 @@ interface Alert {
   is_active: boolean;
   created_at: string;
   channels: string[];
+  valueMetric?: "odds_price" | "line_value";
   eventName?: string;
   teamName?: string;
 }
@@ -209,6 +210,11 @@ const MyAlerts = () => {
                 <Badge variant="secondary" className="text-xs">
                   {getMarketName(alert.market_type)}
                 </Badge>
+                {alert.valueMetric === "line_value" && (
+                  <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
+                    Spread line
+                  </Badge>
+                )}
                 {alert.time_window === "live" && (
                   <Badge className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
                     Live Only

@@ -131,6 +131,7 @@ export const alertResponseSchema = z.object({
   channels: z.array(z.string()),
   lastFiredAt: z.string().nullable().optional(),
   cooldownRemainingSeconds: z.number().int().nonnegative().optional(),
+  valueMetric: z.enum(["odds_price", "line_value"]).optional(),
   eventName: z.string().optional(),
   teamName: z.string().optional(),
 });

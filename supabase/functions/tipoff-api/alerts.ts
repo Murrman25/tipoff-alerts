@@ -4,6 +4,8 @@ import { OddsAlertChannelRow, OddsAlertRow } from './types.ts';
 import { RedisCacheClient } from './redis.ts';
 
 type Comparator = 'gte' | 'lte' | 'eq' | 'crosses_up' | 'crosses_down';
+type TargetMetric = 'odds_price' | 'line_value';
+type TimeWindow = 'pregame' | 'live' | 'both';
 const NOTIFICATION_STREAM_MAXLEN = Number.parseInt(
   Deno.env.get('STREAM_NOTIFICATION_MAXLEN') || '100000',
   10,
@@ -54,6 +56,7 @@ interface OddsAlertInsertRow {
   odd_id: string;
   bookmaker_id: string;
   comparator: Comparator;
+  target_metric: TargetMetric;
   target_value: number;
   ui_rule_type: string;
   ui_market_type: string;
@@ -105,6 +108,7 @@ interface AlertApiItem {
   channels: string[];
   lastFiredAt: string | null;
   cooldownRemainingSeconds: number;
+  valueMetric?: TargetMetric;
   eventName?: string;
   teamName?: string;
 }
@@ -257,6 +261,7 @@ function toApiItem(alert: OddsAlertRow, channels: OddsAlertChannelRow[]): AlertA
       .map((channel) => channel.channel_type),
     lastFiredAt: alert.last_fired_at,
     cooldownRemainingSeconds: cooldownRemainingSeconds(alert),
+    valueMetric: alert.target_metric || 'odds_price',
   };
 }
 
@@ -298,21 +303,113 @@ function marketQuoteKey(eventID: string, oddID: string, bookmakerID: string) {
 
 function parseCachedOddsTick(
   raw: string | null,
-): { currentOdds: number; available: boolean; vendorUpdatedAt: string | null; observedAt: string | null } | null {
+): {
+  currentOdds: number;
+  line: number | null;
+  available: boolean;
+  vendorUpdatedAt: string | null;
+  observedAt: string | null;
+} | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const currentOdds = typeof parsed.currentOdds === 'number' ? parsed.currentOdds : Number(parsed.currentOdds);
     if (!Number.isFinite(currentOdds)) return null;
+    const lineValue =
+      parsed.line === null || parsed.line === undefined || parsed.line === ''
+        ? null
+        : typeof parsed.line === 'number'
+        ? parsed.line
+        : Number(parsed.line);
+    const line = lineValue === null || !Number.isFinite(lineValue) ? null : lineValue;
     const available = Boolean(parsed.available);
     const vendorUpdatedAt = typeof parsed.vendorUpdatedAt === 'string' && parsed.vendorUpdatedAt.length > 0
       ? parsed.vendorUpdatedAt
       : null;
     const observedAt = typeof parsed.observedAt === 'string' && parsed.observedAt.length > 0 ? parsed.observedAt : null;
-    return { currentOdds, available, vendorUpdatedAt, observedAt };
+    return { currentOdds, line, available, vendorUpdatedAt, observedAt };
   } catch {
     return null;
   }
+}
+
+function eventStatusKey(eventID: string) {
+  return prefixed(`odds:event:${eventID}:status`);
+}
+
+interface EventStatusSummary {
+  started: boolean;
+  ended: boolean;
+  finalized: boolean;
+  cancelled: boolean;
+  live: boolean;
+}
+
+function parseCachedEventStatus(raw: string | null): EventStatusSummary | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (
+      typeof parsed.started !== 'boolean' ||
+      typeof parsed.ended !== 'boolean' ||
+      typeof parsed.finalized !== 'boolean'
+    ) {
+      return null;
+    }
+    return {
+      started: parsed.started,
+      ended: parsed.ended,
+      finalized: parsed.finalized,
+      cancelled: typeof parsed.cancelled === 'boolean' ? parsed.cancelled : false,
+      live: typeof parsed.live === 'boolean' ? parsed.live : false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeTimeWindow(raw: string | null | undefined): TimeWindow {
+  if (raw === 'live' || raw === 'pregame' || raw === 'both') {
+    return raw;
+  }
+  return 'both';
+}
+
+function isLiveStatus(status: EventStatusSummary): boolean {
+  if (status.live) {
+    return true;
+  }
+  return status.started && !status.ended && !status.finalized && !status.cancelled;
+}
+
+function timeWindowMet(window: TimeWindow, status: EventStatusSummary | null): boolean | null {
+  if (window === 'both') {
+    return true;
+  }
+  if (!status) {
+    return null;
+  }
+  if (window === 'live') {
+    return isLiveStatus(status);
+  }
+  return !status.started && !status.ended && !status.finalized;
+}
+
+function metricForMarketType(marketType: string): TargetMetric {
+  return marketType === 'sp' ? 'line_value' : 'odds_price';
+}
+
+function pickCurrentValue(
+  targetMetric: TargetMetric,
+  cachedQuote: {
+    currentOdds: number;
+    line: number | null;
+  },
+): number | null {
+  if (targetMetric === 'line_value') {
+    return cachedQuote.line;
+  }
+  return cachedQuote.currentOdds;
 }
 
 function comparatorMet(comparator: Comparator, target: number, current: number): boolean {
@@ -463,6 +560,8 @@ export async function createAlert(
   const direction = body.direction || 'at_or_above';
   const threshold = typeof body.threshold === 'number' ? body.threshold : 0;
   const comparator = uiDirectionToComparator(direction);
+  const timeWindow = normalizeTimeWindow(body.timeWindow || body.time_window || 'both');
+  const targetMetric = metricForMarketType(marketType);
 
   const payload: OddsAlertInsertRow = {
     user_id: userId,
@@ -470,12 +569,13 @@ export async function createAlert(
     odd_id: inferOddId(marketType, teamSide),
     bookmaker_id: body.bookmakerID || body.bookmaker_id || 'draftkings',
     comparator,
+    target_metric: targetMetric,
     target_value: threshold,
     ui_rule_type: body.ruleType || body.rule_type || 'odds_threshold',
     ui_market_type: marketType,
     ui_team_side: teamSide,
     ui_direction: direction,
-    ui_time_window: body.timeWindow || body.time_window || 'both',
+    ui_time_window: timeWindow,
     one_shot: body.oneShot ?? true,
     cooldown_seconds: body.cooldownSeconds ?? 0,
     available_required: true,
@@ -536,57 +636,72 @@ export async function createAlert(
       );
       const cached = parseCachedOddsTick(quoteRaw);
       if (cached && (!payload.available_required || cached.available)) {
-        const targetValue = Number(payload.target_value);
-        if (Number.isFinite(targetValue) && comparatorMet(comparator, targetValue, cached.currentOdds)) {
-          const sourceTimestamp = cached.vendorUpdatedAt || cached.observedAt || new Date().toISOString();
-          const firingKey = [payload.event_id, payload.odd_id, payload.bookmaker_id, sourceTimestamp].join(':');
+        const statusRaw = await redis.get(eventStatusKey(payload.event_id));
+        const status = parseCachedEventStatus(statusRaw);
+        const windowResult = timeWindowMet(timeWindow, status);
+        if (windowResult === true) {
+          const targetValue = Number(payload.target_value);
+          const currentValue = pickCurrentValue(payload.target_metric, cached);
+          if (
+            Number.isFinite(targetValue) &&
+            typeof currentValue === 'number' &&
+            Number.isFinite(currentValue) &&
+            comparatorMet(comparator, targetValue, currentValue)
+          ) {
+            const sourceTimestamp = cached.vendorUpdatedAt || cached.observedAt || new Date().toISOString();
+            const firingKey = [payload.event_id, payload.odd_id, payload.bookmaker_id, sourceTimestamp].join(':');
 
-          const observedAt = cached.observedAt || new Date().toISOString();
-          const { data: firing, error: firingError } = await serviceClient
-            .from('odds_alert_firings')
-            .insert({
-              alert_id: (insertedAlert as OddsAlertRow).id,
-              event_id: payload.event_id,
-              odd_id: payload.odd_id,
-              bookmaker_id: payload.bookmaker_id,
-              firing_key: firingKey,
-              triggered_value: cached.currentOdds,
-              vendor_updated_at: cached.vendorUpdatedAt,
-              observed_at: observedAt,
-            })
-            .select('id')
-            .single();
+            const observedAt = cached.observedAt || new Date().toISOString();
+            const { data: firing, error: firingError } = await serviceClient
+              .from('odds_alert_firings')
+              .insert({
+                alert_id: (insertedAlert as OddsAlertRow).id,
+                event_id: payload.event_id,
+                odd_id: payload.odd_id,
+                bookmaker_id: payload.bookmaker_id,
+                firing_key: firingKey,
+                triggered_value: currentValue,
+                triggered_metric: payload.target_metric,
+                vendor_updated_at: cached.vendorUpdatedAt,
+                observed_at: observedAt,
+              })
+              .select('id')
+              .single();
 
-          if (firingError) {
-            // Ignore duplicate firing; unique constraint provides idempotency.
-            if ((firingError as unknown as { code?: string }).code !== '23505') {
-              throw new Error(firingError.message);
+            if (firingError) {
+              // Ignore duplicate firing; unique constraint provides idempotency.
+              if ((firingError as unknown as { code?: string }).code !== '23505') {
+                throw new Error(firingError.message);
+              }
+            } else if (firing?.id) {
+              await serviceClient
+                .from('odds_alerts')
+                .update({ last_fired_at: observedAt })
+                .eq('id', (insertedAlert as OddsAlertRow).id);
+
+              await redis.xadd(prefixed('stream:notification_jobs'), {
+                alertFiringId: String(firing.id),
+                alertId: String((insertedAlert as OddsAlertRow).id),
+                userId: String(userId),
+                channels: JSON.stringify(channels),
+                eventID: payload.event_id,
+                oddID: payload.odd_id,
+                bookmakerID: payload.bookmaker_id,
+                currentValue: String(currentValue),
+                previousValue: '',
+                valueMetric: payload.target_metric,
+                currentOdds: String(cached.currentOdds),
+                previousOdds: '',
+                ruleType: payload.ui_rule_type,
+                marketType: payload.ui_market_type,
+                teamSide: payload.ui_team_side || '',
+                threshold: String(payload.target_value),
+                direction: payload.ui_direction,
+                observedAt,
+              }, {
+                maxLenApprox: Number.isFinite(NOTIFICATION_STREAM_MAXLEN) ? NOTIFICATION_STREAM_MAXLEN : 100000,
+              });
             }
-          } else if (firing?.id) {
-            await serviceClient
-              .from('odds_alerts')
-              .update({ last_fired_at: observedAt })
-              .eq('id', (insertedAlert as OddsAlertRow).id);
-
-            await redis.xadd(prefixed('stream:notification_jobs'), {
-              alertFiringId: String(firing.id),
-              alertId: String((insertedAlert as OddsAlertRow).id),
-              userId: String(userId),
-              channels: JSON.stringify(channels),
-              eventID: payload.event_id,
-              oddID: payload.odd_id,
-              bookmakerID: payload.bookmaker_id,
-              currentOdds: String(cached.currentOdds),
-              previousOdds: '',
-              ruleType: payload.ui_rule_type,
-              marketType: payload.ui_market_type,
-              teamSide: payload.ui_team_side || '',
-              threshold: String(payload.target_value),
-              direction: payload.ui_direction,
-              observedAt,
-            }, {
-              maxLenApprox: Number.isFinite(NOTIFICATION_STREAM_MAXLEN) ? NOTIFICATION_STREAM_MAXLEN : 100000,
-            });
           }
         }
       }
