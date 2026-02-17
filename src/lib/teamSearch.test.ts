@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveCanonicalTeamIDs } from "@/lib/teamSearch";
+import { resolveCanonicalTeamIDs, suggestTeams } from "@/lib/teamSearch";
 
 const teams = [
   {
@@ -9,6 +9,7 @@ const teams = [
     short_name: "Bruins",
     city: "Boston",
     sportsgameodds_id: "NHL_BOS",
+    logo_filename: "bruins.png",
   },
   {
     league: "NBA",
@@ -16,6 +17,7 @@ const teams = [
     short_name: "Celtics",
     city: "Boston",
     sportsgameodds_id: "NBA_BOS",
+    logo_filename: "celtics.png",
   },
   {
     league: "NHL",
@@ -39,5 +41,35 @@ describe("resolveCanonicalTeamIDs", () => {
   it("returns empty list for short or unmatched queries", () => {
     expect(resolveCanonicalTeamIDs("b", teams)).toEqual([]);
     expect(resolveCanonicalTeamIDs("Tottenham", teams)).toEqual([]);
+  });
+});
+
+describe("suggestTeams", () => {
+  it("returns ranked unique suggestions with logo metadata", () => {
+    expect(suggestTeams("Boston", teams, { maxResults: 2 })).toEqual([
+      {
+        id: "NHL_BOS",
+        name: "Boston Bruins",
+        league: "NHL",
+        logoFilename: "bruins.png",
+      },
+      {
+        id: "NBA_BOS",
+        name: "Boston Celtics",
+        league: "NBA",
+        logoFilename: "celtics.png",
+      },
+    ]);
+  });
+
+  it("respects league scoping for suggestions", () => {
+    expect(suggestTeams("Boston", teams, { leagueIDs: ["NHL"] })).toEqual([
+      {
+        id: "NHL_BOS",
+        name: "Boston Bruins",
+        league: "NHL",
+        logoFilename: "bruins.png",
+      },
+    ]);
   });
 });

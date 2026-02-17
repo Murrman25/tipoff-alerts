@@ -92,6 +92,12 @@ export interface GamesFilters {
   betTypeID: BetTypeID[];
   status: 'live' | 'upcoming' | 'all';
   searchQuery: string;
+  searchTeam?: {
+    id: string;
+    name: string;
+    league?: string;
+    logoUrl?: string | null;
+  } | null;
   oddsAvailable: boolean;
   favoriteTeamIds?: string[];
   teamID?: string[];

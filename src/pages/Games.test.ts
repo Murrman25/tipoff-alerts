@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildEffectiveGamesFilters,
   buildVisibleEventIds,
+  deriveRefreshStatus,
   deriveEmptyStateVariant,
   normalizeGamesFiltersOnLeagueChange,
   shouldFetchGlobalUpcomingFallback,
@@ -156,5 +157,32 @@ describe("Games helpers", () => {
         primaryVisibleCount: 0,
       }),
     ).toBe(false);
+  });
+
+  it("derives refresh status states for fresh, fetching, and stale data", () => {
+    const nowMs = Date.parse("2026-02-17T12:01:00.000Z");
+    const fresh = deriveRefreshStatus({
+      isFetching: false,
+      lastRefreshAtMs: Date.parse("2026-02-17T12:00:30.000Z"),
+      nowMs,
+    });
+    expect(fresh.tone).toBe("fresh");
+    expect(fresh.text).toContain("Up to date");
+
+    const fetching = deriveRefreshStatus({
+      isFetching: true,
+      lastRefreshAtMs: Date.parse("2026-02-17T12:00:30.000Z"),
+      nowMs,
+    });
+    expect(fetching.tone).toBe("warn");
+    expect(fetching.text).toContain("Updating");
+
+    const stale = deriveRefreshStatus({
+      isFetching: false,
+      lastRefreshAtMs: Date.parse("2026-02-17T11:58:00.000Z"),
+      nowMs,
+    });
+    expect(stale.tone).toBe("warn");
+    expect(stale.text).toContain("May be stale");
   });
 });

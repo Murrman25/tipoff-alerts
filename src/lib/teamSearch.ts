@@ -4,6 +4,14 @@ export interface TeamSearchRecord {
   short_name: string | null;
   city: string | null;
   sportsgameodds_id: string | null;
+  logo_filename?: string | null;
+}
+
+export interface TeamSearchSuggestion {
+  id: string;
+  name: string;
+  league: string;
+  logoFilename?: string | null;
 }
 
 function normalize(value: string): string {
@@ -47,11 +55,11 @@ function scoreTeamMatch(query: string, team: TeamSearchRecord): number {
   return 0;
 }
 
-export function resolveCanonicalTeamIDs(
+function rankTeamMatches(
   query: string,
   teams: TeamSearchRecord[],
-  options?: { leagueIDs?: string[]; maxResults?: number },
-): string[] {
+  options?: { leagueIDs?: string[] },
+): Array<{ team: TeamSearchRecord; score: number }> {
   const normalizedQuery = normalize(query);
   if (normalizedQuery.length < 2) {
     return [];
@@ -61,10 +69,44 @@ export function resolveCanonicalTeamIDs(
   const scopedTeams =
     leagueSet.size > 0 ? teams.filter((team) => leagueSet.has(team.league)) : teams;
 
-  const ranked = scopedTeams
+  return scopedTeams
     .map((team) => ({ team, score: scoreTeamMatch(normalizedQuery, team) }))
     .filter((entry) => entry.score > 0 && typeof entry.team.sportsgameodds_id === "string")
     .sort((a, b) => b.score - a.score || a.team.display_name.localeCompare(b.team.display_name));
+}
+
+export function suggestTeams(
+  query: string,
+  teams: TeamSearchRecord[],
+  options?: { leagueIDs?: string[]; maxResults?: number },
+): TeamSearchSuggestion[] {
+  const ranked = rankTeamMatches(query, teams, { leagueIDs: options?.leagueIDs });
+  const maxResults = Math.max(1, options?.maxResults ?? 8);
+
+  const unique = new Map<string, TeamSearchSuggestion>();
+  for (const entry of ranked) {
+    const teamID = entry.team.sportsgameodds_id;
+    if (!teamID || unique.has(teamID)) continue;
+    unique.set(teamID, {
+      id: teamID,
+      name: entry.team.display_name,
+      league: entry.team.league,
+      logoFilename: entry.team.logo_filename || null,
+    });
+    if (unique.size >= maxResults) {
+      break;
+    }
+  }
+
+  return Array.from(unique.values());
+}
+
+export function resolveCanonicalTeamIDs(
+  query: string,
+  teams: TeamSearchRecord[],
+  options?: { leagueIDs?: string[]; maxResults?: number },
+): string[] {
+  const ranked = rankTeamMatches(query, teams, { leagueIDs: options?.leagueIDs });
 
   const maxResults = Math.max(1, options?.maxResults ?? 3);
   const unique = new Set<string>();

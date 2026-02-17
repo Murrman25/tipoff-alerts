@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageGlow } from "@/components/PageGlow";
@@ -12,12 +12,56 @@ import { useGames } from "@/hooks/useGames";
 import { useFavoriteTeams } from "@/hooks/useFavoriteTeams";
 import { Button } from "@/components/ui/button";
 import { useGamesStream } from "@/hooks/useGamesStream";
-import { resolveCanonicalTeamIDs } from "@/lib/teamSearch";
+import { resolveCanonicalTeamIDs, suggestTeams } from "@/lib/teamSearch";
+import { getLogoUrl } from "@/components/TeamLogo";
+import { cn } from "@/lib/utils";
 
 const LEAGUE_MIXED_WINDOW_DAYS = 3;
 const LEAGUE_MIXED_LIMIT = 25;
 const GLOBAL_UPCOMING_FALLBACK_LIMIT = 25;
 const TEAM_SEARCH_HORIZON_DAYS = 30;
+const REFRESH_STALE_MS = 90_000;
+
+function formatRefreshTime(timestampMs: number): string {
+  return new Date(timestampMs).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+export function deriveRefreshStatus(params: {
+  isFetching: boolean;
+  lastRefreshAtMs: number | null;
+  nowMs: number;
+}): { tone: "fresh" | "warn"; text: string } {
+  const { isFetching, lastRefreshAtMs, nowMs } = params;
+  if (!lastRefreshAtMs || !Number.isFinite(lastRefreshAtMs)) {
+    return {
+      tone: "warn",
+      text: "Initializing data…",
+    };
+  }
+
+  const ageMs = Math.max(0, nowMs - lastRefreshAtMs);
+  const formattedTime = formatRefreshTime(lastRefreshAtMs);
+  if (isFetching) {
+    return {
+      tone: "warn",
+      text: `Updating… • Last refresh ${formattedTime}`,
+    };
+  }
+  if (ageMs > REFRESH_STALE_MS) {
+    return {
+      tone: "warn",
+      text: `May be stale • Last refresh ${formattedTime}`,
+    };
+  }
+  return {
+    tone: "fresh",
+    text: `Up to date • Last refresh ${formattedTime}`,
+  };
+}
 
 export function sortGamesForDisplay<T extends { eventID: string; status: { started: boolean; ended: boolean; startsAt: string } }>(
   games: T[],
@@ -159,20 +203,48 @@ const Games = () => {
     betTypeID: [],
     status: "live",
     searchQuery: "",
+    searchTeam: null,
     oddsAvailable: false,
   });
   const [selectedFavoriteTeamIds, setSelectedFavoriteTeamIds] = useState<string[]>([]);
+  const [clockMs, setClockMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setClockMs(Date.now());
+    }, 15000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   // Fetch favorite teams
   const { allTeams, favoriteTeams, isLoading: favoritesLoading } = useFavoriteTeams();
 
+  const teamSuggestions = useMemo(() => {
+    const suggestions = suggestTeams(filters.searchQuery, allTeams, {
+      leagueIDs: filters.leagueID,
+      maxResults: 8,
+    });
+    return suggestions.map((team) => ({
+      id: team.id,
+      name: team.name,
+      league: team.league,
+      logoUrl: getLogoUrl(team.logoFilename),
+    }));
+  }, [allTeams, filters.searchQuery, filters.leagueID]);
+
   const resolvedTeamIDs = useMemo(
-    () =>
+    () => {
+      if (filters.searchTeam?.id) {
+        return [filters.searchTeam.id];
+      }
+      return (
       resolveCanonicalTeamIDs(filters.searchQuery, allTeams, {
         leagueIDs: filters.leagueID,
         maxResults: 3,
-      }),
-    [allTeams, filters.searchQuery, filters.leagueID],
+      })
+      );
+    },
+    [allTeams, filters.searchQuery, filters.leagueID, filters.searchTeam],
   );
 
   const { isLeagueMixedMode, effectiveFilters } = useMemo(
@@ -187,6 +259,7 @@ const Games = () => {
     error: primaryError,
     refetch: refetchPrimary,
     isFetching: isPrimaryFetching,
+    dataUpdatedAt: primaryDataUpdatedAt,
   } = useGames(effectiveFilters);
 
   const handleToggleFavoriteTeam = (teamId: string) => {
@@ -238,6 +311,7 @@ const Games = () => {
     error: globalFallbackError,
     refetch: refetchGlobalFallback,
     isFetching: isGlobalFallbackFetching,
+    dataUpdatedAt: globalFallbackDataUpdatedAt,
   } = useGames(globalUpcomingFallbackFilters, {
     enabled: shouldLoadGlobalUpcomingFallback,
   });
@@ -248,6 +322,9 @@ const Games = () => {
   );
   const isUsingGlobalUpcomingFallback = shouldLoadGlobalUpcomingFallback && globalFallbackFilteredGames.length > 0;
   const filteredGames = isUsingGlobalUpcomingFallback ? globalFallbackFilteredGames : primaryFilteredGames;
+  const activeDataUpdatedAt = isUsingGlobalUpcomingFallback
+    ? globalFallbackDataUpdatedAt
+    : primaryDataUpdatedAt;
 
   const emptyStateVariant = deriveEmptyStateVariant({
     isLeagueMixedMode,
@@ -270,6 +347,7 @@ const Games = () => {
       betTypeID: [],
       status: "live",
       searchQuery: "",
+      searchTeam: null,
       oddsAvailable: false,
     });
     setSelectedFavoriteTeamIds([]);
@@ -283,12 +361,44 @@ const Games = () => {
   const handleFiltersChange = useCallback((nextFilters: FiltersType) => {
     setFilters((prev) => normalizeGamesFiltersOnLeagueChange(prev, nextFilters));
   }, []);
+  const handleSelectSearchTeam = useCallback((team: {
+    id: string;
+    name: string;
+    league: string;
+    logoUrl?: string | null;
+  }) => {
+    setFilters((prev) => ({
+      ...prev,
+      searchQuery: team.name,
+      searchTeam: {
+        id: team.id,
+        name: team.name,
+        league: team.league,
+        logoUrl: team.logoUrl || null,
+      },
+    }));
+  }, []);
+  const handleClearSearchTeam = useCallback(() => {
+    setFilters((prev) => ({
+      ...prev,
+      searchTeam: null,
+    }));
+  }, []);
 
   const visibleEventIds = useMemo(() => buildVisibleEventIds(filteredGames, 12), [filteredGames]);
   const isLoading = isPrimaryLoading || (shouldLoadGlobalUpcomingFallback && isGlobalFallbackLoading);
   const isFetching =
     isPrimaryFetching || (shouldLoadGlobalUpcomingFallback && isGlobalFallbackFetching);
   const error = primaryError || (shouldLoadGlobalUpcomingFallback ? globalFallbackError : null);
+  const refreshStatus = useMemo(
+    () =>
+      deriveRefreshStatus({
+        isFetching,
+        lastRefreshAtMs: activeDataUpdatedAt || null,
+        nowMs: clockMs,
+      }),
+    [isFetching, activeDataUpdatedAt, clockMs],
+  );
   const refreshGames = useCallback(() => {
     void refetchPrimary();
     if (shouldLoadGlobalUpcomingFallback) {
@@ -363,13 +473,26 @@ const Games = () => {
             totalResults={filteredGames.length}
             isLoading={isLoading}
             statusLocked={isLeagueMixedMode}
-            statusLockLabel={isLeagueMixedMode ? "Live + Next 3 Days" : undefined}
             statusHelperText={
               isLeagueMixedMode
                 ? "League mode prioritizes live games and includes upcoming games within the next 3 days."
                 : undefined
             }
+            teamOptions={teamSuggestions}
+            onSelectSearchTeam={handleSelectSearchTeam}
+            onClearSearchTeam={handleClearSearchTeam}
           />
+        </div>
+
+        <div className="mb-4 min-h-[20px]">
+          <p
+            className={cn(
+              "text-xs",
+              refreshStatus.tone === "fresh" ? "text-green-600" : "text-yellow-600",
+            )}
+          >
+            {refreshStatus.text}
+          </p>
         </div>
 
         {/* Error state */}
@@ -387,18 +510,6 @@ const Games = () => {
               Retry
             </Button>
           </div>
-        )}
-
-        {isLeagueMixedMode && (
-          <div className="mb-4 flex items-center gap-2">
-            <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary">
-              Live + Next 3 Days • Max 25
-            </span>
-          </div>
-        )}
-
-        {isFetching && !isLoading && (
-          <p className="mb-4 text-xs text-muted-foreground">Refreshing games for your current filters...</p>
         )}
 
         {showLeagueUpcomingFallbackBanner && (
