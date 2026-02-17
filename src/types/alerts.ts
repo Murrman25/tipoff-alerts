@@ -1,4 +1,4 @@
-import { SportID } from './games';
+import { LeagueID, SportID } from './games';
 
 export type RuleType = 
   | 'ml_threshold' 
@@ -13,7 +13,11 @@ export type MarketType = 'ml' | 'sp' | 'ou';
 export type DirectionType = 
   | 'at_or_above' 
   | 'at_or_below' 
-  | 'exactly';
+  | 'exactly'
+  | 'lead_by_or_more'
+  | 'within_points'
+  | 'trail_by_or_more'
+  | 'exact_margin';
 
 export type TimeWindow = 'pregame' | 'live' | 'both';
 
@@ -95,6 +99,15 @@ export const DIRECTION_OPTIONS = [
   { id: 'at_or_above' as DirectionType, name: 'At or above' },
   { id: 'at_or_below' as DirectionType, name: 'At or below' },
   { id: 'exactly' as DirectionType, name: 'Exactly at' },
+  { id: 'lead_by_or_more' as DirectionType, name: 'Lead by X+' },
+  { id: 'within_points' as DirectionType, name: 'Within X points' },
+  { id: 'trail_by_or_more' as DirectionType, name: 'Trail by X+' },
+  { id: 'exact_margin' as DirectionType, name: 'Exact margin' },
+];
+
+export const SCORE_MARGIN_DIRECTION_OPTIONS = [
+  { id: 'lead_by_or_more' as DirectionType, name: 'Lead by X+' },
+  { id: 'within_points' as DirectionType, name: 'Within X points' },
 ];
 
 // Alert Type Field Configuration
@@ -236,6 +249,66 @@ export const SPORT_PERIODS: Record<SportID, { id: GamePeriod; name: string }[]> 
   ],
 };
 
+export const LEAGUE_PERIODS: Partial<Record<LeagueID, { id: GamePeriod; name: string }[]>> = {
+  NFL: [
+    { id: 'full_game', name: 'Full Game' },
+    { id: '1h', name: '1st Half' },
+    { id: '2h', name: '2nd Half' },
+    { id: '1q', name: '1st Quarter' },
+    { id: '2q', name: '2nd Quarter' },
+    { id: '3q', name: '3rd Quarter' },
+    { id: '4q', name: '4th Quarter' },
+  ],
+  NCAAF: [
+    { id: 'full_game', name: 'Full Game' },
+    { id: '1h', name: '1st Half' },
+    { id: '2h', name: '2nd Half' },
+    { id: '1q', name: '1st Quarter' },
+    { id: '2q', name: '2nd Quarter' },
+    { id: '3q', name: '3rd Quarter' },
+    { id: '4q', name: '4th Quarter' },
+  ],
+  NBA: [
+    { id: 'full_game', name: 'Full Game' },
+    { id: '1h', name: '1st Half' },
+    { id: '2h', name: '2nd Half' },
+    { id: '1q', name: '1st Quarter' },
+    { id: '2q', name: '2nd Quarter' },
+    { id: '3q', name: '3rd Quarter' },
+    { id: '4q', name: '4th Quarter' },
+  ],
+  NCAAB: [
+    { id: 'full_game', name: 'Full Game' },
+    { id: '1h', name: '1st Half' },
+    { id: '2h', name: '2nd Half' },
+  ],
+  NHL: [
+    { id: 'full_game', name: 'Full Game' },
+    { id: '1p', name: '1st Period' },
+    { id: '2p', name: '2nd Period' },
+    { id: '3p', name: '3rd Period' },
+  ],
+  MLB: [
+    { id: 'full_game', name: 'Full Game' },
+  ],
+};
+
+export function getGamePeriodsByLeagueOrSport(
+  leagueID?: string,
+  sportID?: SportID,
+): { id: GamePeriod; name: string }[] {
+  const normalizedLeague = String(leagueID || '').trim().toUpperCase() as LeagueID;
+  if (normalizedLeague && LEAGUE_PERIODS[normalizedLeague]) {
+    return LEAGUE_PERIODS[normalizedLeague] as { id: GamePeriod; name: string }[];
+  }
+
+  if (sportID && SPORT_PERIODS[sportID]) {
+    return SPORT_PERIODS[sportID];
+  }
+
+  return SPORT_PERIODS.BASKETBALL;
+}
+
 // Surge window preset options
 export const SURGE_WINDOW_OPTIONS = [
   { value: 5, label: '5 min' },
@@ -295,6 +368,7 @@ export const QUICK_ALERT_TEMPLATES: QuickAlertTemplate[] = [
     icon: 'Target',
     defaults: {
       ruleType: 'score_margin',
+      direction: 'lead_by_or_more',
       timeWindow: 'live',
       gamePeriod: 'full_game',
     },
@@ -350,8 +424,8 @@ export const FIELD_HELP_CONTENT: Record<string, { title: string; description: st
   },
   direction: {
     title: 'Trigger Direction',
-    description: 'Determines when your alert fires. "At or above" triggers when the value is greater than or equal to your target. "At or below" triggers when less than or equal.',
-    example: '"At or above +3" alerts when spread is +3, +3.5, +4...',
+    description: 'Determines when your alert fires. For odds/spread/total alerts you can use at-or-above, at-or-below, or exactly. For score margin alerts, use "Lead by X+" or "Within X points".',
+    example: '"Lead by X+" fires when your selected team margin is at least X',
   },
   marketType: {
     title: 'Market Type',

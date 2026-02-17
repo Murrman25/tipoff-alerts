@@ -11,7 +11,7 @@ export interface NotificationJob {
   bookmakerID: string;
   currentValue?: number;
   previousValue?: number | null;
-  valueMetric?: "odds_price" | "line_value";
+  valueMetric?: "odds_price" | "line_value" | "score_margin";
   currentOdds: number;
   previousOdds?: number | null;
   ruleType?: string;

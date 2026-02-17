@@ -26,6 +26,10 @@ describe("IngestionWorker", () => {
                 period: "3",
                 clock: "07:42",
                 updatedAt: "2026-02-12T10:00:20.000Z",
+                score: {
+                  home: 84,
+                  away: 80,
+                },
               },
               odds: {
                 "points-home-game-ml-home": {
@@ -43,7 +47,13 @@ describe("IngestionWorker", () => {
       },
     };
 
-    const statusTicks: Array<{ eventID: string; period?: string; clock?: string }> = [];
+    const statusTicks: Array<{
+      eventID: string;
+      period?: string;
+      clock?: string;
+      scoreHome?: number | null;
+      scoreAway?: number | null;
+    }> = [];
     const oddsTicks: Array<{ eventID: string; currentOdds: number }> = [];
     const redis = new InMemoryRedisClient();
     const sink = new RedisIngestionSink(redis);
@@ -52,7 +62,13 @@ describe("IngestionWorker", () => {
       vendor,
       {
         publishEventStatusTick: async (tick) => {
-          statusTicks.push({ eventID: tick.eventID, period: tick.period, clock: tick.clock });
+          statusTicks.push({
+            eventID: tick.eventID,
+            period: tick.period,
+            clock: tick.clock,
+            scoreHome: tick.scoreHome,
+            scoreAway: tick.scoreAway,
+          });
         },
         publishOddsTick: async (tick) => {
           oddsTicks.push({ eventID: tick.eventID, currentOdds: tick.currentOdds });
@@ -82,6 +98,8 @@ describe("IngestionWorker", () => {
       eventID: "evt_1",
       period: "3",
       clock: "07:42",
+      scoreHome: 84,
+      scoreAway: 80,
     });
     expect(oddsTicks).toHaveLength(1);
     expect(oddsTicks[0].currentOdds).toBe(140);

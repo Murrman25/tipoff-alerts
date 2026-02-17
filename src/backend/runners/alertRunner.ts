@@ -1,13 +1,17 @@
 import { AlertWorker, AlertWorkerRepository, StoredAlert } from "@/backend/alerts/alertWorker";
 import { AlertEventStatus, AlertTargetMetric, AlertTimeWindow } from "@/backend/alerts/evaluateAlert";
 import { redisKeys } from "@/backend/cache/redisKeys";
-import { OddsTick } from "@/backend/contracts/ticks";
+import { EventStatusTick, OddsTick } from "@/backend/contracts/ticks";
 import { loadWorkerConfig, sleep } from "@/backend/runtime/config";
 import { createServiceSupabaseClient } from "@/backend/runtime/supabase";
 import { createUpstashRedisFromEnv, parseJson, UpstashRedisClient } from "@/backend/runtime/upstashRedis";
 
 function previousTickKey(tick: OddsTick): string {
   return `alerts:last_tick:${tick.eventID}:${tick.oddID}:${tick.bookmakerID}`;
+}
+
+function previousStatusTickKey(eventID: string): string {
+  return `alerts:last_status_tick:${eventID}`;
 }
 
 function asNumber(value: unknown, fallback = 0): number {
@@ -26,7 +30,10 @@ function asBoolean(value: unknown, fallback = false): boolean {
 }
 
 function asTargetMetric(value: unknown): AlertTargetMetric {
-  return value === "line_value" ? "line_value" : "odds_price";
+  if (value === "line_value" || value === "score_margin") {
+    return value;
+  }
+  return "odds_price";
 }
 
 function asTimeWindow(value: unknown): AlertTimeWindow {
@@ -50,11 +57,14 @@ function asEventStatus(value: unknown): AlertEventStatus | null {
   }
 
   return {
+    leagueID: typeof record.leagueID === "string" ? record.leagueID : undefined,
+    sportID: typeof record.sportID === "string" ? record.sportID : undefined,
     started: record.started,
     ended: record.ended,
     finalized: record.finalized,
     cancelled: typeof record.cancelled === "boolean" ? record.cancelled : false,
     live: typeof record.live === "boolean" ? record.live : undefined,
+    period: typeof record.period === "string" ? record.period : undefined,
   };
 }
 
@@ -79,6 +89,43 @@ function asOddsTick(fields: Record<string, string>): OddsTick | null {
     currentOdds,
     line: Number.isFinite(line as number) ? (line as number) : null,
     available: fields.available === "true",
+    vendorUpdatedAt: fields.vendorUpdatedAt || null,
+    observedAt: fields.observedAt || new Date().toISOString(),
+  };
+}
+
+function asEventStatusTick(fields: Record<string, string>): EventStatusTick | null {
+  const eventID = fields.eventID;
+  const startsAt = fields.startsAt;
+
+  if (!eventID || !startsAt) {
+    return null;
+  }
+
+  const parseOptionalNumber = (value: string | undefined): number | null => {
+    if (value === undefined || value === "" || value === "null") {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  return {
+    type: "EVENT_STATUS_TICK",
+    eventID,
+    leagueID: fields.leagueID || undefined,
+    sportID: fields.sportID || undefined,
+    startsAt,
+    started: fields.started === "true",
+    ended: fields.ended === "true",
+    finalized: fields.finalized === "true",
+    cancelled: fields.cancelled === "true",
+    live: fields.live === "true",
+    scoreHome: parseOptionalNumber(fields.scoreHome),
+    scoreAway: parseOptionalNumber(fields.scoreAway),
+    period: fields.period || undefined,
+    clock: fields.clock || undefined,
+    updatedAt: fields.updatedAt || undefined,
     vendorUpdatedAt: fields.vendorUpdatedAt || null,
     observedAt: fields.observedAt || new Date().toISOString(),
   };
@@ -120,7 +167,7 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
   async listMatchingAlerts(tick: OddsTick): Promise<StoredAlert[]> {
     const { data: alerts, error } = await this.supabase
       .from("odds_alerts")
-      .select("id,user_id,event_id,odd_id,bookmaker_id,comparator,target_value,target_metric,ui_rule_type,ui_market_type,ui_team_side,ui_direction,ui_time_window,one_shot,cooldown_seconds,available_required,last_fired_at,is_active")
+      .select("id,user_id,event_id,odd_id,bookmaker_id,comparator,target_value,target_metric,ui_rule_type,ui_market_type,ui_team_side,ui_direction,ui_time_window,ui_game_period,one_shot,cooldown_seconds,available_required,last_fired_at,is_active")
       .eq("event_id", tick.eventID)
       .eq("odd_id", tick.oddID)
       .eq("bookmaker_id", tick.bookmakerID)
@@ -161,6 +208,62 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
         uiMarketType: (item.ui_market_type as string | null) || null,
         uiTeamSide: (item.ui_team_side as string | null) || null,
         uiDirection: (item.ui_direction as string | null) || null,
+        uiGamePeriod: (item.ui_game_period as StoredAlert["uiGamePeriod"]) || null,
+        targetMetric: asTargetMetric(item.target_metric),
+        timeWindow: asTimeWindow(item.ui_time_window),
+        oneShot: asBoolean(item.one_shot, true),
+        cooldownSeconds: asNumber(item.cooldown_seconds),
+        availableRequired: asBoolean(item.available_required, true),
+        lastFiredAt: (item.last_fired_at as string | null) || null,
+        channels: alertChannels.length > 0 ? alertChannels : ["push"],
+      };
+    });
+  }
+
+  async listMatchingScoreAlerts(eventID: string): Promise<StoredAlert[]> {
+    const { data: alerts, error } = await this.supabase
+      .from("odds_alerts")
+      .select("id,user_id,event_id,odd_id,bookmaker_id,comparator,target_value,target_metric,ui_rule_type,ui_market_type,ui_team_side,ui_direction,ui_time_window,ui_game_period,one_shot,cooldown_seconds,available_required,last_fired_at,is_active")
+      .eq("event_id", eventID)
+      .eq("ui_rule_type", "score_margin")
+      .eq("is_active", true);
+
+    if (error || !alerts || alerts.length === 0) {
+      if (error) {
+        throw new Error(`listMatchingScoreAlerts failed: ${error.message}`);
+      }
+      return [];
+    }
+
+    const ids = alerts.map((item) => item.id as string);
+    const { data: channels, error: channelError } = await this.supabase
+      .from("odds_alert_channels")
+      .select("alert_id,channel_type,is_enabled")
+      .in("alert_id", ids)
+      .eq("is_enabled", true);
+
+    if (channelError) {
+      throw new Error(`listMatchingScoreAlerts channels failed: ${channelError.message}`);
+    }
+
+    return alerts.map((item) => {
+      const alertChannels = (channels || [])
+        .filter((channel) => channel.alert_id === item.id)
+        .map((channel) => channel.channel_type as string);
+
+      return {
+        id: item.id as string,
+        userId: item.user_id as string,
+        eventID: item.event_id as string,
+        oddID: item.odd_id as string,
+        bookmakerID: item.bookmaker_id as string,
+        comparator: item.comparator as StoredAlert["comparator"],
+        targetValue: asNumber(item.target_value),
+        uiRuleType: (item.ui_rule_type as string | null) || null,
+        uiMarketType: (item.ui_market_type as string | null) || null,
+        uiTeamSide: (item.ui_team_side as string | null) || null,
+        uiDirection: (item.ui_direction as string | null) || null,
+        uiGamePeriod: (item.ui_game_period as StoredAlert["uiGamePeriod"]) || null,
         targetMetric: asTargetMetric(item.target_metric),
         timeWindow: asTimeWindow(item.ui_time_window),
         oneShot: asBoolean(item.one_shot, true),
@@ -177,6 +280,11 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
     return parseJson<OddsTick>(payload);
   }
 
+  async getPreviousStatusTick(eventID: string): Promise<EventStatusTick | null> {
+    const payload = await this.redis.get(previousStatusTickKey(eventID));
+    return parseJson<EventStatusTick>(payload);
+  }
+
   async getEventStatus(eventID: string): Promise<AlertEventStatus | null> {
     const payload = await this.redis.get(redisKeys.eventStatus(eventID));
     return asEventStatus(parseJson<unknown>(payload));
@@ -188,6 +296,10 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
       return;
     }
     await this.redis.set(previousTickKey(tick), JSON.stringify(tick), 4 * 60 * 60);
+  }
+
+  async saveLatestStatusTick(tick: EventStatusTick): Promise<void> {
+    await this.redis.set(previousStatusTickKey(tick.eventID), JSON.stringify(tick), 4 * 60 * 60);
   }
 
   async tryCreateFiring(params: {
@@ -239,7 +351,7 @@ class SupabaseAlertRepository implements AlertWorkerRepository {
   }
 }
 
-async function processAlertEntry(params: {
+async function processOddsEntry(params: {
   entry: RedisStreamEntry;
   source: "new" | "pending" | "claimed";
   redis: UpstashRedisClient;
@@ -293,6 +405,60 @@ async function processAlertEntry(params: {
   }
 }
 
+async function processStatusEntry(params: {
+  entry: RedisStreamEntry;
+  source: "new" | "pending" | "claimed";
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  worker: AlertWorker;
+}) {
+  const { entry, source, redis, config, worker } = params;
+  const tick = asEventStatusTick(entry.fields);
+  if (!tick) {
+    await redis.xack(redisKeys.streamEventStatusTicks(), config.alertConsumerGroup, entry.id);
+    return;
+  }
+
+  try {
+    await worker.processStatusTick(tick);
+    await redis.set("workers:alert:last_processed_at", new Date().toISOString(), 600);
+    await redis.xack(redisKeys.streamEventStatusTicks(), config.alertConsumerGroup, entry.id);
+  } catch (error) {
+    const errorText = error instanceof Error ? error.message : String(error ?? "unknown error");
+    console.error("[alert-runner] status entry processing failed; moving to dead-letter", {
+      entryId: entry.id,
+      source,
+      error: errorText,
+    });
+
+    let movedToDeadLetter = false;
+    try {
+      await redis.xadd(redisKeys.streamAlertDeadLetter(), {
+        stream: redisKeys.streamEventStatusTicks(),
+        group: config.alertConsumerGroup,
+        consumer: config.alertConsumerName,
+        entryId: entry.id,
+        source,
+        error: errorText,
+        payload: JSON.stringify(entry.fields),
+        observedAt: new Date().toISOString(),
+      }, {
+        maxLenApprox: config.streamDeadLetterMaxLen,
+      });
+      movedToDeadLetter = true;
+    } catch (deadLetterError) {
+      console.error("[alert-runner] status dead-letter publish failed", deadLetterError);
+    }
+
+    if (movedToDeadLetter) {
+      await redis.xack(redisKeys.streamEventStatusTicks(), config.alertConsumerGroup, entry.id);
+      return;
+    }
+
+    throw error;
+  }
+}
+
 async function claimStaleAlertEntries(params: {
   redis: UpstashRedisClient;
   config: ReturnType<typeof loadWorkerConfig>;
@@ -319,7 +485,7 @@ async function claimStaleAlertEntries(params: {
     }
 
     for (const entry of claimed.entries) {
-      await processAlertEntry({ entry, source: "claimed", redis, config, worker });
+      await processOddsEntry({ entry, source: "claimed", redis, config, worker });
     }
 
     total += claimed.entries.length;
@@ -352,7 +518,75 @@ async function drainPendingAlertEntries(params: {
     }
 
     for (const entry of pending) {
-      await processAlertEntry({ entry, source: "pending", redis, config, worker });
+      await processOddsEntry({ entry, source: "pending", redis, config, worker });
+    }
+
+    total += pending.length;
+  }
+
+  return total;
+}
+
+async function claimStaleStatusEntries(params: {
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  worker: AlertWorker;
+  readCount: number;
+}): Promise<number> {
+  const { redis, config, worker, readCount } = params;
+  let total = 0;
+  let cursor = "0-0";
+
+  for (let i = 0; i < 40; i += 1) {
+    const claimed = await redis.xautoclaim({
+      stream: redisKeys.streamEventStatusTicks(),
+      group: config.alertConsumerGroup,
+      consumer: config.alertConsumerName,
+      minIdleMs: config.streamClaimIdleMs,
+      startId: cursor,
+      count: readCount,
+    });
+
+    cursor = claimed.nextStartId;
+    if (claimed.entries.length === 0) {
+      break;
+    }
+
+    for (const entry of claimed.entries) {
+      await processStatusEntry({ entry, source: "claimed", redis, config, worker });
+    }
+
+    total += claimed.entries.length;
+  }
+
+  return total;
+}
+
+async function drainPendingStatusEntries(params: {
+  redis: UpstashRedisClient;
+  config: ReturnType<typeof loadWorkerConfig>;
+  worker: AlertWorker;
+  readCount: number;
+}): Promise<number> {
+  const { redis, config, worker, readCount } = params;
+  let total = 0;
+
+  for (let i = 0; i < 40; i += 1) {
+    const pending = await redis.xreadgroup({
+      stream: redisKeys.streamEventStatusTicks(),
+      group: config.alertConsumerGroup,
+      consumer: config.alertConsumerName,
+      count: readCount,
+      blockMs: 1,
+      readId: "0",
+    });
+
+    if (pending.length === 0) {
+      break;
+    }
+
+    for (const entry of pending) {
+      await processStatusEntry({ entry, source: "pending", redis, config, worker });
     }
 
     total += pending.length;
@@ -366,8 +600,10 @@ async function main() {
   const redis = createUpstashRedisFromEnv();
   const supabase = createServiceSupabaseClient(config.supabaseUrl, config.supabaseServiceRoleKey);
   const readCount = intEnv("ALERT_READ_COUNT", 25);
+  const statusReadCount = intEnv("ALERT_STATUS_READ_COUNT", readCount);
 
   await redis.xgroupCreate(redisKeys.streamOddsTicks(), config.alertConsumerGroup);
+  await redis.xgroupCreate(redisKeys.streamEventStatusTicks(), config.alertConsumerGroup);
 
   const repository = new SupabaseAlertRepository(supabase, redis);
   const notifications = {
@@ -422,6 +658,7 @@ async function main() {
     group: config.alertConsumerGroup,
     consumer: config.alertConsumerName,
     readCount,
+    statusReadCount,
   });
 
   setInterval(() => {
@@ -459,12 +696,51 @@ async function main() {
       });
 
       if (entries.length === 0) {
+        // continue into status stream checks before sleeping
+      } else {
+        for (const entry of entries) {
+          await processOddsEntry({ entry, source: "new", redis, config, worker });
+        }
+      }
+
+      const claimedStatus = await claimStaleStatusEntries({
+        redis,
+        config,
+        worker,
+        readCount: statusReadCount,
+      });
+      if (claimedStatus > 0) {
+        console.log("[alert-runner] claimed stale status entries", {
+          claimed: claimedStatus,
+          minIdleMs: config.streamClaimIdleMs,
+        });
+      }
+
+      const drainedStatus = await drainPendingStatusEntries({
+        redis,
+        config,
+        worker,
+        readCount: statusReadCount,
+      });
+      if (drainedStatus > 0) {
+        console.log("[alert-runner] drained pending status entries", { drained: drainedStatus });
+      }
+
+      const statusEntries = await redis.xreadgroup({
+        stream: redisKeys.streamEventStatusTicks(),
+        group: config.alertConsumerGroup,
+        consumer: config.alertConsumerName,
+        count: statusReadCount,
+        blockMs: entries.length > 0 ? 1 : 5000,
+      });
+
+      if (statusEntries.length === 0 && entries.length === 0) {
         await sleep(250);
         continue;
       }
 
-      for (const entry of entries) {
-        await processAlertEntry({ entry, source: "new", redis, config, worker });
+      for (const entry of statusEntries) {
+        await processStatusEntry({ entry, source: "new", redis, config, worker });
       }
     } catch (error) {
       if (isPelLimitError(error)) {

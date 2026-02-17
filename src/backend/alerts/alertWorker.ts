@@ -1,10 +1,13 @@
 import {
   AlertEventStatus,
+  AlertGamePeriod,
+  AlertScoreMode,
   AlertTargetMetric,
   AlertTimeWindow,
   evaluateAlert,
+  evaluateScoreMarginAlert,
 } from "@/backend/alerts/evaluateAlert";
-import { OddsTick } from "@/backend/contracts/ticks";
+import { EventStatusTick, OddsTick } from "@/backend/contracts/ticks";
 
 export interface StoredAlert {
   id: string;
@@ -18,6 +21,7 @@ export interface StoredAlert {
   uiMarketType?: string | null;
   uiTeamSide?: string | null;
   uiDirection?: string | null;
+  uiGamePeriod?: AlertGamePeriod | null;
   targetMetric?: AlertTargetMetric | null;
   timeWindow?: AlertTimeWindow | null;
   oneShot: boolean;
@@ -29,9 +33,12 @@ export interface StoredAlert {
 
 export interface AlertWorkerRepository {
   listMatchingAlerts(tick: OddsTick): Promise<StoredAlert[]>;
+  listMatchingScoreAlerts(eventID: string): Promise<StoredAlert[]>;
   getPreviousTick(tick: OddsTick): Promise<OddsTick | null>;
+  getPreviousStatusTick(eventID: string): Promise<EventStatusTick | null>;
   getEventStatus(eventID: string): Promise<AlertEventStatus | null>;
   saveLatestTick(tick: OddsTick): Promise<void>;
+  saveLatestStatusTick(tick: EventStatusTick): Promise<void>;
   tryCreateFiring(params: {
     alertId: string;
     firingKey: string;
@@ -142,5 +149,76 @@ export class AlertWorker {
     }
 
     await this.repository.saveLatestTick(tick);
+  }
+
+  async processStatusTick(tick: EventStatusTick) {
+    const previousTick = await this.repository.getPreviousStatusTick(tick.eventID);
+    const alerts = await this.repository.listMatchingScoreAlerts(tick.eventID);
+
+    for (const alert of alerts) {
+      const scoreMode = (alert.uiDirection as AlertScoreMode | null) || null;
+      const result = evaluateScoreMarginAlert({
+        alert: {
+          id: alert.id,
+          comparator: alert.comparator,
+          targetValue: alert.targetValue,
+          targetMetric: "score_margin",
+          timeWindow: alert.timeWindow || "both",
+          oneShot: alert.oneShot,
+          cooldownSeconds: alert.cooldownSeconds,
+          availableRequired: false,
+          lastFiredAt: alert.lastFiredAt,
+          scoreMode,
+          teamSide: alert.uiTeamSide === "away" ? "away" : "home",
+          gamePeriod: alert.uiGamePeriod || "full_game",
+        },
+        currentTick: tick,
+        previousTick,
+      });
+
+      if (!result.shouldFire || !result.firingKey || !Number.isFinite(result.triggeredValue)) {
+        continue;
+      }
+
+      const inserted = await this.repository.tryCreateFiring({
+        alertId: alert.id,
+        firingKey: result.firingKey,
+        eventID: tick.eventID,
+        oddID: alert.oddID,
+        bookmakerID: alert.bookmakerID,
+        triggeredValue: result.triggeredValue as number,
+        triggeredMetric: "score_margin",
+        vendorUpdatedAt: tick.vendorUpdatedAt,
+        observedAt: tick.observedAt,
+      });
+
+      if (!inserted) {
+        continue;
+      }
+
+      await this.repository.markAlertFired(alert.id, tick.observedAt);
+      await this.notifications.publish({
+        alertFiringId: inserted,
+        alertId: alert.id,
+        userId: alert.userId,
+        channels: alert.channels,
+        eventID: tick.eventID,
+        oddID: alert.oddID,
+        bookmakerID: alert.bookmakerID,
+        currentValue: result.triggeredValue as number,
+        previousValue: result.previousValue ?? null,
+        valueMetric: "score_margin",
+        currentOdds: result.triggeredValue as number,
+        previousOdds: result.previousValue ?? null,
+        ruleType: alert.uiRuleType || "score_margin",
+        marketType: alert.uiMarketType || "ml",
+        teamSide: alert.uiTeamSide || null,
+        threshold: alert.targetValue,
+        direction: alert.uiDirection || "lead_by_or_more",
+        observedAt: tick.observedAt,
+      });
+    }
+
+    await this.repository.saveLatestStatusTick(tick);
   }
 }

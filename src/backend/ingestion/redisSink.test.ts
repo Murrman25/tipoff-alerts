@@ -203,4 +203,51 @@ describe("RedisIngestionSink", () => {
 
     expect(redis.getStreamEntries(redisKeys.streamEventStatusTicks()).length).toBe(2);
   });
+
+  it("appends status ticks when score changes", async () => {
+    const redis = new InMemoryRedisClient();
+    const sink = new RedisIngestionSink(redis);
+
+    await sink.writeEventStatus({
+      type: "EVENT_STATUS_TICK",
+      eventID: "evt_score",
+      leagueID: "NBA",
+      sportID: "BASKETBALL",
+      startsAt: "2026-02-12T11:00:00.000Z",
+      started: true,
+      ended: false,
+      finalized: false,
+      cancelled: false,
+      live: true,
+      scoreHome: 98,
+      scoreAway: 97,
+      period: "4",
+      clock: "01:10",
+      updatedAt: "2026-02-12T10:45:00.000Z",
+      vendorUpdatedAt: "2026-02-12T10:45:00.000Z",
+      observedAt: "2026-02-12T10:45:01.000Z",
+    });
+
+    await sink.writeEventStatus({
+      type: "EVENT_STATUS_TICK",
+      eventID: "evt_score",
+      leagueID: "NBA",
+      sportID: "BASKETBALL",
+      startsAt: "2026-02-12T11:00:00.000Z",
+      started: true,
+      ended: false,
+      finalized: false,
+      cancelled: false,
+      live: true,
+      scoreHome: 100,
+      scoreAway: 97,
+      period: "4",
+      clock: "00:42",
+      updatedAt: "2026-02-12T10:45:10.000Z",
+      vendorUpdatedAt: "2026-02-12T10:45:10.000Z",
+      observedAt: "2026-02-12T10:45:11.000Z",
+    });
+
+    expect(redis.getStreamEntries(redisKeys.streamEventStatusTicks()).length).toBe(2);
+  });
 });

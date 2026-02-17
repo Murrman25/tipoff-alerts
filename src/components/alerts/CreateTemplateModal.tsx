@@ -109,6 +109,11 @@ export const CreateTemplateModal = ({
     if (config.forceTimeWindow) {
       setTimeWindow(config.forceTimeWindow);
     }
+    if (ruleType === "score_margin") {
+      setDirection((prev) =>
+        prev === "within_points" || prev === "lead_by_or_more" ? prev : "lead_by_or_more",
+      );
+    }
   }, [ruleType]);
 
   const fieldConfig = ALERT_TYPE_FIELD_CONFIG[ruleType];

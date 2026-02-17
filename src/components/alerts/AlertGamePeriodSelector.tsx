@@ -5,22 +5,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GamePeriod, SPORT_PERIODS } from "@/types/alerts";
+import { GamePeriod, getGamePeriodsByLeagueOrSport } from "@/types/alerts";
 import { SportID } from "@/types/games";
 
 interface AlertGamePeriodSelectorProps {
   value: GamePeriod | undefined;
   onChange: (value: GamePeriod) => void;
+  leagueID?: string;
   sportID: SportID | undefined;
 }
 
 export const AlertGamePeriodSelector = ({
   value,
   onChange,
+  leagueID,
   sportID,
 }: AlertGamePeriodSelectorProps) => {
-  // Default to basketball periods if sport is unknown
-  const periods = sportID ? SPORT_PERIODS[sportID] : SPORT_PERIODS.BASKETBALL;
+  const periods = getGamePeriodsByLeagueOrSport(leagueID, sportID);
 
   return (
     <div className="space-y-2">

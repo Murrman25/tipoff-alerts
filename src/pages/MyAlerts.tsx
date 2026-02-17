@@ -37,7 +37,9 @@ interface Alert {
   is_active: boolean;
   created_at: string;
   channels: string[];
-  valueMetric?: "odds_price" | "line_value";
+  valueMetric?: "odds_price" | "line_value" | "score_margin";
+  gamePeriod?: string | null;
+  scoreMode?: "lead_by_or_more" | "within_points" | "trail_by_or_more" | "exact_margin" | null;
   eventName?: string;
   teamName?: string;
 }

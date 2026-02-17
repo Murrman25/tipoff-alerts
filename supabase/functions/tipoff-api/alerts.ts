@@ -4,8 +4,11 @@ import { OddsAlertChannelRow, OddsAlertRow } from './types.ts';
 import { RedisCacheClient } from './redis.ts';
 
 type Comparator = 'gte' | 'lte' | 'eq' | 'crosses_up' | 'crosses_down';
-type TargetMetric = 'odds_price' | 'line_value';
+type TargetMetric = 'odds_price' | 'line_value' | 'score_margin';
 type TimeWindow = 'pregame' | 'live' | 'both';
+type ScoreMode = 'lead_by_or_more' | 'within_points' | 'trail_by_or_more' | 'exact_margin';
+type TeamSide = 'home' | 'away';
+type GamePeriod = 'full_game' | '1h' | '2h' | '1q' | '2q' | '3q' | '4q' | '1p' | '2p' | '3p';
 const NOTIFICATION_STREAM_MAXLEN = Number.parseInt(
   Deno.env.get('STREAM_NOTIFICATION_MAXLEN') || '100000',
   10,
@@ -22,6 +25,10 @@ type UiDirection =
   | 'crosses_above'
   | 'crosses_below'
   | 'exactly'
+  | 'lead_by_or_more'
+  | 'trail_by_or_more'
+  | 'within_points'
+  | 'exact_margin'
   | null
   | undefined;
 
@@ -38,6 +45,8 @@ interface AlertCreateRequest {
   direction?: UiDirection;
   timeWindow?: string;
   time_window?: string;
+  gamePeriod?: string;
+  game_period?: string;
   channels?: string[];
   eventName?: string;
   bookmakerID?: string;
@@ -63,6 +72,7 @@ interface OddsAlertInsertRow {
   ui_team_side: string | null;
   ui_direction: string;
   ui_time_window: string;
+  ui_game_period: string | null;
   one_shot: boolean;
   cooldown_seconds: number;
   available_required: boolean;
@@ -109,6 +119,8 @@ interface AlertApiItem {
   lastFiredAt: string | null;
   cooldownRemainingSeconds: number;
   valueMetric?: TargetMetric;
+  gamePeriod?: string | null;
+  scoreMode?: ScoreMode | null;
   eventName?: string;
   teamName?: string;
 }
@@ -129,8 +141,13 @@ function asAlertPatchRequest(payload: unknown): AlertPatchRequest {
 
 function uiDirectionToComparator(direction: UiDirection): Comparator {
   switch (direction) {
+    case 'trail_by_or_more':
     case 'at_or_below':
       return 'lte';
+    case 'within_points':
+      return 'lte';
+    case 'exact_margin':
+      return 'eq';
     case 'crosses_above':
       return 'crosses_up';
     case 'crosses_below':
@@ -159,7 +176,34 @@ function comparatorToUiDirection(comparator: Comparator): string {
   }
 }
 
-function inferOddId(marketType: string, teamSide: string | null): string {
+function normalizeTeamSide(raw: string | null | undefined): TeamSide | null {
+  return raw === 'away' || raw === 'home' ? raw : null;
+}
+
+function normalizeScoreMode(direction: UiDirection): ScoreMode {
+  switch (direction) {
+    case 'within_points':
+      return 'within_points';
+    case 'trail_by_or_more':
+    case 'at_or_below': // backward compatibility for old score alerts
+      return 'trail_by_or_more';
+    case 'exact_margin':
+    case 'exactly': // backward compatibility for old score alerts
+      return 'exact_margin';
+    case 'lead_by_or_more':
+    case 'at_or_above':
+    default:
+      return 'lead_by_or_more';
+  }
+}
+
+function inferOddId(marketType: string, teamSide: TeamSide | null, ruleType: string): string {
+  if (ruleType === 'score_margin') {
+    return teamSide === 'away'
+      ? 'points-away-game-ml-away'
+      : 'points-home-game-ml-home';
+  }
+
   if (marketType === 'sp') {
     return teamSide === 'away'
       ? 'points-away-game-sp-away'
@@ -244,6 +288,9 @@ function cooldownRemainingSeconds(alert: OddsAlertRow): number {
 }
 
 function toApiItem(alert: OddsAlertRow, channels: OddsAlertChannelRow[]): AlertApiItem {
+  const scoreMode = alert.ui_rule_type === 'score_margin'
+    ? normalizeScoreMode(alert.ui_direction as UiDirection)
+    : null;
   return {
     id: alert.id,
     rule_type: alert.ui_rule_type || 'odds_threshold',
@@ -261,6 +308,8 @@ function toApiItem(alert: OddsAlertRow, channels: OddsAlertChannelRow[]): AlertA
     lastFiredAt: alert.last_fired_at,
     cooldownRemainingSeconds: cooldownRemainingSeconds(alert),
     valueMetric: alert.target_metric || 'odds_price',
+    gamePeriod: alert.ui_game_period || null,
+    scoreMode,
   };
 }
 
@@ -337,11 +386,16 @@ function eventStatusKey(eventID: string) {
 }
 
 interface EventStatusSummary {
+  leagueID?: string;
+  sportID?: string;
   started: boolean;
   ended: boolean;
   finalized: boolean;
   cancelled: boolean;
   live: boolean;
+  period?: string;
+  scoreHome?: number | null;
+  scoreAway?: number | null;
 }
 
 function parseCachedEventStatus(raw: string | null): EventStatusSummary | null {
@@ -356,11 +410,16 @@ function parseCachedEventStatus(raw: string | null): EventStatusSummary | null {
       return null;
     }
     return {
+      leagueID: typeof parsed.leagueID === 'string' ? parsed.leagueID : undefined,
+      sportID: typeof parsed.sportID === 'string' ? parsed.sportID : undefined,
       started: parsed.started,
       ended: parsed.ended,
       finalized: parsed.finalized,
       cancelled: typeof parsed.cancelled === 'boolean' ? parsed.cancelled : false,
       live: typeof parsed.live === 'boolean' ? parsed.live : false,
+      period: typeof parsed.period === 'string' ? parsed.period : undefined,
+      scoreHome: typeof parsed.scoreHome === 'number' ? parsed.scoreHome : null,
+      scoreAway: typeof parsed.scoreAway === 'number' ? parsed.scoreAway : null,
     };
   } catch {
     return null;
@@ -394,7 +453,10 @@ function timeWindowMet(window: TimeWindow, status: EventStatusSummary | null): b
   return !status.started && !status.ended && !status.finalized;
 }
 
-function metricForMarketType(marketType: string): TargetMetric {
+function metricForAlertType(ruleType: string, marketType: string): TargetMetric {
+  if (ruleType === 'score_margin') {
+    return 'score_margin';
+  }
   if (marketType === 'sp' || marketType === 'ou') {
     return 'line_value';
   }
@@ -424,6 +486,123 @@ function comparatorMet(comparator: Comparator, target: number, current: number):
     default:
       return current >= target;
   }
+}
+
+function normalizeGamePeriod(raw: string | null | undefined): GamePeriod {
+  switch (raw) {
+    case '1h':
+    case '2h':
+    case '1q':
+    case '2q':
+    case '3q':
+    case '4q':
+    case '1p':
+    case '2p':
+    case '3p':
+      return raw;
+    default:
+      return 'full_game';
+  }
+}
+
+function normalizePeriodToken(rawPeriod: string | undefined): string {
+  return String(rawPeriod || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '');
+}
+
+function parseNumericPeriodToken(rawPeriod: string): number | null {
+  const match = rawPeriod.match(/\d+/);
+  if (!match) return null;
+  const parsed = Number.parseInt(match[0], 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeEventPeriod(leagueID: string | undefined, rawPeriod: string | undefined): GamePeriod | null {
+  const league = String(leagueID || '').trim().toUpperCase();
+  const token = normalizePeriodToken(rawPeriod);
+  if (!token) return null;
+
+  if (token === 'fullgame' || token === 'full' || token === 'game') return 'full_game';
+  if (token.includes('top') || token.includes('bot') || token.includes('inning')) return null;
+
+  const number = parseNumericPeriodToken(token);
+
+  if (league === 'NCAAB') {
+    if (token === '1h' || token === 'h1' || token === '1sthalf' || token === 'firsthalf' || number === 1) return '1h';
+    if (token === '2h' || token === 'h2' || token === '2ndhalf' || token === 'secondhalf' || number === 2) return '2h';
+    return null;
+  }
+
+  if (league === 'NBA' || league === 'NFL' || league === 'NCAAF') {
+    if (token === '1h' || token === 'h1' || token === '1sthalf' || token === 'firsthalf') return '1h';
+    if (token === '2h' || token === 'h2' || token === '2ndhalf' || token === 'secondhalf') return '2h';
+    if (token === '1q' || token === 'q1' || token === '1stquarter' || token === 'firstquarter' || number === 1) return '1q';
+    if (token === '2q' || token === 'q2' || token === '2ndquarter' || token === 'secondquarter' || number === 2) return '2q';
+    if (token === '3q' || token === 'q3' || token === '3rdquarter' || token === 'thirdquarter' || number === 3) return '3q';
+    if (token === '4q' || token === 'q4' || token === '4thquarter' || token === 'fourthquarter' || number === 4) return '4q';
+    return null;
+  }
+
+  if (league === 'NHL') {
+    if (token === '1p' || token === 'p1' || token === '1stperiod' || token === 'firstperiod' || number === 1) return '1p';
+    if (token === '2p' || token === 'p2' || token === '2ndperiod' || token === 'secondperiod' || number === 2) return '2p';
+    if (token === '3p' || token === 'p3' || token === '3rdperiod' || token === 'thirdperiod' || number === 3) return '3p';
+    return null;
+  }
+
+  return null;
+}
+
+function scorePeriodMet(required: GamePeriod, status: EventStatusSummary | null): boolean | null {
+  if (required === 'full_game') {
+    return true;
+  }
+  if (!status) {
+    return null;
+  }
+  const normalized = normalizeEventPeriod(status.leagueID, status.period);
+  if (!normalized) {
+    return false;
+  }
+  if (normalized === required) {
+    return true;
+  }
+  if (required === '1h') {
+    return normalized === '1q' || normalized === '2q';
+  }
+  if (required === '2h') {
+    return normalized === '3q' || normalized === '4q';
+  }
+  return false;
+}
+
+function scoreModeMet(
+  scoreMode: ScoreMode,
+  teamMargin: number,
+  threshold: number,
+): boolean {
+  switch (scoreMode) {
+    case 'within_points':
+      return Math.abs(teamMargin) <= threshold;
+    case 'trail_by_or_more':
+      return teamMargin <= -threshold;
+    case 'exact_margin':
+      return teamMargin === threshold;
+    case 'lead_by_or_more':
+    default:
+      return teamMargin >= threshold;
+  }
+}
+
+function scoreMarginForTeam(teamSide: TeamSide, status: EventStatusSummary): number | null {
+  if (!Number.isFinite(status.scoreHome) || !Number.isFinite(status.scoreAway)) {
+    return null;
+  }
+  const home = Number(status.scoreHome);
+  const away = Number(status.scoreAway);
+  return teamSide === 'away' ? away - home : home - away;
 }
 
 export async function listAlerts(
@@ -558,30 +737,37 @@ export async function createAlert(
   }
 
   const marketType = body.marketType || body.market_type || 'ml';
+  const ruleType = body.ruleType || body.rule_type || 'odds_threshold';
   const rawTeamSide = body.teamSide || body.team_side || null;
-  const teamSide = marketType === 'ou' ? null : rawTeamSide;
-  const direction = body.direction || 'at_or_above';
+  const normalizedTeamSide = normalizeTeamSide(rawTeamSide);
+  const teamSide = marketType === 'ou' ? null : (normalizedTeamSide || (ruleType === 'score_margin' ? 'home' : null));
+  const rawDirection = (body.direction || 'at_or_above') as UiDirection;
+  const direction = ruleType === 'score_margin' ? normalizeScoreMode(rawDirection) : (rawDirection || 'at_or_above');
   const threshold = typeof body.threshold === 'number' ? body.threshold : 0;
   const comparator = uiDirectionToComparator(direction);
   const timeWindow = normalizeTimeWindow(body.timeWindow || body.time_window || 'both');
-  const targetMetric = metricForMarketType(marketType);
+  const targetMetric = metricForAlertType(ruleType, marketType);
+  const gamePeriod = ruleType === 'score_margin'
+    ? normalizeGamePeriod(body.gamePeriod || body.game_period || 'full_game')
+    : null;
 
   const payload: OddsAlertInsertRow = {
     user_id: userId,
     event_id: eventID,
-    odd_id: inferOddId(marketType, teamSide),
+    odd_id: inferOddId(marketType, teamSide, ruleType),
     bookmaker_id: body.bookmakerID || body.bookmaker_id || 'draftkings',
     comparator,
     target_metric: targetMetric,
     target_value: threshold,
-    ui_rule_type: body.ruleType || body.rule_type || 'odds_threshold',
+    ui_rule_type: ruleType,
     ui_market_type: marketType,
     ui_team_side: teamSide,
     ui_direction: direction,
     ui_time_window: timeWindow,
+    ui_game_period: gamePeriod,
     one_shot: body.oneShot ?? true,
     cooldown_seconds: body.cooldownSeconds ?? 0,
-    available_required: true,
+    available_required: ruleType === 'score_margin' ? false : true,
   };
 
   const { data: insertedAlert, error: insertError } = await serviceClient
@@ -630,82 +816,114 @@ export async function createAlert(
     }
   }
 
-  // Fire-on-create: if Redis has a current quote and the condition is already met,
+  // Fire-on-create: if Redis has current cache data and the condition is already met,
   // create an idempotent firing + enqueue a notification job immediately.
   if (redis && (comparator === 'gte' || comparator === 'lte' || comparator === 'eq')) {
     try {
-      const quoteRaw = await redis.get(
-        marketQuoteKey(payload.event_id, payload.odd_id, payload.bookmaker_id),
-      );
-      const cached = parseCachedOddsTick(quoteRaw);
-      if (cached && (!payload.available_required || cached.available)) {
-        const statusRaw = await redis.get(eventStatusKey(payload.event_id));
-        const status = parseCachedEventStatus(statusRaw);
-        const windowResult = timeWindowMet(timeWindow, status);
-        if (windowResult === true) {
-          const targetValue = Number(payload.target_value);
-          const currentValue = pickCurrentValue(payload.target_metric, cached);
-          if (
-            Number.isFinite(targetValue) &&
-            typeof currentValue === 'number' &&
-            Number.isFinite(currentValue) &&
-            comparatorMet(comparator, targetValue, currentValue)
-          ) {
-            const sourceTimestamp = cached.vendorUpdatedAt || cached.observedAt || new Date().toISOString();
-            const firingKey = [payload.event_id, payload.odd_id, payload.bookmaker_id, sourceTimestamp].join(':');
+      const statusRaw = await redis.get(eventStatusKey(payload.event_id));
+      const status = parseCachedEventStatus(statusRaw);
+      const windowResult = timeWindowMet(timeWindow, status);
+      const targetValue = Number(payload.target_value);
+      const canEvaluate = windowResult === true && Number.isFinite(targetValue);
 
-            const observedAt = cached.observedAt || new Date().toISOString();
-            const { data: firing, error: firingError } = await serviceClient
-              .from('odds_alert_firings')
-              .insert({
-                alert_id: (insertedAlert as OddsAlertRow).id,
-                event_id: payload.event_id,
-                odd_id: payload.odd_id,
-                bookmaker_id: payload.bookmaker_id,
-                firing_key: firingKey,
-                triggered_value: currentValue,
-                triggered_metric: payload.target_metric,
-                vendor_updated_at: cached.vendorUpdatedAt,
-                observed_at: observedAt,
-              })
-              .select('id')
-              .single();
+      let shouldFire = false;
+      let currentValue: number | null = null;
+      let currentOdds: number | null = null;
+      let sourceTimestamp = new Date().toISOString();
+      let observedAt = new Date().toISOString();
+      let vendorUpdatedAt: string | null = null;
 
-            if (firingError) {
-              // Ignore duplicate firing; unique constraint provides idempotency.
-              if ((firingError as unknown as { code?: string }).code !== '23505') {
-                throw new Error(firingError.message);
-              }
-            } else if (firing?.id) {
-              await serviceClient
-                .from('odds_alerts')
-                .update({ last_fired_at: observedAt })
-                .eq('id', (insertedAlert as OddsAlertRow).id);
-
-              await redis.xadd(prefixed('stream:notification_jobs'), {
-                alertFiringId: String(firing.id),
-                alertId: String((insertedAlert as OddsAlertRow).id),
-                userId: String(userId),
-                channels: JSON.stringify(channels),
-                eventID: payload.event_id,
-                oddID: payload.odd_id,
-                bookmakerID: payload.bookmaker_id,
-                currentValue: String(currentValue),
-                previousValue: '',
-                valueMetric: payload.target_metric,
-                currentOdds: String(cached.currentOdds),
-                previousOdds: '',
-                ruleType: payload.ui_rule_type,
-                marketType: payload.ui_market_type,
-                teamSide: payload.ui_team_side || '',
-                threshold: String(payload.target_value),
-                direction: payload.ui_direction,
-                observedAt,
-              }, {
-                maxLenApprox: Number.isFinite(NOTIFICATION_STREAM_MAXLEN) ? NOTIFICATION_STREAM_MAXLEN : 100000,
-              });
-            }
+      if (!canEvaluate) {
+        shouldFire = false;
+      } else if (payload.target_metric === 'score_margin') {
+        const requiredPeriod = normalizeGamePeriod(payload.ui_game_period);
+        const periodResult = scorePeriodMet(requiredPeriod, status);
+        const teamSide = normalizeTeamSide(payload.ui_team_side) || 'home';
+        const scoreMode = normalizeScoreMode(payload.ui_direction as UiDirection);
+        if (periodResult === true && status) {
+          const margin = scoreMarginForTeam(teamSide, status);
+          if (typeof margin === 'number' && Number.isFinite(margin)) {
+            currentValue = margin;
+            currentOdds = margin;
+            shouldFire = scoreModeMet(scoreMode, margin, targetValue);
+            observedAt = new Date().toISOString();
+            sourceTimestamp = [
+              normalizeEventPeriod(status.leagueID, status.period) || status.period || 'full_game',
+              String(status.scoreHome ?? 'na'),
+              String(status.scoreAway ?? 'na'),
+              observedAt,
+            ].join(':');
           }
+        }
+      } else {
+        const quoteRaw = await redis.get(
+          marketQuoteKey(payload.event_id, payload.odd_id, payload.bookmaker_id),
+        );
+        const cached = parseCachedOddsTick(quoteRaw);
+        if (cached && (!payload.available_required || cached.available)) {
+          const value = pickCurrentValue(payload.target_metric, cached);
+          if (typeof value === 'number' && Number.isFinite(value)) {
+            currentValue = value;
+            currentOdds = cached.currentOdds;
+            shouldFire = comparatorMet(comparator, targetValue, value);
+            sourceTimestamp = cached.vendorUpdatedAt || cached.observedAt || new Date().toISOString();
+            observedAt = cached.observedAt || new Date().toISOString();
+            vendorUpdatedAt = cached.vendorUpdatedAt;
+          }
+        }
+      }
+
+      if (shouldFire && typeof currentValue === 'number' && Number.isFinite(currentValue)) {
+        const firingKey = [payload.event_id, payload.odd_id, payload.bookmaker_id, sourceTimestamp].join(':');
+        const { data: firing, error: firingError } = await serviceClient
+          .from('odds_alert_firings')
+          .insert({
+            alert_id: (insertedAlert as OddsAlertRow).id,
+            event_id: payload.event_id,
+            odd_id: payload.odd_id,
+            bookmaker_id: payload.bookmaker_id,
+            firing_key: firingKey,
+            triggered_value: currentValue,
+            triggered_metric: payload.target_metric,
+            vendor_updated_at: vendorUpdatedAt,
+            observed_at: observedAt,
+          })
+          .select('id')
+          .single();
+
+        if (firingError) {
+          // Ignore duplicate firing; unique constraint provides idempotency.
+          if ((firingError as unknown as { code?: string }).code !== '23505') {
+            throw new Error(firingError.message);
+          }
+        } else if (firing?.id) {
+          await serviceClient
+            .from('odds_alerts')
+            .update({ last_fired_at: observedAt })
+            .eq('id', (insertedAlert as OddsAlertRow).id);
+
+          await redis.xadd(prefixed('stream:notification_jobs'), {
+            alertFiringId: String(firing.id),
+            alertId: String((insertedAlert as OddsAlertRow).id),
+            userId: String(userId),
+            channels: JSON.stringify(channels),
+            eventID: payload.event_id,
+            oddID: payload.odd_id,
+            bookmakerID: payload.bookmaker_id,
+            currentValue: String(currentValue),
+            previousValue: '',
+            valueMetric: payload.target_metric,
+            currentOdds: String(currentOdds ?? currentValue),
+            previousOdds: '',
+            ruleType: payload.ui_rule_type,
+            marketType: payload.ui_market_type,
+            teamSide: payload.ui_team_side || '',
+            threshold: String(payload.target_value),
+            direction: payload.ui_direction,
+            observedAt,
+          }, {
+            maxLenApprox: Number.isFinite(NOTIFICATION_STREAM_MAXLEN) ? NOTIFICATION_STREAM_MAXLEN : 100000,
+          });
         }
       }
     } catch (error) {

@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DirectionType, DIRECTION_OPTIONS, RuleType } from "@/types/alerts";
+import { DirectionType, DIRECTION_OPTIONS, RuleType, SCORE_MARGIN_DIRECTION_OPTIONS } from "@/types/alerts";
 
 interface AlertDirectionSelectorProps {
   value: DirectionType | null;
@@ -27,14 +27,9 @@ export const AlertDirectionSelector = ({
         (opt) => opt.id === "at_or_above" || opt.id === "at_or_below" || opt.id === "exactly"
       );
     }
-    // Score margin uses at/above/below/exactly
+    // Score margin supports only the two dedicated semantics in v1.
     if (ruleType === "score_margin") {
-      return DIRECTION_OPTIONS.filter(
-        (opt) =>
-          opt.id === "at_or_above" ||
-          opt.id === "at_or_below" ||
-          opt.id === "exactly"
-      );
+      return SCORE_MARGIN_DIRECTION_OPTIONS;
     }
     // Default fallback
     return DIRECTION_OPTIONS;

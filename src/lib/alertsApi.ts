@@ -9,6 +9,7 @@ export interface CreateAlertRequest {
   threshold: number | null;
   direction: string | null;
   timeWindow: string;
+  gamePeriod?: string;
   channels: string[];
   eventName?: string;
 }

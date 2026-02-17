@@ -124,7 +124,7 @@ const CreateAlert = () => {
       // When rule type changes, apply field config defaults
       if (key === "ruleType") {
         const config = ALERT_TYPE_FIELD_CONFIG[value as AlertCondition['ruleType']];
-        updated.direction = null;
+        updated.direction = value === "score_margin" ? "lead_by_or_more" : null;
         
         // Auto-set market type if forced by rule type
         if (config.forceMarketType) {
@@ -314,6 +314,7 @@ const CreateAlert = () => {
         threshold: condition.threshold,
         direction: condition.direction,
         timeWindow: condition.timeWindow,
+        gamePeriod: condition.gamePeriod,
         channels: notificationChannels,
         eventName: selectedGame
           ? `${selectedGame.teams.away.name || selectedGame.teams.away.abbreviation} @ ${selectedGame.teams.home.name || selectedGame.teams.home.abbreviation}`
@@ -537,6 +538,7 @@ const CreateAlert = () => {
                       <AlertGamePeriodSelector
                         value={condition.gamePeriod}
                         onChange={(v) => updateCondition("gamePeriod", v)}
+                        leagueID={selectedGame?.leagueID}
                         sportID={selectedGame?.sportID}
                       />
                     </div>

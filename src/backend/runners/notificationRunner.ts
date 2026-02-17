@@ -45,7 +45,10 @@ function asNotificationJob(fields: Record<string, string>): NotificationJob | nu
   const currentValue = parseNullableNumber(fields.currentValue);
   const previousValue = parseNullableNumber(fields.previousValue);
   const threshold = parseNullableNumber(fields.threshold);
-  const valueMetric = fields.valueMetric === "line_value" ? "line_value" : "odds_price";
+  const valueMetric =
+    fields.valueMetric === "line_value" || fields.valueMetric === "score_margin"
+      ? fields.valueMetric
+      : "odds_price";
   const resolvedCurrentOdds = currentOdds ?? currentValue;
 
   if (
@@ -594,9 +597,13 @@ async function reconcileMissingNotificationJobs(params: {
 
     const threshold = asFiniteNumber(alert.target_value);
     const valueMetric =
-      firing.triggered_metric === "line_value" || firing.triggered_metric === "odds_price"
+      firing.triggered_metric === "line_value" ||
+      firing.triggered_metric === "odds_price" ||
+      firing.triggered_metric === "score_margin"
         ? firing.triggered_metric
-        : alert.target_metric === "line_value" || alert.target_metric === "odds_price"
+        : alert.target_metric === "line_value" ||
+            alert.target_metric === "odds_price" ||
+            alert.target_metric === "score_margin"
           ? alert.target_metric
           : "odds_price";
     await redis.xadd(redisKeys.streamNotificationJobs(), {

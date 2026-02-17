@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { OddsTick } from "@/backend/contracts/ticks";
-import { buildFiringKey, evaluateAlert } from "@/backend/alerts/evaluateAlert";
+import {
+  buildFiringKey,
+  evaluateAlert,
+  evaluateScoreMarginAlert,
+} from "@/backend/alerts/evaluateAlert";
+import { EventStatusTick } from "@/backend/contracts/ticks";
 
 const baseTick: OddsTick = {
   type: "ODDS_TICK",
@@ -27,6 +32,26 @@ const ouTick: OddsTick = {
   oddID: "points-all-game-ou-over",
   currentOdds: -108,
   line: 42.5,
+};
+
+const scoreTick: EventStatusTick = {
+  type: "EVENT_STATUS_TICK",
+  eventID: "evt_1",
+  leagueID: "NBA",
+  sportID: "BASKETBALL",
+  startsAt: "2026-02-12T10:00:00.000Z",
+  started: true,
+  ended: false,
+  finalized: false,
+  cancelled: false,
+  live: true,
+  scoreHome: 88,
+  scoreAway: 80,
+  period: "3",
+  clock: "04:33",
+  updatedAt: "2026-02-12T10:20:00.000Z",
+  vendorUpdatedAt: "2026-02-12T10:20:00.000Z",
+  observedAt: "2026-02-12T10:20:01.000Z",
 };
 
 describe("evaluateAlert", () => {
@@ -353,6 +378,85 @@ describe("evaluateAlert", () => {
 
     expect(result.shouldFire).toBe(false);
     expect(result.reason).toBe("time_window_not_met");
+  });
+});
+
+describe("evaluateScoreMarginAlert", () => {
+  it("fires for lead_by_or_more when team lead meets threshold", () => {
+    const result = evaluateScoreMarginAlert({
+      alert: {
+        id: "score-1",
+        comparator: "gte",
+        targetValue: 8,
+        scoreMode: "lead_by_or_more",
+        teamSide: "home",
+        gamePeriod: "3q",
+        timeWindow: "live",
+      },
+      currentTick: scoreTick,
+    });
+
+    expect(result.shouldFire).toBe(true);
+    expect(result.reason).toBe("fire");
+    expect(result.triggeredValue).toBe(8);
+  });
+
+  it("fires for within_points when margin is within threshold", () => {
+    const result = evaluateScoreMarginAlert({
+      alert: {
+        id: "score-2",
+        comparator: "lte",
+        targetValue: 10,
+        scoreMode: "within_points",
+        teamSide: "home",
+        gamePeriod: "3q",
+        timeWindow: "live",
+      },
+      currentTick: scoreTick,
+    });
+
+    expect(result.shouldFire).toBe(true);
+    expect(result.reason).toBe("fire");
+    expect(result.triggeredValue).toBe(8);
+  });
+
+  it("does not fire when period does not match", () => {
+    const result = evaluateScoreMarginAlert({
+      alert: {
+        id: "score-3",
+        comparator: "gte",
+        targetValue: 8,
+        scoreMode: "lead_by_or_more",
+        teamSide: "home",
+        gamePeriod: "4q",
+        timeWindow: "live",
+      },
+      currentTick: scoreTick,
+    });
+
+    expect(result.shouldFire).toBe(false);
+    expect(result.reason).toBe("period_not_met");
+  });
+
+  it("does not fire when score is missing", () => {
+    const result = evaluateScoreMarginAlert({
+      alert: {
+        id: "score-4",
+        comparator: "gte",
+        targetValue: 8,
+        scoreMode: "lead_by_or_more",
+        teamSide: "home",
+        gamePeriod: "3q",
+        timeWindow: "live",
+      },
+      currentTick: {
+        ...scoreTick,
+        scoreHome: null,
+      },
+    });
+
+    expect(result.shouldFire).toBe(false);
+    expect(result.reason).toBe("missing_score");
   });
 });
 

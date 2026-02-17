@@ -12,6 +12,9 @@ describe("comparator mapping", () => {
     expect(uiDirectionToComparator("crosses_above")).toBe("crosses_up");
     expect(uiDirectionToComparator("crosses_below")).toBe("crosses_down");
     expect(uiDirectionToComparator("exactly")).toBe("eq");
+    expect(uiDirectionToComparator("lead_by_or_more")).toBe("gte");
+    expect(uiDirectionToComparator("within_points")).toBe("lte");
+    expect(uiDirectionToComparator("exact_margin")).toBe("eq");
   });
 
   it("maps backend comparators to UI directions", () => {

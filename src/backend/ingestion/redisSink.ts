@@ -121,12 +121,16 @@ export class RedisIngestionSink {
   }
 
   private stableStatusFields(serialized: string | null): {
+    leagueID: string;
+    sportID: string;
     startsAt: string;
     started: boolean;
     ended: boolean;
     finalized: boolean;
     cancelled: boolean;
     live: boolean;
+    scoreHome: number | null;
+    scoreAway: number | null;
     period: string;
     clock: string;
   } | null {
@@ -135,12 +139,16 @@ export class RedisIngestionSink {
       const parsed = JSON.parse(serialized) as Partial<EventStatusTick>;
       if (typeof parsed !== "object" || parsed === null) return null;
       return {
+        leagueID: typeof parsed.leagueID === "string" ? parsed.leagueID : "",
+        sportID: typeof parsed.sportID === "string" ? parsed.sportID : "",
         startsAt: typeof parsed.startsAt === "string" ? parsed.startsAt : "",
         started: Boolean(parsed.started),
         ended: Boolean(parsed.ended),
         finalized: Boolean(parsed.finalized),
         cancelled: Boolean(parsed.cancelled),
         live: Boolean(parsed.live),
+        scoreHome: typeof parsed.scoreHome === "number" ? parsed.scoreHome : null,
+        scoreAway: typeof parsed.scoreAway === "number" ? parsed.scoreAway : null,
         period: typeof parsed.period === "string" ? parsed.period : "",
         clock: typeof parsed.clock === "string" ? parsed.clock : "",
       };
@@ -162,24 +170,32 @@ export class RedisIngestionSink {
     const previous = this.stableStatusFields(previousRaw);
     const changed =
       !previous ||
+      previous.leagueID !== (status.leagueID || "") ||
+      previous.sportID !== (status.sportID || "") ||
       previous.startsAt !== status.startsAt ||
       previous.started !== status.started ||
       previous.ended !== status.ended ||
       previous.finalized !== status.finalized ||
       previous.cancelled !== status.cancelled ||
       previous.live !== status.live ||
+      previous.scoreHome !== (typeof status.scoreHome === "number" ? status.scoreHome : null) ||
+      previous.scoreAway !== (typeof status.scoreAway === "number" ? status.scoreAway : null) ||
       previous.period !== (status.period || "") ||
       previous.clock !== (status.clock || "");
 
     if (changed) {
       await this.redis.xadd(redisKeys.streamEventStatusTicks(), {
         eventID: status.eventID,
+        leagueID: status.leagueID || "",
+        sportID: status.sportID || "",
         startsAt: status.startsAt,
         started: String(status.started),
         ended: String(status.ended),
         finalized: String(status.finalized),
         cancelled: String(status.cancelled),
         live: String(status.live),
+        scoreHome: status.scoreHome === null || status.scoreHome === undefined ? "null" : String(status.scoreHome),
+        scoreAway: status.scoreAway === null || status.scoreAway === undefined ? "null" : String(status.scoreAway),
         period: status.period || "",
         clock: status.clock || "",
         updatedAt: status.updatedAt || "",

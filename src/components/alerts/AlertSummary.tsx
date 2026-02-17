@@ -1,4 +1,4 @@
-import { AlertCondition, MARKET_OPTIONS, DIRECTION_OPTIONS, SPORT_PERIODS, GamePeriod } from "@/types/alerts";
+import { AlertCondition, MARKET_OPTIONS, DIRECTION_OPTIONS, getGamePeriodsByLeagueOrSport } from "@/types/alerts";
 import { GameEvent } from "@/types/games";
 import { NotificationChannel } from "./AlertNotificationChannels";
 import { cn } from "@/lib/utils";
@@ -44,9 +44,17 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
                direction.id === "at_or_below" ? "or lower" :
                direction.id === "exactly" ? "exactly" : "";
       case 'margin':
-        return direction.id === "at_or_above" ? "or more" : 
-               direction.id === "at_or_below" ? "or fewer" : 
-               direction.id === "exactly" ? "exactly" : "";
+        return direction.id === "lead_by_or_more"
+          ? "or more"
+          : direction.id === "within_points"
+            ? "or less"
+            : direction.id === "at_or_above"
+              ? "or more"
+              : direction.id === "at_or_below"
+                ? "or fewer"
+                : direction.id === "exactly"
+                  ? "exactly"
+                  : "";
       default:
         return "";
     }
@@ -62,7 +70,7 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
 
   const getPeriodName = (): string => {
     if (!condition.gamePeriod || !selectedGame) return "";
-    const periods = SPORT_PERIODS[selectedGame.sportID] || SPORT_PERIODS.BASKETBALL;
+    const periods = getGamePeriodsByLeagueOrSport(selectedGame.leagueID, selectedGame.sportID);
     const period = periods.find((p) => p.id === condition.gamePeriod);
     return period ? ` during ${period.name.toLowerCase()}` : "";
   };
@@ -82,6 +90,9 @@ export const AlertSummary = ({ condition, selectedGame, notificationChannels, is
         return `Alert me when total reaches ${thresholdFormatted} ${getDirectionText('total')}`.trim();
       
       case "score_margin":
+        if (condition.direction === "within_points") {
+          return `Alert me when ${teamName} is within ${Math.abs(condition.threshold ?? 0)} points${getPeriodName()}`.trim();
+        }
         return `Alert me when ${teamName} leads by ${thresholdFormatted} points ${getDirectionText('margin')}${getPeriodName()}`.trim();
       
       case "timed_surge": {

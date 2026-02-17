@@ -137,13 +137,14 @@ export interface OddsAlertRow {
   odd_id: string;
   bookmaker_id: string;
   comparator: 'gte' | 'lte' | 'eq' | 'crosses_up' | 'crosses_down';
-  target_metric: 'odds_price' | 'line_value';
+  target_metric: 'odds_price' | 'line_value' | 'score_margin';
   target_value: number;
   ui_rule_type: string | null;
   ui_market_type: string | null;
   ui_team_side: string | null;
   ui_direction: string | null;
   ui_time_window: string | null;
+  ui_game_period: string | null;
   one_shot: boolean;
   cooldown_seconds: number;
   available_required: boolean;

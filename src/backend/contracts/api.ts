@@ -131,7 +131,15 @@ export const alertResponseSchema = z.object({
   channels: z.array(z.string()),
   lastFiredAt: z.string().nullable().optional(),
   cooldownRemainingSeconds: z.number().int().nonnegative().optional(),
-  valueMetric: z.enum(["odds_price", "line_value"]).optional(),
+  gamePeriod: z
+    .enum(["full_game", "1h", "2h", "1q", "2q", "3q", "4q", "1p", "2p", "3p"])
+    .nullable()
+    .optional(),
+  scoreMode: z
+    .enum(["lead_by_or_more", "within_points", "trail_by_or_more", "exact_margin"])
+    .nullable()
+    .optional(),
+  valueMetric: z.enum(["odds_price", "line_value", "score_margin"]).optional(),
   eventName: z.string().optional(),
   teamName: z.string().optional(),
 });

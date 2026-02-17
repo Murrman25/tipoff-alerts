@@ -36,6 +36,38 @@ export interface TickPublisher {
   publishEventStatusTick: (payload: EventStatusTick) => Promise<void>;
 }
 
+function asFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function extractEventScores(event: VendorIngestionEvent): {
+  home: number | null;
+  away: number | null;
+} {
+  const homeScore =
+    asFiniteNumber(event.status?.score?.home) ??
+    asFiniteNumber(event.scores?.home) ??
+    asFiniteNumber(event.results?.home?.points) ??
+    asFiniteNumber(event.teams?.home?.score);
+  const awayScore =
+    asFiniteNumber(event.status?.score?.away) ??
+    asFiniteNumber(event.scores?.away) ??
+    asFiniteNumber(event.results?.away?.points) ??
+    asFiniteNumber(event.teams?.away?.score);
+
+  return {
+    home: homeScore,
+    away: awayScore,
+  };
+}
+
 export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngestionEvent> {
   private budget: TokenBucket;
 
@@ -97,9 +129,12 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
       }
 
       for (const event of response.data) {
+        const scores = extractEventScores(event);
         const statusTick: EventStatusTick = {
           type: "EVENT_STATUS_TICK",
           eventID: event.eventID,
+          leagueID: event.leagueID,
+          sportID: event.sportID,
           startsAt: event.status?.startsAt || new Date().toISOString(),
           started: Boolean(event.status?.started),
           ended: Boolean(event.status?.ended),
@@ -113,6 +148,8 @@ export class IngestionWorker<TEvent extends VendorIngestionEvent = VendorIngesti
             ended: Boolean(event.status?.ended),
             finalized: Boolean(event.status?.finalized),
           }) === "live",
+          scoreHome: scores.home,
+          scoreAway: scores.away,
           period: event.status?.period || undefined,
           clock: event.status?.clock || undefined,
           updatedAt: event.status?.updatedAt || undefined,
